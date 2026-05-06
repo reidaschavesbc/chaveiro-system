@@ -1,0 +1,7 @@
+node_modules
+npm-debug.log
+whatsapp-session
+ecosystem.config.js
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,14 @@
+services:
+  chaveiro:
+    build: .
+    container_name: chaveiro-system
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file: .env
+    environment:
+      - PORT=3002
+    volumes:
+      - ./database:/app/database
+      - ./public/uploads:/app/public/uploads
+      - ./whatsapp-session:/app/whatsapp-session

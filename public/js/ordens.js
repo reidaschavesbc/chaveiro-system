@@ -1,0 +1,729 @@
+let ordensData = [];
+let clientesForOS = [];
+let servicosForOS = [];
+let produtosForOS = [];
+let vendedoresForOS = [];
+let osItens = [];
+
+async function ordens(el) {
+  [clientesForOS, servicosForOS, produtosForOS, vendedoresForOS] = await Promise.all([
+    api('GET', '/clientes'),
+    api('GET', '/servicos'),
+    api('GET', '/produtos'),
+    api('GET', '/vendedores')
+  ]);
+
+  const clienteOptions = clientesForOS.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  const vendedorOptions = vendedoresForOS.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+
+  el.innerHTML = `
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Ordens de Serviço</span>
+      <div class="flex gap-2 align-center">
+        <select id="filtro-status-os" onchange="carregarOrdens()" class="select-custom">
+          <option value="">Todos os status</option>
+          <option value="aberta">Aberta</option>
+          <option value="em_andamento">Em Andamento</option>
+          <option value="concluida">Concluída</option>
+          <option value="cancelada">Cancelada</option>
+          <option value="a_receber">A Receber (pendente)</option>
+        </select>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="search-os" placeholder="Buscar OS, cliente..." oninput="filtrarOS()">
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalOS()">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Nova OS
+        </button>
+      </div>
+    </div>
+    <div id="tabela-os"></div>
+  </div>
+
+  <div class="modal-overlay" id="modal-os">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-os-title">Nova Ordem de Serviço</span>
+        <button class="modal-close" onclick="closeModal('modal-os')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="os-id">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Cliente</label>
+            <select id="os-cliente" onchange="toggleClienteAvulso('os');carregarAutorizadosOS()"><option value="">-- Sem cliente --</option>${clienteOptions}</select>
+            <input type="text" id="os-cliente-avulso" placeholder="Nome do cliente (opcional)" style="margin-top:6px">
+            <div id="os-solicitado-wrap" style="display:none;margin-top:6px">
+              <select id="os-solicitado-por" style="width:100%">
+                <option value="">-- Solicitado por (opcional) --</option>
+              </select>
+            </div>
+            <div id="os-avulso-endereco" style="margin-top:8px;padding:10px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">
+              <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Endereço do Cliente</div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <input type="text" id="os-avulso-rua" placeholder="Rua *" style="flex:1">
+                <input type="text" id="os-avulso-numero" placeholder="Nº *" style="width:68px">
+              </div>
+              <div style="display:flex;gap:6px;margin-bottom:6px">
+                <input type="text" id="os-avulso-complemento" placeholder="Ap / Complemento" style="flex:1">
+                <input type="text" id="os-avulso-cidade" placeholder="Cidade" style="flex:1">
+              </div>
+              <input type="text" id="os-avulso-referencia" placeholder="Referência (opcional)" style="width:100%;box-sizing:border-box">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Funcionário / Técnico</label>
+            <select id="os-vendedor">
+              <option value="">-- Selecione --</option>${vendedorOptions}
+            </select>
+          </div>
+          <div class="form-group form-full">
+            <label>Descrição do Problema / Serviço</label>
+            <textarea id="os-descricao"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Valor (R$)</label>
+            <input type="number" id="os-valor" step="0.01" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="os-status">
+              <option value="aberta">Aberta</option>
+              <option value="em_andamento">Em Andamento</option>
+              <option value="concluida">Concluída</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Data/Hora Prevista</label>
+            <div style="display:flex;gap:8px">
+              <input type="date" id="os-data-prevista-data" style="flex:1">
+              <input type="time" id="os-data-prevista-hora" style="width:120px">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Forma de Pagamento</label>
+            <select id="os-pagamento">
+              <option value="">-- A definir --</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="debito">Cartão Débito</option>
+              <option value="credito">Cartão Crédito</option>
+            </select>
+          </div>
+          <div class="form-group form-full">
+            <label>Observações</label>
+            <textarea id="os-obs" style="min-height:60px"></textarea>
+          </div>
+          <div class="form-group form-full">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="os-a-receber" onchange="toggleVencimento()">
+              <span style="font-weight:600;color:#dc2626">A Receber</span>
+            </label>
+            <div id="os-vencimento-wrap" style="display:none;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
+              <label style="font-size:12px;font-weight:600;color:#991b1b;margin-bottom:6px;display:block">Data de Vencimento</label>
+              <input type="date" id="os-data-vencimento" style="max-width:200px">
+              <p style="font-size:11px;color:#b91c1c;margin:6px 0 0">Se não preenchida, usará a data prevista da OS.</p>
+            </div>
+          </div>
+
+          <div class="form-group form-full" style="display:flex;gap:24px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="os-chave-auto" onchange="toggleChaveAuto()">
+              <span style="font-weight:600">Chave Auto</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="os-orcamento" onchange="toggleOrcamento()">
+              <span style="font-weight:600">Orçamento</span>
+            </label>
+          </div>
+
+          <div class="form-full divider" id="os-secao-divider"></div>
+
+          <div class="form-full" id="os-secao-itens">
+            <label style="font-weight:700;margin-bottom:12px;display:block">Itens da OS <span style="color:#dc2626;font-size:12px;font-weight:400">(pelo menos 1 serviço obrigatório)</span></label>
+            <div class="tabs" id="tabs-os-tipo">
+              <button class="tab active" onclick="setTabOS('servico', this)">+ Serviço</button>
+              <button class="tab" onclick="setTabOS('produto', this)">+ Produto</button>
+            </div>
+
+            <div id="tab-os-servico">
+              <div class="form-grid">
+                <div class="form-group form-full">
+                  <select id="os-item-servico-sel" onchange="atualizarPrecoItemOS('servico', this)">
+                    <option value="">-- Selecione o serviço --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <input type="number" id="os-item-servico-qtd" min="1" value="1" placeholder="Qtd">
+                </div>
+                <div class="form-group">
+                  <input type="number" id="os-item-servico-preco" step="0.01" min="0" value="0" placeholder="Preço">
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('servico')">Adicionar Serviço</button>
+            </div>
+
+            <div id="tab-os-produto" style="display:none">
+              <div class="form-grid">
+                <div class="form-group form-full">
+                  <select id="os-item-produto-sel" onchange="atualizarPrecoItemOS('produto', this)">
+                    <option value="">-- Selecione o produto --</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <input type="number" id="os-item-produto-qtd" min="1" value="1" placeholder="Qtd">
+                </div>
+                <div class="form-group">
+                  <input type="number" id="os-item-produto-preco" step="0.01" min="0" value="0" placeholder="Preço">
+                </div>
+              </div>
+              <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('produto')">Adicionar Produto</button>
+            </div>
+
+            <div id="lista-itens-os" style="margin-top:16px"></div>
+          </div><!-- /os-secao-itens -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-os')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarOS()">Salvar OS</button>
+      </div>
+    </div>
+  </div>`;
+
+  await carregarOrdens();
+
+  if (window._orcamentoPendente) {
+    const orc = window._orcamentoPendente;
+    window._orcamentoPendente = null;
+    setTimeout(() => _preencherOSFromOrcamento(orc), 80);
+  }
+}
+
+async function carregarOrdens() {
+  const status = document.getElementById('filtro-status-os')?.value || '';
+  let qs = '';
+  if (status === 'a_receber') qs = '?a_receber=1';
+  else if (status) qs = '?status=' + status;
+  ordensData = await api('GET', `/ordens${qs}`);
+  renderOrdens(ordensData);
+}
+
+function renderOrdens(list) {
+  const el = document.getElementById('tabela-os');
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><h3>Nenhuma ordem encontrada</h3></div>'; return; }
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  el.innerHTML = `<table>
+    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Descrição</th><th>Data</th><th>Status</th><th>Valor</th><th style="width:170px">Ações</th></tr></thead>
+    <tbody>${list.map(o => {
+      const vencido = o.a_receber && !o.a_receber_pago && o.data_vencimento && new Date(o.data_vencimento) < hoje;
+      const rowStyle = vencido ? 'background:#fff5f5' : '';
+      const badgeAR = o.a_receber && !o.a_receber_pago
+        ? `<br><span style="font-size:10px;font-weight:700;color:${vencido ? '#dc2626':'#d97706'};background:${vencido ? '#fee2e2':'#fef3c7'};padding:1px 6px;border-radius:4px">${vencido ? '⚠ VENCIDO' : '⏳ A RECEBER'}${o.data_vencimento ? ' ' + formatDate(o.data_vencimento) : ''}</span>`
+        : (o.a_receber && o.a_receber_pago ? `<br><span style="font-size:10px;color:#16a34a;background:#f0fdf4;padding:1px 6px;border-radius:4px">✔ RECEBIDO</span>` : '');
+      return `
+      <tr style="${rowStyle}">
+        <td><strong>${o.numero}</strong>${badgeAR}</td>
+        <td>${o.cliente_nome || o.cliente_nome_avulso || '<span class="text-muted">????</span>'}${o.solicitado_por ? `<br><span style="font-size:11px;color:#64748b">por ${o.solicitado_por}</span>` : ''}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.descricao}">${o.descricao}</td>
+        <td>${formatDate(o.data_entrada)}</td>
+        <td>${osStatusSelect(o.id, o.status)}</td>
+        <td class="currency">${formatCurrency(o.valor)}</td>
+        <td><div class="actions-cell">
+          <a class="btn btn-sm btn-secondary" href="/api/pdf/os/${o.id}?token=${getToken()}" target="_blank" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></a>
+          <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
+          ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;font-size:11px" title="Marcar como Recebido" onclick="receberOS(${o.id}, '${o.numero}', ${o.valor})">✔ Receber</button>` : ''}
+          ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
+          <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id}, '${o.numero}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+        </div></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function filtrarOS() {
+  const q = document.getElementById('search-os').value.toLowerCase();
+  renderOrdens(ordensData.filter(o => o.numero.toLowerCase().includes(q) || (o.cliente_nome || '').toLowerCase().includes(q) || (o.descricao || '').toLowerCase().includes(q)));
+}
+
+const OS_STATUS_CFG = {
+  aberta:       { bg: '#fef3c7', color: '#92400e', label: 'Aberta' },
+  em_andamento: { bg: '#dbeafe', color: '#1e40af', label: 'Em Andamento' },
+  concluida:    { bg: '#d1fae5', color: '#065f46', label: 'Concluída' },
+  cancelada:    { bg: '#fee2e2', color: '#991b1b', label: 'Cancelada' },
+};
+
+function osStatusSelect(id, status) {
+  const cfg = OS_STATUS_CFG[status] || OS_STATUS_CFG.aberta;
+  const opts = Object.entries(OS_STATUS_CFG).map(([v, c]) =>
+    `<option value="${v}" ${v === status ? 'selected' : ''}>${c.label}</option>`
+  ).join('');
+  return `<select
+    data-id="${id}" data-original="${status}"
+    onchange="mudarStatusOS(this)"
+    style="border:none;border-radius:20px;padding:3px 22px 3px 10px;font-size:11px;font-weight:600;cursor:pointer;background:${cfg.bg};color:${cfg.color};outline:none;appearance:none;-webkit-appearance:none;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 10 6%22><path fill=%22${encodeURIComponent(cfg.color)}%22 d=%22M0 0l5 6 5-6z%22/></svg>');background-repeat:no-repeat;background-position:right 7px center;background-size:7px"
+  >${opts}</select>`;
+}
+
+function osAtualizarEstiloSelect(sel, status) {
+  const cfg = OS_STATUS_CFG[status] || OS_STATUS_CFG.aberta;
+  sel.style.background = cfg.bg;
+  sel.style.color = cfg.color;
+  sel.style.backgroundImage = `url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 10 6%22><path fill=%22${encodeURIComponent(cfg.color)}%22 d=%22M0 0l5 6 5-6z%22/></svg>')`;
+  sel.style.backgroundRepeat = 'no-repeat';
+  sel.style.backgroundPosition = 'right 7px center';
+  sel.style.backgroundSize = '7px';
+}
+
+// ── Modal multi-pagamento OS ──────────────────────────────────────────────────
+let _pgResolve = null, _pgPagamentos = [], _pgTotal = 0, _pgMetodo = null;
+
+function osMiniModalPagamento(valorTotal) {
+  _pgTotal = valorTotal || 0;
+  _pgPagamentos = [];
+  _pgMetodo = null;
+  return new Promise(resolve => {
+    _pgResolve = resolve;
+    const el = document.createElement('div');
+    el.id = 'pg-modal-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    el.addEventListener('click', () => _pgFechar('cancelar'));
+    document.body.appendChild(el);
+    _pgRender();
+  });
+}
+
+function _pgRender() {
+  const el = document.getElementById('pg-modal-overlay');
+  if (!el) return;
+  const fmtV = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
+  const labels = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', debito:'💳 Débito', credito:'💳 Crédito' };
+  const pago = _pgPagamentos.reduce((s, p) => s + p.valor, 0);
+  const restante = Math.max(0, _pgTotal - pago);
+  const coberto = restante < 0.01;
+
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:22px 24px;width:340px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;color:#1e293b">Forma de Pagamento</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:14px">Total: <strong>${fmtV(_pgTotal)}</strong></div>
+
+      ${_pgPagamentos.length ? `
+      <div style="margin-bottom:10px">
+        ${_pgPagamentos.map((p, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:4px;font-size:12px">
+          <span>${labels[p.metodo]||p.metodo}: <strong>${fmtV(p.valor)}</strong></span>
+          <button onclick="_pgRemover(${i})" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px;padding:0 2px">✕</button>
+        </div>`).join('')}
+        <div style="text-align:right;font-size:11px;font-weight:700;color:${coberto?'#16a34a':'#dc2626'};margin-top:4px">
+          ${coberto ? '✅ Total coberto' : `Restante: ${fmtV(restante)}`}
+        </div>
+      </div>` : ''}
+
+      ${!coberto ? `
+      <div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:8px">Adicionar pagamento</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px" id="pg-btns">
+          ${Object.entries(labels).map(([v,l]) =>
+            `<button onclick="_pgSelecionarMetodo('${v}',this)" data-m="${v}"
+              style="padding:7px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:11px;background:#fff;transition:border-color .1s">${l}</button>`
+          ).join('')}
+        </div>
+        <div style="display:flex;gap:6px">
+          <input type="number" id="pg-valor-inp" value="${restante.toFixed(2)}" step="0.01" min="0.01"
+            style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px">
+          <button onclick="_pgAdicionar()" style="padding:7px 14px;background:#6366f1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">+ Add</button>
+        </div>
+      </div>` : ''}
+
+      <div style="display:flex;gap:8px">
+        <button onclick="_pgFechar('cancelar')" style="flex:1;padding:9px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:12px;color:#64748b;background:#fff">Cancelar</button>
+        <button onclick="_pgFechar('ok')" ${!_pgPagamentos.length?'disabled style="opacity:.4"':''}
+          style="flex:1;padding:9px;background:#6366f1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">Confirmar</button>
+      </div>
+    </div>`;
+
+  // Restaura botão selecionado
+  if (_pgMetodo) {
+    const btn = el.querySelector(`[data-m="${_pgMetodo}"]`);
+    if (btn) { btn.style.borderColor = '#6366f1'; btn.style.background = '#eff6ff'; }
+  }
+}
+
+function _pgSelecionarMetodo(metodo, btn) {
+  _pgMetodo = metodo;
+  document.querySelectorAll('#pg-btns button').forEach(b => { b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; });
+  btn.style.borderColor = '#6366f1'; btn.style.background = '#eff6ff';
+}
+
+function _pgAdicionar() {
+  if (!_pgMetodo) { toast('Selecione a forma de pagamento', 'warning'); return; }
+  const valor = parseFloat(document.getElementById('pg-valor-inp').value);
+  if (!valor || valor <= 0) { toast('Informe um valor válido', 'warning'); return; }
+  const pago = _pgPagamentos.reduce((s, p) => s + p.valor, 0);
+  const restante = _pgTotal - pago;
+  if (valor > restante + 0.01) { toast(`Valor maior que o restante (${('R$ ' + restante.toFixed(2)).replace('.',',')})`, 'warning'); return; }
+  _pgPagamentos.push({ metodo: _pgMetodo, valor: parseFloat(valor.toFixed(2)) });
+  _pgMetodo = null;
+  _pgRender();
+}
+
+function _pgRemover(i) { _pgPagamentos.splice(i, 1); _pgRender(); }
+
+function _pgFechar(action) {
+  const el = document.getElementById('pg-modal-overlay');
+  if (el) document.body.removeChild(el);
+  if (!_pgResolve) return;
+  if (action === 'cancelar') { _pgResolve('cancelar'); _pgResolve = null; return; }
+  _pgResolve(action === 'ok' && _pgPagamentos.length ? [..._pgPagamentos] : null);
+  _pgResolve = null;
+}
+
+async function mudarStatusOS(sel) {
+  const id = parseInt(sel.dataset.id);
+  const novoStatus = sel.value;
+  const statusAnterior = sel.dataset.original;
+  if (novoStatus === statusAnterior) return;
+
+  let pagamentos = null;
+  if (novoStatus === 'concluida') {
+    const osData = ordensData.find(o => o.id === id);
+    pagamentos = await osMiniModalPagamento(osData?.valor || 0);
+    if (pagamentos === 'cancelar') { sel.value = statusAnterior; return; }
+  }
+
+  try {
+    await api('PATCH', `/ordens/${id}/status`, {
+      status: novoStatus,
+      pagamentos: pagamentos || undefined,
+      forma_pagamento: pagamentos?.length === 1 ? pagamentos[0].metodo : undefined
+    });
+    sel.dataset.original = novoStatus;
+    osAtualizarEstiloSelect(sel, novoStatus);
+    // Atualiza o dado em memória também
+    const item = ordensData.find(o => o.id === id);
+    if (item) item.status = novoStatus;
+    toast(`Status atualizado: ${OS_STATUS_CFG[novoStatus]?.label}`);
+  } catch (e) {
+    sel.value = statusAnterior;
+    toast(e.message, 'error');
+  }
+}
+
+function toggleClienteAvulso(prefix) {
+  const sel = document.getElementById(`${prefix}-cliente`);
+  const inp = document.getElementById(`${prefix}-cliente-avulso`);
+  const addr = document.getElementById(`${prefix}-avulso-endereco`);
+  const sem = !sel.value;
+  inp.style.display = sem ? '' : 'none';
+  if (addr) addr.style.display = sem ? '' : 'none';
+  if (!sem) {
+    inp.value = '';
+    if (addr) ['rua','numero','complemento','cidade','referencia'].forEach(f => {
+      const el = document.getElementById(`${prefix}-avulso-${f}`);
+      if (el) el.value = '';
+    });
+  }
+}
+
+async function carregarAutorizadosOS(valorAtual) {
+  const clienteId = document.getElementById('os-cliente')?.value;
+  const wrap = document.getElementById('os-solicitado-wrap');
+  const sel = document.getElementById('os-solicitado-por');
+  if (!wrap || !sel) return;
+  if (!clienteId) { wrap.style.display = 'none'; sel.innerHTML = '<option value="">-- Solicitado por (opcional) --</option>'; return; }
+  try {
+    const lista = await api('GET', `/clientes/${clienteId}/autorizados`);
+    if (!lista.length) { wrap.style.display = 'none'; sel.innerHTML = '<option value="">-- Solicitado por (opcional) --</option>'; return; }
+    sel.innerHTML = '<option value="">-- Solicitado por (opcional) --</option>' +
+      lista.map(a => `<option value="${a.nome}"${valorAtual === a.nome ? ' selected' : ''}>${a.nome}${a.cargo ? ' — ' + a.cargo : ''}</option>`).join('');
+    wrap.style.display = 'block';
+  } catch (_) { wrap.style.display = 'none'; }
+}
+
+function toggleVencimento() {
+  const checked = document.getElementById('os-a-receber').checked;
+  document.getElementById('os-vencimento-wrap').style.display = checked ? 'block' : 'none';
+  if (checked && !document.getElementById('os-data-vencimento').value) {
+    const dp = document.getElementById('os-data-prevista-data').value;
+    if (dp) document.getElementById('os-data-vencimento').value = dp;
+  }
+}
+
+function toggleChaveAuto() {}
+function toggleOrcamento() {}
+
+function abrirModalOS() {
+  document.getElementById('os-id').value = '';
+  document.getElementById('os-cliente').value = '';
+  document.getElementById('os-cliente-avulso').value = '';
+  ['rua','numero','complemento','cidade','referencia'].forEach(f => { const el = document.getElementById(`os-avulso-${f}`); if(el) el.value=''; });
+  toggleClienteAvulso('os');
+  const wrapSol = document.getElementById('os-solicitado-wrap');
+  if (wrapSol) wrapSol.style.display = 'none';
+  const selSol = document.getElementById('os-solicitado-por');
+  if (selSol) selSol.innerHTML = '<option value="">-- Solicitado por (opcional) --</option>';
+  document.getElementById('os-descricao').value = '';
+  document.getElementById('os-valor').value = 0;
+  document.getElementById('os-status').value = 'aberta';
+  document.getElementById('os-data-prevista-data').value = '';
+  document.getElementById('os-data-prevista-hora').value = '';
+  document.getElementById('os-pagamento').value = '';
+  document.getElementById('os-obs').value = '';
+  document.getElementById('os-a-receber').checked = false;
+  document.getElementById('os-data-vencimento').value = '';
+  document.getElementById('os-vencimento-wrap').style.display = 'none';
+  document.getElementById('os-chave-auto').checked = false;
+  document.getElementById('os-orcamento').checked = false;
+  document.getElementById('modal-os-title').textContent = 'Nova Ordem de Serviço';
+
+  osItens = [];
+  renderItensOS();
+  preencherSelectsOS();
+  openModal('modal-os');
+}
+
+function preencherSelectsOS() {
+  document.getElementById('os-item-produto-sel').innerHTML =
+    '<option value="">-- Selecione o produto --</option>' +
+    produtosForOS.map(p => `<option value="${p.id}" data-nome="${p.nome}" data-preco="${p.preco_venda}">${p.nome}</option>`).join('');
+
+  document.getElementById('os-item-servico-sel').innerHTML =
+    '<option value="">-- Selecione o serviço --</option>' +
+    servicosForOS.map(s => `<option value="${s.id}" data-nome="${s.nome}" data-preco="${s.preco_base}">${s.nome}</option>`).join('');
+}
+
+function setTabOS(tab, btn) {
+  document.getElementById('tab-os-servico').style.display = tab === 'servico' ? 'block' : 'none';
+  document.getElementById('tab-os-produto').style.display = tab === 'produto' ? 'block' : 'none';
+  document.querySelectorAll('#tabs-os-tipo .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function adicionarItemOS(tipo) {
+  const sel = document.getElementById(`os-item-${tipo}-sel`);
+  const opt = sel.options[sel.selectedIndex];
+  if (!sel.value) return toast('Selecione um item', 'warning');
+
+  const qtd = parseFloat(document.getElementById(`os-item-${tipo}-qtd`).value) || 1;
+  const preco = parseFloat(document.getElementById(`os-item-${tipo}-preco`).value) || 0;
+
+  osItens.push({
+    produto_id: tipo === 'produto' ? parseInt(sel.value) : null,
+    servico_id: tipo === 'servico' ? parseInt(sel.value) : null,
+    descricao: opt.dataset.nome,
+    quantidade: qtd,
+    preco_unitario: preco
+  });
+
+  renderItensOS();
+  calcularTotalOS();
+}
+
+function renderItensOS() {
+  const el = document.getElementById('lista-itens-os');
+  if (!osItens.length) { el.innerHTML = '<p class="text-muted" style="font-size:12px">Nenhum item adicionado.</p>'; return; }
+  const inpStyle = 'border:1px solid #e2e8f0;border-radius:6px;padding:3px 6px;font-size:12px;text-align:right';
+  el.innerHTML = `
+    <table class="table-sm">
+      <thead><tr><th>Item</th><th style="width:70px">Qtd</th><th style="width:110px">Preço Unit.</th><th style="width:90px">Subtotal</th><th></th></tr></thead>
+      <tbody>
+        ${osItens.map((it, i) => `
+          <tr>
+            <td>${it.descricao}${it.servico_id ? ' <span style="font-size:10px;color:#1a56db;background:#eff6ff;padding:1px 5px;border-radius:4px">serviço</span>' : ''}${it.produto_id ? ' <span style="font-size:10px;color:#065f46;background:#d1fae5;padding:1px 5px;border-radius:4px">produto ↓estq</span>' : ''}</td>
+            <td><input type="number" value="${it.quantidade}" min="0.01" step="0.01" style="${inpStyle};width:60px"
+              oninput="osItens[${i}].quantidade=parseFloat(this.value)||1;document.getElementById('os-sub-${i}').textContent=formatCurrency(osItens[${i}].quantidade*osItens[${i}].preco_unitario);calcularTotalOS()"></td>
+            <td><input type="number" value="${it.preco_unitario}" min="0" step="0.01" style="${inpStyle};width:100px"
+              oninput="osItens[${i}].preco_unitario=parseFloat(this.value)||0;document.getElementById('os-sub-${i}').textContent=formatCurrency(osItens[${i}].quantidade*osItens[${i}].preco_unitario);calcularTotalOS()"></td>
+            <td id="os-sub-${i}" style="text-align:right;font-size:13px">${formatCurrency(it.quantidade * it.preco_unitario)}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="osItens.splice(${i},1);renderItensOS();calcularTotalOS()">✕</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function calcularTotalOS() {
+  const total = osItens.reduce((acc, it) => acc + (it.quantidade * it.preco_unitario), 0);
+  document.getElementById('os-valor').value = total.toFixed(2);
+}
+
+function atualizarPrecoItemOS(tipo, sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.preco) {
+    document.getElementById(`os-item-${tipo}-preco`).value = opt.dataset.preco;
+  }
+}
+
+async function editarOS(id) {
+  const o = await api('GET', `/ordens/${id}`);
+  if (!o) return;
+  document.getElementById('os-id').value = o.id;
+  document.getElementById('os-cliente').value = o.cliente_id || '';
+  document.getElementById('os-cliente-avulso').value = o.cliente_nome_avulso || '';
+  toggleClienteAvulso('os');
+  await carregarAutorizadosOS(o.solicitado_por || '');
+  document.getElementById('os-avulso-rua').value = o.cliente_avulso_rua || '';
+  document.getElementById('os-avulso-numero').value = o.cliente_avulso_numero || '';
+  document.getElementById('os-avulso-complemento').value = o.cliente_avulso_complemento || '';
+  document.getElementById('os-avulso-cidade').value = o.cliente_avulso_cidade || '';
+  document.getElementById('os-avulso-referencia').value = o.cliente_avulso_referencia || '';
+  document.getElementById('os-descricao').value = o.descricao;
+  document.getElementById('os-vendedor').value = o.vendedor_id || '';
+  document.getElementById('os-valor').value = o.valor;
+  document.getElementById('os-status').value = o.status;
+  const dp = (o.data_prevista || '').slice(0, 16);
+  document.getElementById('os-data-prevista-data').value = dp.slice(0, 10);
+  document.getElementById('os-data-prevista-hora').value = dp.slice(11, 16);
+  document.getElementById('os-pagamento').value = o.forma_pagamento || '';
+  document.getElementById('os-obs').value = o.observacoes || '';
+  document.getElementById('os-a-receber').checked = !!o.a_receber;
+  document.getElementById('os-data-vencimento').value = (o.data_vencimento || '').slice(0, 10);
+  document.getElementById('os-vencimento-wrap').style.display = o.a_receber ? 'block' : 'none';
+  document.getElementById('os-chave-auto').checked = !!o.chave_auto;
+  document.getElementById('os-orcamento').checked = !!o.orcamento;
+  document.getElementById('modal-os-title').textContent = 'Editar OS ' + o.numero;
+
+  osItens = o.itens || [];
+  renderItensOS();
+  preencherSelectsOS();
+  openModal('modal-os');
+}
+
+async function salvarOS() {
+  const id = document.getElementById('os-id').value;
+  const avulsoRua = document.getElementById('os-avulso-rua').value.trim();
+  const body = {
+    cliente_id: document.getElementById('os-cliente').value || null,
+    cliente_nome_avulso: document.getElementById('os-cliente-avulso').value.trim() || null,
+    cliente_avulso_rua: avulsoRua || null,
+    cliente_avulso_numero: document.getElementById('os-avulso-numero').value.trim() || null,
+    cliente_avulso_complemento: document.getElementById('os-avulso-complemento').value.trim() || null,
+    cliente_avulso_cidade: document.getElementById('os-avulso-cidade').value.trim() || null,
+    cliente_avulso_referencia: document.getElementById('os-avulso-referencia').value.trim() || null,
+    vendedor_id: document.getElementById('os-vendedor').value || null,
+    descricao: document.getElementById('os-descricao').value,
+    valor: parseFloat(document.getElementById('os-valor').value) || 0,
+    status: document.getElementById('os-status').value,
+    data_prevista: (() => { const d = document.getElementById('os-data-prevista-data').value; const h = document.getElementById('os-data-prevista-hora').value; return d ? `${d} ${h || '00:00'}` : null; })(),
+    forma_pagamento: document.getElementById('os-pagamento').value || null,
+    observacoes: document.getElementById('os-obs').value,
+    a_receber: document.getElementById('os-a-receber').checked ? 1 : 0,
+    data_vencimento: document.getElementById('os-data-vencimento').value || null,
+    solicitado_por: document.getElementById('os-solicitado-por')?.value || null,
+    chave_auto: document.getElementById('os-chave-auto').checked ? 1 : 0,
+    orcamento: document.getElementById('os-orcamento').checked ? 1 : 0,
+    itens: osItens
+  };
+  if (!body.cliente_id && body.cliente_nome_avulso && !avulsoRua) { toast('Informe a rua do endereço do cliente', 'error'); return; }
+  if (!body.chave_auto && !body.orcamento && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
+  if (!body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
+  try {
+    if (id) await api('PUT', `/ordens/${id}`, body);
+    else { const r = await api('POST', '/ordens', body); toast(`OS ${r.numero} criada!`); closeModal('modal-os'); await carregarOrdens(); return; }
+    toast('OS atualizada!');
+    closeModal('modal-os');
+    await carregarOrdens();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function _preencherOSFromOrcamento(orc) {
+  // Abre o modal com reset limpo
+  abrirModalOS();
+
+  // Título especial indicando origem
+  document.getElementById('modal-os-title').textContent = `Nova OS — Orç. ${orc.numero}`;
+
+  // Cliente
+  if (orc.cliente_id) {
+    document.getElementById('os-cliente').value = orc.cliente_id;
+    toggleClienteAvulso('os');
+    await carregarAutorizadosOS();
+  } else if (orc.cliente_nome_avulso) {
+    document.getElementById('os-cliente').value = '';
+    toggleClienteAvulso('os');
+    document.getElementById('os-cliente-avulso').value = orc.cliente_nome_avulso;
+  }
+
+  // Campos principais
+  document.getElementById('os-descricao').value = orc.descricao || '';
+  document.getElementById('os-valor').value = orc.total || 0;
+  if (orc.observacoes) document.getElementById('os-obs').value = orc.observacoes;
+  if (orc.vendedor_id) document.getElementById('os-vendedor').value = orc.vendedor_id;
+
+  // Itens do orçamento → itens da OS (para retirada de estoque)
+  osItens = (orc.itens || []).map(it => ({
+    produto_id: it.produto_id || null,
+    servico_id: it.servico_id || null,
+    descricao: it.descricao,
+    quantidade: it.quantidade,
+    preco_unitario: it.preco_unitario,
+  }));
+  renderItensOS();
+
+  toast(`Orçamento ${orc.numero} pré-preenchido — revise e salve a OS`, 'info');
+}
+
+async function cancelarOS(id) {
+  const o = ordensData.find(x => x.id === id);
+  const motivo = await modalPrompt({ titulo: 'Cancelar OS', mensagem: `Informe o motivo do cancelamento da OS <strong>${o.numero}</strong>:`, placeholder: 'Motivo do cancelamento...', obrigatorio: true });
+  if (!motivo) return;
+  try {
+    await api('DELETE', `/ordens/${id}`, { motivo });
+    toast(`OS ${o.numero} cancelada!`);
+    await carregarOrdens();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function receberOS(id, numero, valor) {
+  const fmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
+  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito' };
+  const opts = Object.entries(pgMap).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+
+  const html = `
+    <p style="margin:0 0 12px">Confirmar recebimento da <strong>OS ${numero}</strong> — <strong>${fmtVal(valor)}</strong></p>
+    <label style="font-size:13px;display:block;margin-bottom:6px">Forma de pagamento</label>
+    <select id="recv-pgto" style="width:100%">${opts}</select>`;
+
+  const confirmado = await new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:12px;padding:24px;min-width:320px;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+        <h3 style="margin:0 0 16px;font-size:16px">Registrar Recebimento</h3>
+        ${html}
+        <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+          <button id="recv-cancel" class="btn btn-secondary">Cancelar</button>
+          <button id="recv-ok" class="btn btn-primary" style="background:#16a34a;border-color:#16a34a">✔ Confirmar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#recv-cancel').onclick = () => { document.body.removeChild(overlay); resolve(null); };
+    overlay.querySelector('#recv-ok').onclick = () => {
+      const pg = overlay.querySelector('#recv-pgto').value;
+      document.body.removeChild(overlay);
+      resolve(pg);
+    };
+  });
+
+  if (!confirmado) return;
+  try {
+    await api('PUT', `/ordens/${id}/receber`, { forma_pagamento: confirmado });
+    toast(`OS ${numero} marcada como recebida!`);
+    await carregarOrdens();
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+async function excluirOS(id, numero) {
+  const senha = await pedirSenhaExclusao(`OS ${numero}`);
+  if (senha === null) return;
+  if (!senha.trim()) { toast('Senha é obrigatória!', 'error'); return; }
+  try {
+    await api('DELETE', `/ordens/${id}/excluir`, { senha });
+    toast(`OS ${numero} excluída permanentemente!`);
+    await carregarOrdens();
+  } catch (e) { toast(e.message, 'error'); }
+}
