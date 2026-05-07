@@ -14,8 +14,11 @@ const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
+try { process.stdout.on('error', () => {}); } catch (_) {}
+try { process.stderr.on('error', () => {}); } catch (_) {}
+
 function log(msg) {
-  try { console.log(`[Electron] ${msg}`); } catch (_) {}
+  try { process.stdout.write(`[Electron] ${msg}\n`); } catch (_) {}
 }
 
 function getAppRoot() {
@@ -132,14 +135,17 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 
   let reloadAttempts = 0;
+  let initialLoadDone = false;
+
   mainWindow.webContents.on('did-fail-load', (_e, code) => {
-    if (code === -3) return; // ignorar aborts normais
+    if (code === -3) return;
+    if (initialLoadDone) return; // não interfere após carregar com sucesso
     if (reloadAttempts >= 5) return;
     reloadAttempts++;
     setTimeout(() => { if (mainWindow) mainWindow.reload(); }, 3000);
   });
 
-  mainWindow.webContents.on('did-finish-load', () => { reloadAttempts = 0; });
+  mainWindow.webContents.on('did-finish-load', () => { initialLoadDone = true; });
 }
 
 function createTray() {
