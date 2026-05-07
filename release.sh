@@ -29,7 +29,14 @@ REMOTE="https://tvsxgames:${TOKEN}@github.com/tvsxgames/chaveiro-system.git"
 git push "$REMOTE" main
 git push "$REMOTE" "v$VERSION"
 
+# Reconstrói a imagem e recria o container (garante que html/css/js atualizem)
+docker compose up -d --build
+
 echo ""
-echo "Release v$VERSION enviado!"
-echo "O GitHub Actions vai buildar e publicar o instalador automaticamente."
-echo "O app Electron vai se atualizar sozinho nos clientes."
+echo "Release v$VERSION enviado! Aguardando build do GitHub Actions (~5 min)..."
+echo "Quando terminar, execute para publicar e copiar os arquivos:"
+echo ""
+echo "  GH_TOKEN=\"$TOKEN\" gh release edit v$VERSION --repo tvsxgames/chaveiro-system --draft=false"
+echo "  GH_TOKEN=\"$TOKEN\" gh release download v$VERSION --repo tvsxgames/chaveiro-system --pattern \"SistemaChaveiro-Setup.exe\" --pattern \"latest.yml\" --pattern \"SistemaChaveiro-Setup.exe.blockmap\" --dir /root/chaveiro-system/public/downloads/ --clobber"
+echo ""
+echo "Após isso o auto-update nos clientes funcionará automaticamente."

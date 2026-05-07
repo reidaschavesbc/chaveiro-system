@@ -25,6 +25,7 @@ function log(msg) {
 
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.setFeedURL({ provider: 'generic', url: SERVER_URL + '/downloads' });
 
 const offlinePage = `<!DOCTYPE html>
 <html lang="pt-BR">
