@@ -29,8 +29,12 @@ jobs:
           EP_DRAFT: false
         run: npm run build
 
-      - name: Upload artefatos
-        uses: actions/upload-artifact@v4
+      - name: Enviar .exe para o servidor
+        uses: appleboy/scp-action@v0.1.7
         with:
-          name: instalador-windows
-          path: dist/*.exe
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "dist/SistemaChaveiro-Setup.exe"
+          target: "/root/chaveiro-system/public/downloads/"
+          strip_components: 1

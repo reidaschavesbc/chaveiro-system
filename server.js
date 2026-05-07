@@ -15,7 +15,13 @@ const auth = require('./middleware/auth');
 
 // Download do app Electron (público)
 app.get('/download', (req, res) => {
-  res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
+  const localFile = path.join(__dirname, 'public/downloads/SistemaChaveiro-Setup.exe');
+  const fs = require('fs');
+  if (fs.existsSync(localFile)) {
+    res.download(localFile, 'SistemaChaveiro-Setup.exe');
+  } else {
+    res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
+  }
 });
 
 app.get('/api/version', (req, res) => {
