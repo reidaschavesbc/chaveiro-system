@@ -335,93 +335,160 @@ function gerarBufferPdfOrcamento(id) {
         const itens = db.prepare('SELECT * FROM itens_orcamento WHERE orcamento_id = ? ORDER BY id').all(id);
         const cfg = getConfig();
 
-        const doc = new PDFDocument({ margin: 40, size: 'A4' });
+        const W = 595.28;
+        const H = 841.89;
+        const ML = 40;
+        const MR = 40;
+        const CW = W - ML - MR;
+        const FOOTER_H = 130;
+
+        const doc = new PDFDocument({ margin: 0, size: 'A4', autoFirstPage: true, bufferPages: true });
         const chunks = [];
         doc.on('data', c => chunks.push(c));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
         doc.on('error', reject);
 
-        drawHeader(doc, cfg, 'ORÇAMENTO');
-        doc.moveDown(3);
+        // ── HEADER ──────────────────────────────────────────────────────────────
+        doc.rect(0, 0, W, 90).fill('#1e3a8a');
+        doc.rect(0, 90, W, 6).fill('#3b82f6');
 
-        // Número + Status
+        const empresa = cfg.empresa_nome || 'Chaveiro';
+        doc.fillColor('white').fontSize(22).font('Helvetica-Bold').text(empresa, ML, 18);
+
+        let subInfo = '';
+        if (cfg.empresa_telefone) subInfo += `Tel: ${cfg.empresa_telefone}`;
+        if (cfg.empresa_rua) {
+            const end = `${cfg.empresa_rua}${cfg.empresa_numero ? ', ' + cfg.empresa_numero : ''}${cfg.empresa_cidade ? ' — ' + cfg.empresa_cidade : ''}`;
+            subInfo += (subInfo ? '   |   ' : '') + end;
+        }
+        if (subInfo) doc.fontSize(8.5).font('Helvetica').fillColor('#bfdbfe').text(subInfo, ML, 46);
+
         const statusLabels = { pendente: 'PENDENTE', aprovado: 'APROVADO', recusado: 'RECUSADO', expirado: 'EXPIRADO' };
         const statusColors = { pendente: '#f59e0b', aprovado: '#10b981', recusado: '#ef4444', expirado: '#94a3b8' };
-        doc.rect(40, doc.y, doc.page.width - 80, 40).fill('#f0f4ff').stroke('#1a56db');
-        const boxY = doc.y + 10;
-        doc.fontSize(12).font('Helvetica-Bold').fillColor('#1a56db').text(`Nº ${orc.numero}`, 50, boxY);
-        doc.fillColor(statusColors[orc.status] || '#888').text(statusLabels[orc.status] || orc.status, 0, boxY, { align: 'right', width: doc.page.width - 50 });
-        doc.moveDown(3);
+        const statusLabel = statusLabels[orc.status] || orc.status.toUpperCase();
+        const statusColor = statusColors[orc.status] || '#94a3b8';
 
-        // Validade
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('white')
+            .text('ORÇAMENTO', W - MR - 150, 18, { width: 150, align: 'right' });
+
+        const badgeW = 90;
+        const badgeX = W - MR - badgeW;
+        doc.roundedRect(badgeX, 38, badgeW, 22, 4).fill(statusColor);
+        doc.fillColor('white').fontSize(9).font('Helvetica-Bold')
+            .text(statusLabel, badgeX, 43, { width: badgeW, align: 'center' });
+
+        // ── INFO BAR (Nº + Datas) ────────────────────────────────────────────────
+        let y = 110;
+        doc.rect(ML, y, CW, 44).fill('#f0f4ff').stroke('#c7d2fe');
         const dtVal = new Date(orc.criado_em);
         dtVal.setDate(dtVal.getDate() + parseInt(orc.validade_dias || 7));
-        const validadeStr = dtVal.toLocaleDateString('pt-BR');
-        doc.fontSize(9).font('Helvetica').fillColor('#555').text(`Emitido: ${formatDate(orc.criado_em)}    Válido até: ${validadeStr}`, 40, doc.y);
-        doc.moveDown(1);
 
-        // Cliente
-        const nomeCliente = orc.cliente_nome || orc.cliente_nome_avulso || '????';
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a56db').text('CLIENTE', 40);
-        drawLine(doc);
-        doc.fontSize(10).font('Helvetica').fillColor('#222').text(`${nomeCliente}${orc.cliente_telefone ? '  |  Tel: ' + orc.cliente_telefone : ''}`, 40);
-        doc.moveDown(1);
+        doc.fillColor('#1e3a8a').fontSize(14).font('Helvetica-Bold')
+            .text(`Nº ${orc.numero}`, ML + 12, y + 13);
+        doc.fillColor('#475569').fontSize(8.5).font('Helvetica')
+            .text(`Emitido: ${formatDate(orc.criado_em)}`, ML + 12, y + 29);
+        doc.fillColor('#1e3a8a').fontSize(9).font('Helvetica-Bold')
+            .text(`Válido até: ${dtVal.toLocaleDateString('pt-BR')}`, 0, y + 29, { width: W - MR - 10, align: 'right' });
 
-        // Descrição
-        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a56db').text('DESCRIÇÃO', 40);
-        drawLine(doc);
-        doc.fontSize(10).font('Helvetica').fillColor('#333').text(orc.descricao, 40, doc.y, { width: doc.page.width - 80 });
-        doc.moveDown(1.5);
+        y += 58;
 
-        // Itens
+        // ── CLIENTE ──────────────────────────────────────────────────────────────
+        doc.rect(ML, y, CW, 20).fill('#1e3a8a');
+        doc.fillColor('white').fontSize(9).font('Helvetica-Bold').text('CLIENTE', ML + 10, y + 5);
+        y += 20;
+
+        const nomeCliente = orc.cliente_nome || orc.cliente_nome_avulso || '—';
+        doc.rect(ML, y, CW, 34).fill('#f8fafc').stroke('#e2e8f0');
+        doc.fillColor('#1e293b').fontSize(11).font('Helvetica-Bold').text(nomeCliente, ML + 10, y + 7);
+        if (orc.cliente_telefone) {
+            doc.fillColor('#475569').fontSize(9).font('Helvetica')
+                .text(`Tel: ${orc.cliente_telefone}`, 0, y + 9, { width: W - MR - 10, align: 'right' });
+        }
+        y += 44;
+
+        // ── DESCRIÇÃO ────────────────────────────────────────────────────────────
+        if (orc.descricao) {
+            doc.rect(ML, y, CW, 20).fill('#1e3a8a');
+            doc.fillColor('white').fontSize(9).font('Helvetica-Bold').text('DESCRIÇÃO DO SERVIÇO', ML + 10, y + 5);
+            y += 20;
+
+            const descLines = doc.heightOfString(orc.descricao, { width: CW - 20, fontSize: 9.5 });
+            const descH = Math.max(32, descLines + 16);
+            doc.rect(ML, y, CW, descH).fill('white').stroke('#e2e8f0');
+            doc.fillColor('#334155').fontSize(9.5).font('Helvetica').text(orc.descricao, ML + 10, y + 8, { width: CW - 20 });
+            y += descH + 10;
+        }
+
+        // ── ITENS ────────────────────────────────────────────────────────────────
         if (itens.length) {
-            doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a56db').text('ITENS', 40);
-            drawLine(doc);
-            const th = doc.y;
-            doc.rect(40, th, doc.page.width - 80, 22).fill('#1a56db');
+            doc.rect(ML, y, CW, 20).fill('#1e3a8a');
             doc.fillColor('white').fontSize(9).font('Helvetica-Bold')
-                .text('DESCRIÇÃO', 50, th + 6, { width: 260 })
-                .text('QTD', 310, th + 6, { width: 50, align: 'right' })
-                .text('UNIT.', 360, th + 6, { width: 80, align: 'right' })
-                .text('SUBTOTAL', 440, th + 6, { width: 75, align: 'right' });
-            doc.moveDown(1.5);
+                .text('DESCRIÇÃO', ML + 10, y + 5, { width: 240 })
+                .text('QTD', ML + 255, y + 5, { width: 55, align: 'right' })
+                .text('UNIT.', ML + 315, y + 5, { width: 80, align: 'right' })
+                .text('SUBTOTAL', ML + 400, y + 5, { width: 75, align: 'right' });
+            y += 20;
 
             itens.forEach((it, i) => {
-                const rowY = doc.y;
-                if (i % 2 === 0) doc.rect(40, rowY - 2, doc.page.width - 80, 16).fill('#f8f9ff');
-                doc.fillColor('#222').fontSize(9).font('Helvetica')
-                    .text(it.descricao, 50, rowY, { width: 260 })
-                    .text(String(it.quantidade), 310, rowY, { width: 50, align: 'right' })
-                    .text(formatCurrency(it.preco_unitario), 360, rowY, { width: 80, align: 'right' })
-                    .text(formatCurrency(it.subtotal), 440, rowY, { width: 75, align: 'right' });
-                doc.moveDown(0.8);
+                if (y > H - FOOTER_H - 30) {
+                    doc.addPage();
+                    y = ML;
+                }
+                const bg = i % 2 === 0 ? '#f8fafc' : 'white';
+                const rowH = 22;
+                doc.rect(ML, y, CW, rowH).fill(bg).stroke('#e2e8f0');
+                doc.fillColor('#1e293b').fontSize(9).font('Helvetica')
+                    .text(it.descricao, ML + 10, y + 6, { width: 240 })
+                    .text(String(it.quantidade), ML + 255, y + 6, { width: 55, align: 'right' })
+                    .text(formatCurrency(it.preco_unitario), ML + 315, y + 6, { width: 80, align: 'right' })
+                    .text(formatCurrency(it.subtotal), ML + 400, y + 6, { width: 75, align: 'right' });
+                y += rowH;
             });
-            doc.moveDown(0.5);
-            drawLine(doc);
+            y += 6;
         }
 
-        // Total
-        doc.fontSize(13).font('Helvetica-Bold').fillColor('#1a56db')
-            .text('TOTAL:', 350, doc.y, { width: 90, align: 'right' })
-            .text(formatCurrency(orc.total), 440, doc.y - doc.currentLineHeight(), { width: 75, align: 'right' });
-        doc.moveDown(1.5);
+        // ── TOTAL ────────────────────────────────────────────────────────────────
+        const totalH = 40;
+        doc.rect(ML, y, CW, totalH).fill('#1e3a8a');
+        doc.fillColor('white').fontSize(13).font('Helvetica-Bold')
+            .text('TOTAL:', ML + 10, y + 12)
+            .text(formatCurrency(orc.total), ML, y + 12, { width: CW - 10, align: 'right' });
+        y += totalH + 10;
 
-        // Observações
+        // ── OBSERVAÇÕES ──────────────────────────────────────────────────────────
         if (orc.observacoes) {
-            doc.fontSize(9).font('Helvetica-Bold').fillColor('#555').text('OBSERVAÇÕES', 40);
-            doc.fontSize(9).font('Helvetica').fillColor('#666').text(orc.observacoes, 40, doc.y, { width: doc.page.width - 80 });
-            doc.moveDown(1);
+            if (y > H - FOOTER_H - 60) { doc.addPage(); y = ML; }
+            doc.rect(ML, y, CW, 20).fill('#f59e0b');
+            doc.fillColor('white').fontSize(9).font('Helvetica-Bold').text('OBSERVAÇÕES', ML + 10, y + 5);
+            y += 20;
+            const obsH = Math.max(28, doc.heightOfString(orc.observacoes, { width: CW - 20 }) + 12);
+            doc.rect(ML, y, CW, obsH).fill('#fffbeb').stroke('#fde68a');
+            doc.fillColor('#78350f').fontSize(9).font('Helvetica').text(orc.observacoes, ML + 10, y + 6, { width: CW - 20 });
+            y += obsH + 10;
         }
 
-        // Aprovação
-        const sigY = doc.page.height - 110;
-        doc.moveTo(80, sigY).lineTo(240, sigY).stroke('#333');
-        doc.moveTo(350, sigY).lineTo(510, sigY).stroke('#333');
-        doc.fontSize(9).fillColor('#555')
-            .text('Assinatura do Cliente', 80, sigY + 5, { width: 160, align: 'center' })
-            .text('Aprovado por', 350, sigY + 5, { width: 160, align: 'center' });
+        // ── ASSINATURAS ──────────────────────────────────────────────────────────
+        if (y > H - FOOTER_H - 10) { doc.addPage(); y = ML; }
 
-        doc.fontSize(8).fillColor('#999').text(`Emitido em ${new Date().toLocaleString('pt-BR')}`, 40, doc.page.height - 40, { align: 'center', width: doc.page.width - 80 });
+        const sigAreaY = Math.max(y + 10, H - FOOTER_H - 10);
+        const sigLineY = sigAreaY + 30;
+
+        doc.moveTo(ML + 20, sigLineY).lineTo(ML + 180, sigLineY).stroke('#94a3b8');
+        doc.moveTo(W - MR - 180, sigLineY).lineTo(W - MR - 20, sigLineY).stroke('#94a3b8');
+        doc.fillColor('#64748b').fontSize(8.5).font('Helvetica')
+            .text('Assinatura do Cliente', ML + 20, sigLineY + 4, { width: 160, align: 'center' })
+            .text('Aprovado por', W - MR - 180, sigLineY + 4, { width: 160, align: 'center' });
+
+        // ── RODAPÉ ───────────────────────────────────────────────────────────────
+        const range = doc.bufferedPageRange();
+        for (let i = 0; i < range.count; i++) {
+            doc.switchToPage(range.start + i);
+            doc.rect(0, H - 28, W, 28).fill('#1e3a8a');
+            doc.fillColor('#bfdbfe').fontSize(7.5).font('Helvetica')
+                .text(`Emitido em ${new Date().toLocaleString('pt-BR')}   •   ${empresa}`, 0, H - 18, { width: W, align: 'center' });
+        }
+
+        doc.flushPages();
         doc.end();
     });
 }

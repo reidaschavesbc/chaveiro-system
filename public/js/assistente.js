@@ -24,10 +24,16 @@ function assistentePage(contentDiv) {
           <div class="ass-title">Assistente IA</div>
           <div class="ass-subtitle">Consulte dados, analise resultados e tire dúvidas</div>
         </div>
-        <button onclick="assLimpar()" title="Limpar conversa" style="margin-left:auto;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px">
-          <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-          Limpar
-        </button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <a href="https://console.anthropic.com" target="_blank" title="Abrir Claude AI" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px;text-decoration:none">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93V18c0-.55-.45-1-1-1s-1 .45-1 1v1.93C7.06 19.48 4.52 16.94 4.07 13H6c.55 0 1-.45 1-1s-.45-1-1-1H4.07C4.52 7.06 7.06 4.52 11 4.07V6c0 .55.45 1 1 1s1-.45 1-1V4.07C16.94 4.52 19.48 7.06 19.93 11H18c-.55 0-1 .45-1 1s.45 1 1 1h1.93c-.45 3.94-2.99 6.48-6.93 6.93z"/></svg>
+            Claude AI
+          </a>
+          <button onclick="assLimpar()" title="Limpar conversa" style="background:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;color:#64748b;display:flex;align-items:center;gap:5px">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            Limpar
+          </button>
+        </div>
       </div>
 
       <div class="ass-sugestoes" id="ass-sugestoes">

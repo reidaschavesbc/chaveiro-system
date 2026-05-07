@@ -62,7 +62,7 @@ router.put('/:id', (req, res) => {
 
     if (estoque !== undefined && estoque !== p.estoque) {
         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, observacao, usuario_id)
-      VALUES (?, 'ajuste', ?, ?, ?, 'Ajuste manual', ?)`).run(req.params.id, Math.abs(estoque - estoqueAnterior), estoqueAnterior, estoque, req.user?.id || 1);
+      VALUES (?, 'ajuste', ?, ?, ?, 'Ajuste manual', ?)`).run(req.params.id, Math.abs(estoque - estoqueAnterior), estoqueAnterior, estoque, req.user?.id || null);
         verificarEstoqueBaixo(parseInt(req.params.id));
     }
     res.json({ ok: true });
@@ -76,7 +76,7 @@ router.post('/:id/estoque', (req, res) => {
     const novoEstoque = p.estoque + parseInt(quantidade);
     db.prepare('UPDATE produtos SET estoque = ? WHERE id = ?').run(novoEstoque, req.params.id);
     db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, observacao, usuario_id)
-    VALUES (?, 'entrada', ?, ?, ?, ?, ?)`).run(req.params.id, quantidade, p.estoque, novoEstoque, observacao || null, req.user?.id || 1);
+    VALUES (?, 'entrada', ?, ?, ?, ?, ?)`).run(req.params.id, quantidade, p.estoque, novoEstoque, observacao || null, req.user?.id || null);
     res.json({ ok: true, estoque: novoEstoque });
 });
 

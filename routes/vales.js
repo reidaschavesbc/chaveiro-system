@@ -49,7 +49,7 @@ router.post('/', (req, res) => {
     const result = db.prepare(`
         INSERT INTO vales (vendedor_id, valor, descricao, data, usuario_id)
         VALUES (?, ?, ?, ?, ?)
-    `).run(vendedor_id, valor, descricao || null, data || new Date().toLocaleDateString('en-CA'), req.user?.id || 1);
+    `).run(vendedor_id, valor, descricao || null, data || new Date().toLocaleDateString('en-CA'), req.user?.id || null);
     res.status(201).json({ id: result.lastInsertRowid });
 });
 

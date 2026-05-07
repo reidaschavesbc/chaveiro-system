@@ -1,3 +1,101 @@
+const _eyeIcon = `<svg viewBox="0 0 24 24" style="width:17px;height:17px;fill:currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
+
+function _btnVer(tipo, id) {
+  const fn = tipo === 'venda' ? `visualizarVenda(${id})` : `visualizarOS(${id})`;
+  return `<button onclick="${fn}" title="Visualizar" style="background:none;border:none;cursor:pointer;padding:4px 6px;color:#94a3b8;border-radius:6px;display:flex;align-items:center;transition:all .15s" onmouseover="this.style.color='#1a56db';this.style.background='#eff6ff'" onmouseout="this.style.color='#94a3b8';this.style.background='none'">${_eyeIcon}</button>`;
+}
+
+async function visualizarOS(id) {
+  try {
+    const o = await api('GET', `/ordens/${id}`);
+    if (!o) return;
+
+    let overlay = document.getElementById('modal-view-os-rel');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'modal-view-os-rel';
+      overlay.className = 'modal-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const nomeCliente = o.cliente_nome || o.cliente_nome_avulso || 'Cliente Avulso';
+    const docCliente = o.cliente_cpf ? `CPF: ${o.cliente_cpf}` : o.cliente_cnpj ? `CNPJ: ${o.cliente_cnpj}` : '';
+    const endParts = [o.cliente_endereco, o.cliente_numero, o.cliente_complemento, o.cliente_bairro, o.cliente_cidade].filter(Boolean);
+    const enderecoCliente = endParts.join(', ');
+
+    const itensHtml = (o.itens || []).map(it => `
+      <tr>
+        <td>${it.produto_nome || it.servico_nome || it.descricao || 'Item'}</td>
+        <td style="text-align:center">${it.quantidade}</td>
+        <td style="text-align:right">${formatCurrency(it.preco_unitario)}</td>
+        <td style="text-align:right;font-weight:600">${formatCurrency(it.subtotal || it.quantidade * it.preco_unitario)}</td>
+      </tr>`).join('');
+
+    overlay.innerHTML = `
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <span class="modal-title">OS ${o.numero}</span>
+        <button class="modal-close" onclick="closeModal('modal-view-os-rel')">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div style="background:#f8fafc;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Cliente</div>
+            <div style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:4px">${nomeCliente}</div>
+            ${docCliente ? `<div style="font-size:12px;color:#64748b">${docCliente}</div>` : ''}
+            ${o.cliente_telefone ? `<div style="font-size:13px;margin-top:4px">📞 ${o.cliente_telefone}</div>` : ''}
+            ${o.cliente_email ? `<div style="font-size:13px">✉️ ${o.cliente_email}</div>` : ''}
+            ${enderecoCliente ? `<div style="font-size:12px;color:#64748b;margin-top:6px">📍 ${enderecoCliente}${o.cliente_cep ? ` — CEP ${o.cliente_cep}` : ''}</div>` : ''}
+          </div>
+          <div style="background:#f8fafc;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Informações</div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Status:</span> ${badgeStatus(o.status)}</div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Técnico:</span> <strong>${o.vendedor_nome || '-'}</strong></div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Entrada:</span> <strong>${formatDate(o.data_entrada)}</strong></div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Conclusão:</span> <strong>${o.data_conclusao ? formatDate(o.data_conclusao) : '-'}</strong></div>
+            ${o.equipamento ? `<div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Equipamento:</span> <strong>${o.equipamento}</strong></div>` : ''}
+          </div>
+        </div>
+
+        ${o.problema || o.solucao ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          ${o.problema ? `<div style="background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;padding:14px">
+            <div style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;margin-bottom:6px">Problema Relatado</div>
+            <div style="font-size:13px">${o.problema}</div>
+          </div>` : ''}
+          ${o.solucao ? `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px">
+            <div style="font-size:11px;font-weight:700;color:#16a34a;text-transform:uppercase;margin-bottom:6px">Solução Aplicada</div>
+            <div style="font-size:13px">${o.solucao}</div>
+          </div>` : ''}
+        </div>` : ''}
+
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Itens / Serviços</div>
+        <div style="max-height:200px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px">
+          <table style="margin:0">
+            <thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Subtotal</th></tr></thead>
+            <tbody>${itensHtml || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Sem itens</td></tr>'}</tbody>
+          </table>
+        </div>
+
+        <div style="text-align:right;font-size:22px;font-weight:800;color:#1a56db">Total: ${formatCurrency(o.valor)}</div>
+
+        ${o.status === 'cancelada' ? `
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-top:16px;color:#dc2626">
+            <strong>OS Cancelada</strong> — ${o.motivo_cancelamento || 'Motivo não informado'}
+          </div>` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-view-os-rel')">Fechar</button>
+        <a class="btn btn-primary" href="/api/pdf/os/${o.id}?t=${getToken()}" target="_blank">Gerar PDF</a>
+      </div>
+    </div>`;
+    openModal('modal-view-os-rel');
+  } catch (e) {
+    toast('Erro ao carregar OS', 'error');
+  }
+}
+
 async function relatorios(el) {
   const ok = await modalSenhaGerente('Relatórios', 'Os relatórios financeiros são restritos ao gerente.');
   if (!ok) { navigateTo('dashboard'); return; }
@@ -85,7 +183,7 @@ async function carregarRelatorioGeral() {
 
   el.innerHTML = `
     <!-- Resultado Líquido -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
+    <div class="rel-summary-grid">
 
       <div style="background:#f8faff;border:1px solid #e0e7ff;border-radius:14px;padding:18px 20px">
         <div style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">💰 Receitas</div>
@@ -156,7 +254,7 @@ async function carregarRelatorioGeral() {
 
     <!-- Listagem -->
     ${data.list.length ? `<table>
-    <thead><tr><th>Tipo</th><th>Nº</th><th>Data</th><th>Cliente / Funcionário</th><th>Pagamento</th><th>Total</th></tr></thead>
+    <thead><tr><th>Tipo</th><th>Nº</th><th>Data</th><th>Cliente / Funcionário</th><th>Pagamento</th><th>Total</th><th></th></tr></thead>
     <tbody>${data.list.map(v => `
       <tr>
         <td><span class="badge badge-${v.tipo === 'venda' ? 'ok' : 'primary'}">${v.tipo.toUpperCase()}</span></td>
@@ -168,6 +266,7 @@ async function carregarRelatorioGeral() {
         </td>
         <td>${badgePagamento(v.forma_pagamento)}</td>
         <td class="currency">${formatCurrency(v.valor)}</td>
+        <td>${_btnVer(v.tipo, v.id)}</td>
       </tr>`).join('')}
     </tbody></table>` : '<div class="empty-state"><h3>Nenhuma movimentação no período</h3></div>'}`;
 }
@@ -215,7 +314,7 @@ async function carregarRelatorioVendas() {
       </div>`).join('')}
     </div>
     ${data.vendas.length ? `<table>
-    <thead><tr><th>Nº</th><th>Data</th><th>Cliente / Funcionário</th><th>Pagamento</th><th>Total</th><th>Status</th></tr></thead>
+    <thead><tr><th>Nº</th><th>Data</th><th>Cliente / Funcionário</th><th>Pagamento</th><th>Total</th><th>Status</th><th></th></tr></thead>
     <tbody>${data.vendas.map(v => `
       <tr style="${v.status === 'cancelada' ? 'opacity:0.6;text-decoration:line-through' : ''}">
         <td><strong>${v.numero}</strong></td>
@@ -230,6 +329,7 @@ async function carregarRelatorioVendas() {
           ${badgeStatus(v.status)}
           ${v.motivo_cancelamento ? `<div class="text-muted" style="font-size:11px;margin-top:4px">Motivo: ${v.motivo_cancelamento}</div>` : ''}
         </td>
+        <td>${_btnVer('venda', v.id)}</td>
       </tr>`).join('')}
     </tbody></table>` : '<div class="empty-state"><h3>Nenhuma venda no período</h3></div>'}`;
 }
@@ -278,7 +378,7 @@ async function carregarRelatorioOS() {
       </div>`).join('')}
     </div>
     ${list.length ? `<table>
-    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Técnico</th><th>Entrada</th><th>Status</th><th>Valor</th></tr></thead>
+    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Técnico</th><th>Entrada</th><th>Status</th><th>Valor</th><th></th></tr></thead>
     <tbody>${list.map(o => `<tr style="${o.status === 'cancelada' ? 'opacity:0.6;text-decoration:line-through' : ''}">
       <td><strong>${o.numero}</strong></td>
       <td>${o.cliente_nome || '-'}</td>
@@ -289,6 +389,7 @@ async function carregarRelatorioOS() {
         ${o.motivo_cancelamento ? `<div class="text-muted" style="font-size:11px;margin-top:4px">Motivo: ${o.motivo_cancelamento}</div>` : ''}
       </td>
       <td class="currency">${formatCurrency(o.valor)}</td>
+      <td>${_btnVer('os', o.id)}</td>
     </tr>`).join('')}</tbody></table>` : '<div class="empty-state"><h3>Nenhuma OS no período</h3></div>'}`;
 }
 

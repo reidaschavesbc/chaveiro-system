@@ -12,8 +12,11 @@
 
 <body>
     <div class="app-layout">
+        <!-- Overlay para fechar sidebar no mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
         <!-- Sidebar -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
                 <div class="brand-icon">
                     <svg viewBox="0 0 24 24">
@@ -178,14 +181,16 @@
         <!-- Main Area -->
         <div class="main-area">
             <header class="topbar">
+                <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu">
+                    <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                </button>
                 <h1 class="page-title" id="page-title">Dashboard</h1>
                 <div class="topbar-actions">
                     <button class="btn-logout" onclick="logout()">
                         <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor">
-                            <path
-                                d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                            <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                         </svg>
-                        Sair
+                        <span class="btn-logout-text">Sair</span>
                     </button>
                 </div>
             </header>

@@ -2,6 +2,26 @@ let produtosList = [];
 let imagemPendente = null;
 let imagemRemover = false;
 
+function _bloquearCustoProduto(valor) {
+    document.getElementById('produto-custo').value = valor ?? 0;
+    document.getElementById('produto-custo-locked').style.display = 'flex';
+    document.getElementById('produto-custo-edit').style.display = 'none';
+    document.getElementById('produto-custo-valor').value = valor ?? 0;
+}
+
+async function revelarCustoProduto() {
+    const ok = await modalSenhaGerente('Preço de Custo Restrito', 'O preço de custo é confidencial. Digite a senha do gerente para revelar.');
+    if (!ok) return;
+    const valor = document.getElementById('produto-custo').value;
+    document.getElementById('produto-custo-valor').value = valor;
+    document.getElementById('produto-custo-locked').style.display = 'none';
+    document.getElementById('produto-custo-edit').style.display = '';
+    document.getElementById('produto-custo-valor').focus();
+    document.getElementById('produto-custo-valor').addEventListener('input', function () {
+        document.getElementById('produto-custo').value = this.value;
+    }, { once: false });
+}
+
 async function produtos(el) {
     el.innerHTML = `
   <div class="card">
@@ -53,7 +73,15 @@ async function produtos(el) {
             </div>
             <div class="form-group">
               <label>Preço de Custo (R$)</label>
-              <input type="number" id="produto-custo" step="0.01" min="0" value="0">
+              <input type="hidden" id="produto-custo" value="0">
+              <div id="produto-custo-locked" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:2px solid #e5e7eb;border-radius:10px;background:#f8fafc">
+                <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#94a3b8;flex-shrink:0"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                <span style="flex:1;color:#94a3b8;font-size:13px;letter-spacing:2px">••••••</span>
+                <button type="button" onclick="revelarCustoProduto()" style="font-size:12px;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap">🔓 Revelar</button>
+              </div>
+              <div id="produto-custo-edit" style="display:none">
+                <input type="number" id="produto-custo-valor" step="0.01" min="0" value="0" style="width:100%;padding:10px 12px;border:2px solid #1a56db;border-radius:10px;font-size:15px;outline:none;box-sizing:border-box">
+              </div>
             </div>
             <div class="form-group">
               <label>Preço de Venda (R$)</label>
@@ -191,6 +219,7 @@ function abrirModalProduto() {
     document.getElementById('produto-estoque-min').value = 5;
     document.getElementById('modal-produto-title').textContent = 'Novo Produto';
     _resetImagemForm();
+    _bloquearCustoProduto(0);
     openModal('modal-produto');
 }
 
@@ -201,8 +230,8 @@ function editarProduto(id) {
     document.getElementById('produto-nome').value = p.nome;
     document.getElementById('produto-codigo').value = p.codigo || '';
     document.getElementById('produto-unidade').value = p.unidade || 'un';
-    document.getElementById('produto-custo').value = p.preco_custo;
     document.getElementById('produto-venda').value = p.preco_venda;
+    _bloquearCustoProduto(p.preco_custo);
     document.getElementById('produto-estoque').value = p.estoque;
     document.getElementById('produto-estoque-min').value = p.estoque_minimo;
     document.getElementById('produto-desc').value = p.descricao || '';
@@ -255,7 +284,7 @@ async function salvarProduto() {
         nome: document.getElementById('produto-nome').value,
         codigo: document.getElementById('produto-codigo').value,
         unidade: document.getElementById('produto-unidade').value,
-        preco_custo: parseFloat(document.getElementById('produto-custo').value) || 0,
+        preco_custo: parseFloat(document.getElementById('produto-custo').value) || 0, // hidden mantém o valor original se não revelado
         preco_venda: parseFloat(document.getElementById('produto-venda').value) || 0,
         estoque: parseInt(document.getElementById('produto-estoque').value) || 0,
         estoque_minimo: parseInt(document.getElementById('produto-estoque-min').value) || 5,

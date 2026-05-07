@@ -50,7 +50,7 @@ router.post('/', (req, res) => {
     db.prepare(`
         INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
         VALUES (?, 'consumo_interno', ?, ?, ?, ?, ?, ?)
-    `).run(produto_id, quantidade, p.estoque, novoEstoque, categoria, obs, req.user?.id || 1);
+    `).run(produto_id, quantidade, p.estoque, novoEstoque, categoria, obs, req.user?.id || null);
 
     verificarEstoqueBaixo(produto_id);
 

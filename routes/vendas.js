@@ -29,13 +29,25 @@ router.get('/', (req, res) => {
 
 // GET /api/vendas/:id
 router.get('/:id', (req, res) => {
-    const venda = db.prepare(`SELECT v.*, c.nome as cliente_nome, c.telefone as cliente_telefone, ven.nome as vendedor_nome
-    FROM vendas v 
-    LEFT JOIN clientes c ON v.cliente_id = c.id 
+    const venda = db.prepare(`SELECT v.*,
+        c.nome as cliente_nome, c.telefone as cliente_telefone, c.email as cliente_email,
+        c.endereco as cliente_endereco, c.numero as cliente_numero, c.bairro as cliente_bairro,
+        c.cidade as cliente_cidade, c.cep as cliente_cep, c.complemento as cliente_complemento,
+        c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
+        ven.nome as vendedor_nome
+    FROM vendas v
+    LEFT JOIN clientes c ON v.cliente_id = c.id
     LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
     WHERE v.id = ?`).get(req.params.id);
     if (!venda) return res.status(404).json({ error: 'Venda não encontrada' });
-    const itens = db.prepare('SELECT * FROM itens_venda WHERE venda_id = ?').all(req.params.id);
+    const itens = db.prepare(`
+        SELECT iv.*,
+            p.nome as produto_nome,
+            ts.nome as servico_nome
+        FROM itens_venda iv
+        LEFT JOIN produtos p ON iv.produto_id = p.id
+        LEFT JOIN tipos_servico ts ON iv.servico_id = ts.id
+        WHERE iv.venda_id = ?`).all(req.params.id);
     const pagamentos = db.prepare('SELECT * FROM pagamentos_venda WHERE venda_id = ?').all(req.params.id);
     res.json({ ...venda, itens, pagamentos });
 });
@@ -58,10 +70,10 @@ router.post('/', (req, res) => {
         // Use primary payment method as principal if provided, otherwise 'dinheiro'
         const formaPagamentoPrincipal = pagamentos && pagamentos.length > 0 ? pagamentos[0].metodo : 'dinheiro';
 
-        const result = db.prepare(`
+const result = db.prepare(`
       INSERT INTO vendas (numero, cliente_id, cliente_nome_avulso, vendedor_id, total, desconto, total_final, forma_pagamento, observacoes, usuario_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(numero, cliente_id || null, cliente_nome_avulso || null, vendedor_id || null, total, desconto || 0, totalFinal, formaPagamentoPrincipal, observacoes || null, req.user?.id || 1);
+    `).run(numero, cliente_id || null, cliente_nome_avulso || null, vendedor_id || null, total, desconto || 0, totalFinal, formaPagamentoPrincipal, observacoes || null, req.user?.id || null);
 
         const vendaId = result.lastInsertRowid;
 
@@ -77,7 +89,7 @@ router.post('/', (req, res) => {
                     const novoEstoque = p.estoque - item.quantidade;
                     db.prepare('UPDATE produtos SET estoque = ? WHERE id = ?').run(novoEstoque, item.produto_id);
                     db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-            VALUES (?, 'saida', ?, ?, ?, ?, 'Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${numero}`, req.user?.id || 1);
+            VALUES (?, 'saida', ?, ?, ?, ?, 'Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${numero}`, req.user?.id || null);
                     verificarEstoqueBaixo(item.produto_id);
                 }
             }
@@ -120,7 +132,7 @@ router.delete('/:id/excluir', (req, res) => {
                         const novoEstoque = p.estoque + item.quantidade;
                         db.prepare('UPDATE produtos SET estoque = ? WHERE id = ?').run(novoEstoque, item.produto_id);
                         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-                            VALUES (?, 'entrada', ?, ?, ?, ?, 'Exclusão Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${venda.numero}`, req.user?.id || 1);
+                            VALUES (?, 'entrada', ?, ?, ?, ?, 'Exclusão Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${venda.numero}`, req.user?.id || null);
                     }
                 }
             });
@@ -164,7 +176,7 @@ router.delete('/:id', (req, res) => {
                     const novoEstoque = p.estoque + item.quantidade;
                     db.prepare('UPDATE produtos SET estoque = ? WHERE id = ?').run(novoEstoque, item.produto_id);
                     db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-                        VALUES (?, 'entrada', ?, ?, ?, ?, 'Cancelamento Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${venda.numero}`, req.user?.id || 1);
+                        VALUES (?, 'entrada', ?, ?, ?, ?, 'Cancelamento Venda', ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${venda.numero}`, req.user?.id || null);
                 }
             }
         });

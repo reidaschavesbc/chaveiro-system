@@ -1,0 +1,60 @@
+2026/05/06-23:22:17.639 2a Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000261
+2026/05/06-23:22:17.642 2a Recovering log #937
+2026/05/06-23:22:17.678 2a Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000937.log 
+2026/05/06-23:22:19.737 2a Level-0 table #962: started
+2026/05/06-23:22:19.751 2a Level-0 table #962: 363451 bytes OK
+2026/05/06-23:22:19.754 2a Delete type=0 #937
+2026/05/06-23:22:19.755 28 Manual compaction at level-0 from '\x00A\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00B\x00\x00\x00' @ 0 : 0; will stop at '\x00A\x00\x00\x05' @ 2999468 : 1
+2026/05/06-23:22:19.755 28 Compacting 1@0 + 0@1 files
+2026/05/06-23:22:19.765 28 Generated table #963@0: 6048 keys, 125285 bytes
+2026/05/06-23:22:19.768 28 Generated table #964@0: 451 keys, 32763 bytes
+2026/05/06-23:22:19.768 28 Compacted 1@0 + 0@1 files => 158048 bytes
+2026/05/06-23:22:19.778 28 compacted to: files[ 0 2 19 0 0 0 0 ]
+2026/05/06-23:22:19.778 28 Delete type=2 #962
+2026/05/06-23:22:19.779 28 Manual compaction at level-0 from '\x00A\x00\x00\x05' @ 2999468 : 1 .. '\x00B\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/05/06-23:22:19.870 28 Compacting 1@1 + 10@2 files
+2026/05/06-23:22:19.953 28 Generated table #965@1: 50858 keys, 2212647 bytes
+2026/05/06-23:22:20.039 28 Generated table #966@1: 7735 keys, 2157019 bytes
+2026/05/06-23:22:20.069 28 Generated table #967@1: 1866 keys, 2155914 bytes
+2026/05/06-23:22:20.116 28 Generated table #968@1: 2616 keys, 2149623 bytes
+2026/05/06-23:22:20.148 28 Generated table #969@1: 2687 keys, 2150324 bytes
+2026/05/06-23:22:20.175 28 Generated table #970@1: 1982 keys, 2154632 bytes
+2026/05/06-23:22:20.217 28 Generated table #971@1: 1943 keys, 2156160 bytes
+2026/05/06-23:22:20.303 28 Generated table #972@1: 2301 keys, 2143623 bytes
+2026/05/06-23:22:20.348 28 Generated table #973@1: 2371 keys, 2141092 bytes
+2026/05/06-23:22:20.434 28 Generated table #974@1: 23539 keys, 2144143 bytes
+2026/05/06-23:22:20.434 28 Compacted 1@1 + 10@2 files => 21565177 bytes
+2026/05/06-23:22:20.446 28 compacted to: files[ 0 1 19 0 0 0 0 ]
+2026/05/06-23:22:20.450 28 Delete type=2 #948
+2026/05/06-23:22:20.450 28 Delete type=2 #946
+2026/05/06-23:22:20.450 28 Delete type=2 #949
+2026/05/06-23:22:20.450 28 Delete type=2 #943
+2026/05/06-23:22:20.450 28 Delete type=2 #950
+2026/05/06-23:22:20.450 28 Delete type=2 #942
+2026/05/06-23:22:20.450 28 Delete type=2 #963
+2026/05/06-23:22:20.451 28 Delete type=2 #945
+2026/05/06-23:22:20.451 28 Delete type=2 #941
+2026/05/06-23:22:20.451 28 Delete type=2 #944
+2026/05/06-23:22:20.451 28 Delete type=2 #947
+2026/05/06-23:22:21.539 28 Compacting 1@1 + 9@2 files
+2026/05/06-23:22:21.591 28 Generated table #975@1: 29721 keys, 2275121 bytes
+2026/05/06-23:22:21.644 28 Generated table #976@1: 28574 keys, 2269283 bytes
+2026/05/06-23:22:21.684 28 Generated table #977@1: 18557 keys, 2205677 bytes
+2026/05/06-23:22:21.711 28 Generated table #978@1: 7836 keys, 2127791 bytes
+2026/05/06-23:22:21.747 28 Generated table #979@1: 67328 keys, 2208908 bytes
+2026/05/06-23:22:21.788 28 Generated table #980@1: 94547 keys, 2245240 bytes
+2026/05/06-23:22:21.838 28 Generated table #981@1: 94164 keys, 2242251 bytes
+2026/05/06-23:22:21.885 28 Generated table #982@1: 94975 keys, 2244794 bytes
+2026/05/06-23:22:21.927 28 Generated table #983@1: 48656 keys, 1155658 bytes
+2026/05/06-23:22:21.927 28 Compacted 1@1 + 9@2 files => 18974723 bytes
+2026/05/06-23:22:21.934 28 compacted to: files[ 0 0 19 0 0 0 0 ]
+2026/05/06-23:22:21.935 28 Delete type=2 #951
+2026/05/06-23:22:21.935 28 Delete type=2 #956
+2026/05/06-23:22:21.935 28 Delete type=2 #958
+2026/05/06-23:22:21.935 28 Delete type=2 #955
+2026/05/06-23:22:21.935 28 Delete type=2 #953
+2026/05/06-23:22:21.936 28 Delete type=2 #952
+2026/05/06-23:22:21.936 28 Delete type=2 #964
+2026/05/06-23:22:21.936 28 Delete type=2 #959
+2026/05/06-23:22:21.936 28 Delete type=2 #957
+2026/05/06-23:22:21.936 28 Delete type=2 #954

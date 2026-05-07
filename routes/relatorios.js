@@ -26,7 +26,7 @@ router.get('/dashboard', (req, res) => {
     const osConcluidas = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status = 'concluida' AND strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ?`).get(mesAtual);
     const produtosBaixoEstoque = db.prepare('SELECT COUNT(*) as qtd FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo').get();
     const totalClientes = db.prepare('SELECT COUNT(*) as qtd FROM clientes WHERE ativo = 1').get();
-    const aReceber = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(valor),0) as total FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0`).get();
+    const aReceber = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(valor - COALESCE(valor_pago,0)),0) as total FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0`).get();
     const aReceberVencido = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ?`).get(hoje);
     const gastosMes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE strftime('%Y-%m', data) = ?`).get(mesAtual);
 

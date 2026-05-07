@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pm2 logs *)",
+      "Bash(pm2 list)",
+      "Bash(pm2 show *)"
+    ]
+  }
+}

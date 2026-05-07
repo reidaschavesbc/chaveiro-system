@@ -20,8 +20,7 @@ async function vendasNova(el) {
         <div class="card-body">
           <div class="tabs" id="tabs-tipo">
             <button class="tab active" onclick="setTabVenda('produto', this)">Produto</button>
-            <button class="tab" onclick="setTabVenda('servico', this)">Serviço Balcão</button>
-            <button class="tab" onclick="setTabVenda('manual', this)">Item Manual</button>
+            <button class="tab" onclick="setTabVenda('manual', this)">Manual</button>
           </div>
           <div id="tab-produto">
             <div class="form-grid">
@@ -45,26 +44,6 @@ async function vendasNova(el) {
               </div>
             </div>
             <button class="btn btn-primary" onclick="adicionarItemProduto()">+ Adicionar</button>
-          </div>
-          <div id="tab-servico" style="display:none">
-            <div class="form-grid">
-              <div class="form-group form-full">
-                <label>Serviço</label>
-                <select id="venda-servico-sel" onchange="selecionarServico()">
-                  <option value="">-- Selecione o serviço --</option>
-                  ${vendaServicos.map(s => `<option value="${s.id}" data-preco="${s.preco_base}" data-nome="${s.nome}">${s.nome} - ${formatCurrency(s.preco_base)}</option>`).join('')}
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Quantidade</label>
-                <input type="number" id="venda-servico-qtd" min="1" value="1">
-              </div>
-              <div class="form-group">
-                <label>Valor (R$)</label>
-                <input type="number" id="venda-servico-preco" step="0.01" min="0" value="0">
-              </div>
-            </div>
-            <button class="btn btn-primary" onclick="adicionarItemServico()">+ Adicionar</button>
           </div>
           <div id="tab-manual" style="display:none">
             <div class="form-grid">
@@ -170,7 +149,7 @@ async function vendasNova(el) {
 }
 
 function setTabVenda(tab, btn) {
-  ['produto', 'servico', 'manual'].forEach(t => {
+  ['produto', 'manual'].forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
   });
   document.querySelectorAll('#tabs-tipo .tab').forEach(b => b.classList.remove('active'));
@@ -412,62 +391,76 @@ async function visualizarVenda(id) {
       document.body.appendChild(overlay);
     }
 
-    const itensHtml = v.itens.map(it => `
+    const nomeCliente = v.cliente_nome || v.cliente_nome_avulso || 'Cliente Avulso';
+    const docCliente = v.cliente_cpf ? `CPF: ${v.cliente_cpf}` : v.cliente_cnpj ? `CNPJ: ${v.cliente_cnpj}` : '';
+    const endParts = [v.cliente_endereco, v.cliente_numero, v.cliente_complemento, v.cliente_bairro, v.cliente_cidade].filter(Boolean);
+    const enderecoCliente = endParts.join(', ');
+
+    const itensHtml = (v.itens || []).map(it => `
       <tr>
-        <td>${it.produto_nome || it.servico_nome || 'Item'}</td>
-        <td>${it.quantidade}</td>
-        <td>${formatCurrency(it.preco_unitario)}</td>
-        <td>${formatCurrency(it.quantidade * it.preco_unitario)}</td>
-      </tr>
-    `).join('');
+        <td>${it.produto_nome || it.servico_nome || it.descricao || 'Item'}</td>
+        <td style="text-align:center">${it.quantidade}</td>
+        <td style="text-align:right">${formatCurrency(it.preco_unitario)}</td>
+        <td style="text-align:right;font-weight:600">${formatCurrency(it.subtotal || it.quantidade * it.preco_unitario)}</td>
+      </tr>`).join('');
+
+    const pgLabels = { dinheiro:'Dinheiro', pix:'PIX', credito:'Cartão Crédito', debito:'Cartão Débito', cartao1:'Cartão 1', cartao2:'Cartão 2' };
+    const pgHtml = (v.pagamentos || []).map(pg => `
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span>${pgLabels[pg.metodo] || pg.metodo}</span>
+        <strong>${formatCurrency(pg.valor)}</strong>
+      </div>`).join('') || `<div style="font-size:13px">${badgePagamento(v.forma_pagamento)}</div>`;
 
     overlay.innerHTML = `
     <div class="modal modal-lg">
       <div class="modal-header">
-        <span class="modal-title">Detalhes da Venda ${v.numero}</span>
+        <span class="modal-title">Venda ${v.numero}</span>
         <button class="modal-close" onclick="closeModal('modal-view-venda')">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="grid-2" style="margin-bottom:20px">
-          <div>
-            <p><strong>Data:</strong> ${formatDate(v.data)}</p>
-            <p><strong>Cliente:</strong> ${v.cliente_nome || v.cliente_nome_avulso || '????'}</p>
-            ${v.cliente_telefone ? `<p><strong>Telefone:</strong> ${v.cliente_telefone}</p>` : ''}
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div style="background:#f8fafc;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Cliente</div>
+            <div style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:4px">${nomeCliente}</div>
+            ${docCliente ? `<div style="font-size:12px;color:#64748b">${docCliente}</div>` : ''}
+            ${v.cliente_telefone ? `<div style="font-size:13px;margin-top:4px">📞 ${v.cliente_telefone}</div>` : ''}
+            ${v.cliente_email ? `<div style="font-size:13px">✉️ ${v.cliente_email}</div>` : ''}
+            ${enderecoCliente ? `<div style="font-size:12px;color:#64748b;margin-top:6px">📍 ${enderecoCliente}${v.cliente_cep ? ` — CEP ${v.cliente_cep}` : ''}</div>` : ''}
           </div>
-          <div>
-            <p><strong>Status:</strong> ${badgeStatus(v.status)}</p>
-            <p><strong>Funcionário:</strong> ${v.vendedor_nome || '-'}</p>
+          <div style="background:#f8fafc;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Informações</div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Data:</span> <strong>${formatDate(v.data)}</strong></div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Status:</span> ${badgeStatus(v.status)}</div>
+            <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Funcionário:</span> <strong>${v.vendedor_nome || '-'}</strong></div>
+            ${v.observacoes ? `<div style="font-size:12px;color:#64748b;margin-top:6px">Obs: ${v.observacoes}</div>` : ''}
           </div>
         </div>
 
-        <div class="divider"></div>
-        <h4 style="margin-bottom:10px">Itens</h4>
-        <div style="max-height: 250px; overflow-y: auto;">
-          <table class="table-sm">
-            <thead><tr><th>Item</th><th>Qtd</th><th>Preço</th><th>Total</th></tr></thead>
-            <tbody>${itensHtml}</tbody>
+        <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Itens</div>
+        <div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px">
+          <table style="margin:0">
+            <thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unitário</th><th style="text-align:right">Subtotal</th></tr></thead>
+            <tbody>${itensHtml || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Sem itens</td></tr>'}</tbody>
           </table>
         </div>
 
-        <div class="divider"></div>
-        <div class="flex justify-between" style="margin-top:10px">
-          <div>
-            <p><strong>Pagamento:</strong> ${badgePagamento(v.forma_pagamento)}</p>
-            ${v.observacoes ? `<p><strong>Obs:</strong> ${v.observacoes}</p>` : ''}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div style="background:#f8fafc;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Pagamento</div>
+            ${pgHtml}
           </div>
-          <div class="text-right">
-             Subtotal: ${formatCurrency(v.total)}<br>
-             Desconto: ${formatCurrency(v.desconto)}<br>
-             <span style="font-size:18px;font-weight:700;color:#1e293b">Total: ${formatCurrency(v.total_final)}</span>
+          <div style="background:#f8fafc;border-radius:12px;padding:16px;text-align:right">
+            <div style="font-size:13px;color:#64748b;margin-bottom:4px">Subtotal: ${formatCurrency(v.total)}</div>
+            ${(v.desconto > 0) ? `<div style="font-size:13px;color:#dc2626;margin-bottom:4px">Desconto: -${formatCurrency(v.desconto)}</div>` : ''}
+            <div style="font-size:22px;font-weight:800;color:#1a56db">Total: ${formatCurrency(v.total_final)}</div>
           </div>
         </div>
 
         ${v.status === 'cancelada' ? `
-          <div class="alert alert-error" style="margin-top:15px">
-            <strong>Venda Cancelada</strong><br>
-            Motivo: ${v.motivo_cancelamento || 'Não informado'}
-          </div>
-        ` : ''}
+          <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;margin-top:16px;color:#dc2626">
+            <strong>Venda Cancelada</strong> — ${v.motivo_cancelamento || 'Motivo não informado'}
+          </div>` : ''}
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('modal-view-venda')">Fechar</button>

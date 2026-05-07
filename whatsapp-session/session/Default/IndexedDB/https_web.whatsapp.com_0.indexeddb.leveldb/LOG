@@ -1,0 +1,60 @@
+2026/05/06-23:52:09.897 27 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000261
+2026/05/06-23:52:09.897 27 Recovering log #961
+2026/05/06-23:52:09.911 27 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000961.log 
+2026/05/06-23:52:12.002 27 Level-0 table #986: started
+2026/05/06-23:52:12.015 27 Level-0 table #986: 291459 bytes OK
+2026/05/06-23:52:12.020 27 Delete type=0 #961
+2026/05/06-23:52:12.021 27 Manual compaction at level-0 from '\x00B\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at '\x00B\x00\x00\x05' @ 3009384 : 1
+2026/05/06-23:52:12.021 27 Compacting 1@0 + 0@1 files
+2026/05/06-23:52:12.028 27 Generated table #987@0: 5560 keys, 120930 bytes
+2026/05/06-23:52:12.031 27 Generated table #988@0: 132 keys, 9755 bytes
+2026/05/06-23:52:12.031 27 Compacted 1@0 + 0@1 files => 130685 bytes
+2026/05/06-23:52:12.036 27 compacted to: files[ 0 2 19 0 0 0 0 ]
+2026/05/06-23:52:12.038 27 Delete type=2 #986
+2026/05/06-23:52:12.039 26 Manual compaction at level-0 from '\x00B\x00\x00\x05' @ 3009384 : 1 .. '\x00C\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/05/06-23:52:12.145 27 Compacting 1@1 + 10@2 files
+2026/05/06-23:52:12.234 27 Generated table #989@1: 51223 keys, 2216538 bytes
+2026/05/06-23:52:12.295 27 Generated table #990@1: 8406 keys, 2157213 bytes
+2026/05/06-23:52:12.350 27 Generated table #991@1: 1867 keys, 2152747 bytes
+2026/05/06-23:52:12.379 27 Generated table #992@1: 2612 keys, 2150932 bytes
+2026/05/06-23:52:12.404 27 Generated table #993@1: 2693 keys, 2149724 bytes
+2026/05/06-23:52:12.448 27 Generated table #994@1: 1991 keys, 2155849 bytes
+2026/05/06-23:52:12.477 27 Generated table #995@1: 1952 keys, 2153703 bytes
+2026/05/06-23:52:12.509 27 Generated table #996@1: 2265 keys, 2143634 bytes
+2026/05/06-23:52:12.559 27 Generated table #997@1: 2384 keys, 2140434 bytes
+2026/05/06-23:52:12.651 27 Generated table #998@1: 23581 keys, 2182384 bytes
+2026/05/06-23:52:12.651 27 Compacted 1@1 + 10@2 files => 21603158 bytes
+2026/05/06-23:52:12.659 27 compacted to: files[ 0 1 19 0 0 0 0 ]
+2026/05/06-23:52:12.660 27 Delete type=2 #969
+2026/05/06-23:52:12.661 27 Delete type=2 #972
+2026/05/06-23:52:12.661 27 Delete type=2 #966
+2026/05/06-23:52:12.661 27 Delete type=2 #968
+2026/05/06-23:52:12.661 27 Delete type=2 #971
+2026/05/06-23:52:12.661 27 Delete type=2 #970
+2026/05/06-23:52:12.661 27 Delete type=2 #965
+2026/05/06-23:52:12.661 27 Delete type=2 #967
+2026/05/06-23:52:12.661 27 Delete type=2 #987
+2026/05/06-23:52:12.661 27 Delete type=2 #974
+2026/05/06-23:52:12.661 27 Delete type=2 #973
+2026/05/06-23:52:13.509 27 Compacting 1@1 + 9@2 files
+2026/05/06-23:52:13.600 27 Generated table #999@1: 29726 keys, 2276080 bytes
+2026/05/06-23:52:13.672 27 Generated table #1000@1: 28580 keys, 2270169 bytes
+2026/05/06-23:52:13.717 27 Generated table #1001@1: 18570 keys, 2207925 bytes
+2026/05/06-23:52:13.766 27 Generated table #1002@1: 7836 keys, 2127791 bytes
+2026/05/06-23:52:13.834 27 Generated table #1003@1: 67308 keys, 2208245 bytes
+2026/05/06-23:52:13.910 27 Generated table #1004@1: 94381 keys, 2243434 bytes
+2026/05/06-23:52:13.996 27 Generated table #1005@1: 94304 keys, 2242290 bytes
+2026/05/06-23:52:14.054 27 Generated table #1006@1: 94971 keys, 2244042 bytes
+2026/05/06-23:52:14.095 27 Generated table #1007@1: 48749 keys, 1157860 bytes
+2026/05/06-23:52:14.095 27 Compacted 1@1 + 9@2 files => 18977836 bytes
+2026/05/06-23:52:14.097 27 compacted to: files[ 0 0 19 0 0 0 0 ]
+2026/05/06-23:52:14.098 27 Delete type=2 #978
+2026/05/06-23:52:14.098 27 Delete type=2 #982
+2026/05/06-23:52:14.098 27 Delete type=2 #975
+2026/05/06-23:52:14.098 27 Delete type=2 #981
+2026/05/06-23:52:14.098 27 Delete type=2 #977
+2026/05/06-23:52:14.098 27 Delete type=2 #976
+2026/05/06-23:52:14.098 27 Delete type=2 #980
+2026/05/06-23:52:14.098 27 Delete type=2 #983
+2026/05/06-23:52:14.098 27 Delete type=2 #979
+2026/05/06-23:52:14.098 27 Delete type=2 #988

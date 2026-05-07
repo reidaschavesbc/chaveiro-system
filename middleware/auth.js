@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require('../database/db');
 
 function authMiddleware(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -15,10 +16,12 @@ function authMiddleware(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = db.prepare('SELECT id FROM usuarios WHERE id = ? AND ativo = 1').get(decoded.id);
+        if (!user) return res.status(401).json({ error: 'Sessão inválida, faça login novamente' });
         req.user = decoded;
         next();
     } catch (err) {
-        return res.status(403).json({ error: 'Token inválido ou expirado' });
+        return res.status(401).json({ error: 'Token inválido ou expirado' });
     }
 }
 

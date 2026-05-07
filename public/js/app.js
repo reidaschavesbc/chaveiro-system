@@ -7,6 +7,7 @@ function navigateTo(page) {
     if (_navTimeout) clearTimeout(_navTimeout);
     _navTimeout = setTimeout(() => { _navTimeout = null; }, 300);
 
+    if (window.innerWidth <= 768) closeSidebar();
     document.querySelectorAll('.nav-item').forEach(el => {
         el.classList.toggle('active', el.dataset.page === page);
     });
@@ -65,6 +66,16 @@ function modalSenhaGerente(titulo, descricao) {
   });
 }
 
+// ─── Sidebar mobile toggle ─────────────────────────────────────────────────────
+function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
 // Check auth on load
 document.addEventListener('DOMContentLoaded', () => {
     if (!getToken()) { window.location.href = '/'; return; }
@@ -81,6 +92,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.title = cfg.empresa_nome + ' - Sistema';
         }
     }).catch(() => { });
+
+    // Hamburger e overlay
+    document.getElementById('sidebar-toggle').addEventListener('click', openSidebar);
+    document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+
+    // Auto-wrap tabelas para scroll horizontal em mobile
+    const mainContent = document.getElementById('main-content');
+    new MutationObserver(mutations => {
+        mutations.forEach(m => {
+            m.addedNodes.forEach(node => {
+                if (node.nodeType !== 1) return;
+                node.querySelectorAll('table').forEach(table => {
+                    if (table.closest('.table-scroll')) return;
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-scroll';
+                    table.parentNode.insertBefore(wrapper, table);
+                    wrapper.appendChild(table);
+                });
+            });
+        });
+    }).observe(mainContent, { childList: true, subtree: true });
 
     navigateTo('dashboard');
     // Badge de pedidos pendentes — atualiza ao carregar e a cada 5 minutos

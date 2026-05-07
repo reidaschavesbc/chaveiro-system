@@ -63,7 +63,7 @@ router.post('/', (req, res) => {
         const r = db.prepare(`
             INSERT INTO orcamentos (numero, cliente_id, cliente_nome_avulso, cliente_telefone_avulso, descricao, validade_dias, observacoes, vendedor_id, total, usuario_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, req.user?.id || 1);
+        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, req.user?.id || null);
 
         if (itens && itens.length) {
             const stmt = db.prepare('INSERT INTO itens_orcamento (orcamento_id, produto_id, servico_id, descricao, quantidade, preco_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)');

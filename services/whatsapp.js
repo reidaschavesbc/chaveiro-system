@@ -6,62 +6,42 @@ const fs = require('fs');
 const SESSION_PATH = path.join(__dirname, '..', 'whatsapp-session');
 
 let client = null;
-let _status = 'desconectado'; // desconectado | conectando | qr_pendente | conectado
+let _status = 'desconectado';
 let _qrDataUrl = null;
-let _desconectandoManualmente = false; // true quando desconectar()/trocarConta() foi chamado
+let _desconectandoManualmente = false;
 
 function normalizePhone(phone) {
     const digits = phone.replace(/\D/g, '');
     return (digits.startsWith('55') && digits.length >= 12) ? digits : '55' + digits;
 }
 
+function limparLocks() {
+    ['SingletonLock', 'SingletonCookie', 'SingletonSocket'].forEach(f => {
+        try { fs.unlinkSync(path.join(SESSION_PATH, 'session', f)); } catch (_) {}
+    });
+}
+
 function criarCliente() {
-    const c = new Client({
-        authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '..', 'whatsapp-session') }),
+    limparLocks();
+    return new Client({
+        authStrategy: new LocalAuth({ dataPath: SESSION_PATH }),
         puppeteer: {
             headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
-        }
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-extensions',
+                '--disable-background-networking',
+                '--disable-default-apps',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process'
+            ]
+        },
+        restartOnAuthFail: false
     });
-
-    c.on('qr', async (qr) => {
-        _status = 'qr_pendente';
-        _qrDataUrl = await qrcode.toDataURL(qr, { width: 280 });
-    });
-
-    c.on('loading_screen', () => { _status = 'conectando'; });
-    c.on('authenticated', () => { _status = 'conectando'; _qrDataUrl = null; });
-
-    c.on('ready', () => {
-        _status = 'conectado';
-        _qrDataUrl = null;
-        console.log('✅ WhatsApp Bot conectado!');
-    });
-
-    c.on('disconnected', async (reason) => {
-        console.log('⚠️  WhatsApp desconectado:', reason);
-        const instancia = client;
-        client = null;
-        _status = 'desconectado';
-        _qrDataUrl = null;
-        // Mata o Chrome antes de qualquer outra coisa
-        try { await instancia.destroy(); } catch (_) {}
-        if (!_desconectandoManualmente) {
-            console.log('🔄 Tentando reconectar em 15s...');
-            setTimeout(() => iniciar().catch(e => console.error('WhatsApp reconexão:', e.message)), 15000);
-        }
-        _desconectandoManualmente = false;
-    });
-
-    c.on('auth_failure', () => {
-        _status = 'desconectado';
-        _qrDataUrl = null;
-        client = null;
-        console.error('❌ WhatsApp: falha de autenticação');
-        // Não tenta reconectar em falha de auth — precisa de novo QR
-    });
-
-    return c;
 }
 
 async function iniciar() {
@@ -69,12 +49,64 @@ async function iniciar() {
     _status = 'conectando';
     _qrDataUrl = null;
     client = criarCliente();
+
+    client.on('qr', async (qr) => {
+        _status = 'qr_pendente';
+        _qrDataUrl = await qrcode.toDataURL(qr, { width: 280 });
+        console.log('📱 WhatsApp: QR gerado, aguardando leitura...');
+    });
+
+    client.on('loading_screen', () => { _status = 'conectando'; });
+    client.on('authenticated', () => {
+        _status = 'conectando';
+        _qrDataUrl = null;
+        console.log('🔐 WhatsApp: autenticado, carregando...');
+    });
+
+    client.on('ready', () => {
+        _status = 'conectado';
+        _qrDataUrl = null;
+        console.log('✅ WhatsApp conectado!');
+    });
+
+    client.on('auth_failure', async () => {
+        console.error('❌ WhatsApp: sessão inválida, limpando para novo QR...');
+        const inst = client;
+        client = null;
+        _status = 'desconectado';
+        _qrDataUrl = null;
+        try { await inst.destroy(); } catch (_) {}
+        // Limpa sessão corrompida e aguarda novo QR do usuário
+        try { fs.rmSync(path.join(SESSION_PATH, 'session'), { recursive: true, force: true }); } catch (_) {}
+    });
+
+    client.on('disconnected', async (reason) => {
+        console.log('⚠️  WhatsApp desconectado:', reason);
+        const inst = client;
+        client = null;
+        _status = 'desconectado';
+        _qrDataUrl = null;
+        try { await inst.destroy(); } catch (_) {}
+
+        if (!_desconectandoManualmente) {
+            const delay = reason === 'LOGOUT' ? 3000 : 10000;
+            console.log(`🔄 Reconectando em ${delay / 1000}s...`);
+            setTimeout(() => iniciar().catch(e => console.error('WhatsApp reconexão:', e.message)), delay);
+        }
+        _desconectandoManualmente = false;
+    });
+
     try {
         await client.initialize();
     } catch (e) {
-        _status = 'desconectado';
+        console.error('WhatsApp init erro:', e.message);
+        try { await client?.destroy(); } catch (_) {}
         client = null;
-        throw e;
+        _status = 'desconectado';
+        // Tenta de novo em 15s se não foi manual
+        if (!_desconectandoManualmente) {
+            setTimeout(() => iniciar().catch(e => console.error('WhatsApp retry:', e.message)), 15000);
+        }
     }
 }
 
@@ -90,17 +122,14 @@ async function desconectar() {
 async function trocarConta() {
     if (client) {
         _desconectandoManualmente = true;
-        // logout() apaga a sessão local via whatsapp-web.js antes de fechar o browser
         try { await client.logout(); } catch (_) {}
         try { await client.destroy(); } catch (_) {}
         client = null;
     }
     _status = 'desconectado';
     _qrDataUrl = null;
-    // Apaga a pasta como garantia extra (logout já deveria limpar)
     await new Promise(r => setTimeout(r, 800));
     try { fs.rmSync(SESSION_PATH, { recursive: true, force: true }); } catch (_) {}
-    // Reinicia sem sessão — vai gerar novo QR
     await iniciar();
 }
 
@@ -125,8 +154,6 @@ function getStatus() {
     return { status: _status, qr: _qrDataUrl };
 }
 
-// Aguarda 8s após o servidor subir antes de iniciar o Puppeteer/WhatsApp
-// Evita que a inicialização pesada do Puppeteer deixe o servidor lento no arranque
 setTimeout(() => {
     iniciar().catch(e => console.error('WhatsApp init:', e.message));
 }, 8000);

@@ -67,14 +67,26 @@ router.get('/', (req, res) => {
 
 // GET /api/ordens/:id
 router.get('/:id', (req, res) => {
-    const os = db.prepare(`SELECT os.*, c.nome as cliente_nome, c.telefone as cliente_telefone,
-    ts.nome as servico_nome, ven.nome as vendedor_nome FROM ordens_servico os
+    const os = db.prepare(`SELECT os.*,
+        c.nome as cliente_nome, c.telefone as cliente_telefone, c.email as cliente_email,
+        c.endereco as cliente_endereco, c.numero as cliente_numero, c.bairro as cliente_bairro,
+        c.cidade as cliente_cidade, c.cep as cliente_cep, c.complemento as cliente_complemento,
+        c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
+        ts.nome as servico_nome, ven.nome as vendedor_nome
+    FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN tipos_servico ts ON os.tipo_servico_id = ts.id
     LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
     WHERE os.id = ?`).get(req.params.id);
     if (!os) return res.status(404).json({ error: 'OS não encontrada' });
-    const itens = db.prepare('SELECT * FROM itens_ordem_servico WHERE ordem_id = ?').all(req.params.id);
+    const itens = db.prepare(`
+        SELECT ios.*,
+            p.nome as produto_nome,
+            ts.nome as servico_nome
+        FROM itens_ordem_servico ios
+        LEFT JOIN produtos p ON ios.produto_id = p.id
+        LEFT JOIN tipos_servico ts ON ios.servico_id = ts.id
+        WHERE ios.ordem_id = ?`).all(req.params.id);
     res.json({ ...os, itens });
 });
 
@@ -87,7 +99,7 @@ const numero = gerarNumeroOS();
         const result = db.prepare(`
             INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, usuario_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, valor || 0, data_prevista || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, req.user?.id || 1);
+        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, valor || 0, data_prevista || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, req.user?.id || null);
 
         const osId = result.lastInsertRowid;
 
