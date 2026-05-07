@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'chaveiro.db');
+const dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'chaveiro.db');
 const db = new Database(dbPath);
 
 // WAL mode for better performance

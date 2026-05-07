@@ -22,6 +22,11 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Rebuild módulos nativos para Electron
+        run: npx electron-rebuild -f -w better-sqlite3
+        env:
+          npm_config_msvs_version: '2022'
+
       - name: Build Electron (Windows)
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
