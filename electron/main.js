@@ -1,15 +1,13 @@
 const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 
-// Evita crash por EPIPE no processo principal
 try { process.stdout.on('error', () => {}); } catch (_) {}
 try { process.stderr.on('error', () => {}); } catch (_) {}
 
-// Garante apenas uma instância do app
+// Garante apenas uma instância
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -18,11 +16,9 @@ if (!gotLock) {
 
 let mainWindow = null;
 let tray = null;
-let serverProcess = null;
 const SERVER_PORT = 3099;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 
-// Log em arquivo na Área de Trabalho para diagnóstico
 let logPath = null;
 function log(msg) {
   const line = `[${new Date().toISOString()}] ${msg}`;
@@ -45,15 +41,22 @@ function getAppRoot() {
 function prepararBancoDados() {
   const userDataDir = app.getPath('userData');
   const dbDestino = path.join(userDataDir, 'chaveiro.db');
+
   if (!fs.existsSync(dbDestino)) {
-    const dbOrigem = path.join(getAppRoot(), 'database', 'chaveiro.db');
+    // extraResources copia para process.resourcesPath (não dentro de /app)
+    const dbOrigem = app.isPackaged
+      ? path.join(process.resourcesPath, 'database', 'chaveiro.db')
+      : path.join(getAppRoot(), 'database', 'chaveiro.db');
+
     if (fs.existsSync(dbOrigem)) {
+      fs.mkdirSync(path.dirname(dbDestino), { recursive: true });
       fs.copyFileSync(dbOrigem, dbDestino);
-      log('Banco de dados copiado para pasta do usuário.');
+      log('Banco de dados copiado: ' + dbOrigem + ' -> ' + dbDestino);
     } else {
-      log('AVISO: banco de dados de origem não encontrado: ' + dbOrigem);
+      log('Banco não encontrado em origem, iniciando vazio: ' + dbDestino);
     }
   }
+
   return dbDestino;
 }
 
@@ -71,50 +74,21 @@ function startServer() {
       return reject(new Error('server.js não encontrado em: ' + serverPath));
     }
 
-    serverProcess = spawn(process.execPath, [serverPath], {
-      cwd: appRoot,
-      env: {
-        ...process.env,
-        PORT: SERVER_PORT,
-        DATABASE_PATH: dbPath,
-        ELECTRON_APP: '1',
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Define variáveis de ambiente antes de carregar o servidor
+    process.env.PORT = SERVER_PORT;
+    process.env.DATABASE_PATH = dbPath;
+    process.env.ELECTRON_APP = '1';
 
-    let resolved = false;
-    function resolveOnce() {
-      if (!resolved) { resolved = true; resolve(); }
-    }
-
-    serverProcess.stdout.on('data', (data) => {
-      try {
-        const msg = data.toString().trim();
-        log('Server: ' + msg);
-        if (msg.includes('rodando') || msg.includes('listening') || msg.includes(String(SERVER_PORT))) {
-          resolveOnce();
-        }
-      } catch (_) {}
-    });
-
-    serverProcess.stdout.on('error', () => {});
-    serverProcess.stderr.on('error', () => {});
-
-    serverProcess.stderr.on('data', (data) => {
-      try { log('Server ERRO: ' + data.toString().trim()); } catch (_) {}
-    });
-
-    serverProcess.on('exit', (code) => {
-      log('Servidor encerrado com código ' + code);
-    });
-
-    serverProcess.on('error', (err) => {
-      log('Erro spawn servidor: ' + err.message);
+    try {
+      // Roda o servidor no mesmo processo do Electron (sem spawn)
+      require(serverPath);
+      log('Servidor carregado no processo principal');
+      resolve();
+    } catch (err) {
+      log('ERRO ao carregar servidor: ' + err.message);
+      log(err.stack || '');
       reject(err);
-    });
-
-    // Resolve após 15s mesmo sem confirmação do stdout
-    setTimeout(resolveOnce, 15000);
+    }
   });
 }
 
@@ -155,7 +129,7 @@ function createWindow() {
     show: false,
   });
 
-  // Bloqueia qualquer tentativa de abrir nova janela pelo conteúdo web
+  // Bloqueia qualquer abertura de nova janela pelo conteúdo web
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
   mainWindow.loadURL(SERVER_URL);
@@ -168,7 +142,6 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// Se segunda instância tentar abrir, foca a janela existente
 app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -220,23 +193,22 @@ app.whenReady().then(async () => {
   log('=== Sistema Chaveiro iniciando ===');
 
   try {
-    log('Iniciando servidor...');
+    log('Carregando servidor...');
     await startServer();
-    log('Aguardando servidor responder na porta ' + SERVER_PORT + '...');
+    log('Aguardando servidor na porta ' + SERVER_PORT + '...');
     await waitForServer();
   } catch (err) {
-    log('ERRO FATAL ao iniciar servidor: ' + err.message);
+    log('ERRO FATAL: ' + err.message);
     dialog.showErrorBox(
       'Erro ao iniciar Sistema Chaveiro',
-      'Não foi possível iniciar o servidor interno.\n\n' +
-      'Erro: ' + err.message + '\n\n' +
-      'Um arquivo chaveiro-log.txt foi criado na sua Área de Trabalho com detalhes.'
+      'Não foi possível iniciar o servidor.\n\nErro: ' + err.message +
+      '\n\nVerifique o arquivo chaveiro-log.txt na sua Área de Trabalho.'
     );
     app.quit();
     return;
   }
 
-  log('Servidor pronto. Abrindo janela...');
+  log('Abrindo janela...');
   createWindow();
   createTray();
 
@@ -246,11 +218,4 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-});
-
-app.on('before-quit', () => {
-  if (serverProcess) {
-    serverProcess.kill();
-    serverProcess = null;
-  }
 });
