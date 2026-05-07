@@ -52,27 +52,11 @@
     },
     "files": [
       "electron/**/*",
-      "server.js",
-      "routes/**/*",
-      "middleware/**/*",
-      "services/**/*",
-      "public/**/*",
-      "database/db.js",
       "package.json",
       "node_modules/**/*",
       "!node_modules/electron/**/*",
       "!node_modules/electron-builder/**/*",
-      "!dist/**/*",
-      "!whatsapp-session/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "database/chaveiro.db",
-        "to": "database/chaveiro.db",
-        "filter": [
-          "**/*"
-        ]
-      }
+      "!dist/**/*"
     ],
     "win": {
       "target": [
