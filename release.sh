@@ -23,7 +23,7 @@ git commit -m "release v$VERSION"
 git tag "v$VERSION"
 
 # Push com a tag (o CI/GitHub Actions vai buildar e publicar o release)
-TOKEN="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"
+TOKEN="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"
 REMOTE="https://tvsxgames:${TOKEN}@github.com/tvsxgames/chaveiro-system.git"
 
 git push "$REMOTE" main
