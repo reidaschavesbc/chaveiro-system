@@ -13,6 +13,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const auth = require('./middleware/auth');
 
+// Download do app Electron (público)
+app.get('/download', (req, res) => {
+  res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
+});
+
+app.get('/api/version', (req, res) => {
+  const { version } = require('./package.json');
+  res.json({ version });
+});
+
 // Public routes
 app.use('/api/auth', require('./routes/auth'));
 
@@ -288,7 +298,7 @@ cron.schedule('* * * * *', () => {
         FROM ordens_servico os
         LEFT JOIN vendedores v ON os.vendedor_id = v.id
         LEFT JOIN clientes c ON os.cliente_id = c.id
-        WHERE os.data_prevista >= ? AND os.data_prevista <= ?
+        WHERE datetime(os.data_prevista) >= datetime(?) AND datetime(os.data_prevista) <= datetime(?)
           AND os.status NOT IN ('cancelada','concluida')
           AND os.lembrete_enviado = 0
           AND v.telefone IS NOT NULL AND v.telefone != ''

@@ -9,94 +9,66 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
   <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
     body {
       background: linear-gradient(135deg, #0f1b47 0%, #1a56db 50%, #0f1b47 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 24px 16px;
     }
 
-    .login-card {
-      background: white;
-      border-radius: 20px;
-      padding: 50px 44px;
+    .page-wrapper {
       width: 100%;
-      max-width: 420px;
-      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
       animation: slideUp 0.5s ease;
     }
 
     @keyframes slideUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
-    .login-logo {
-      text-align: center;
-      margin-bottom: 32px;
+    /* ── LOGIN CARD ── */
+    .login-card {
+      background: white;
+      border-radius: 20px;
+      padding: 48px 44px 40px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
     }
+
+    .login-logo { text-align: center; margin-bottom: 32px; }
 
     .login-logo .icon {
-      width: 72px;
-      height: 72px;
+      width: 72px; height: 72px;
       background: linear-gradient(135deg, #1a56db, #3b82f6);
       border-radius: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       margin: 0 auto 16px;
       box-shadow: 0 8px 24px rgba(26, 86, 219, 0.4);
     }
 
-    .login-logo .icon svg {
-      width: 36px;
-      height: 36px;
-      fill: white;
-    }
+    .login-logo .icon svg { width: 36px; height: 36px; fill: white; }
+    .login-logo h1 { font-size: 24px; font-weight: 700; color: #1a1a2e; margin: 0; }
+    .login-logo p  { color: #64748b; font-size: 14px; margin: 4px 0 0; }
 
-    .login-logo h1 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1a1a2e;
-      margin: 0;
-    }
-
-    .login-logo p {
-      color: #64748b;
-      font-size: 14px;
-      margin: 4px 0 0;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
+    .form-group { margin-bottom: 20px; }
 
     .form-group label {
-      display: block;
-      font-size: 13px;
-      font-weight: 600;
-      color: #374151;
-      margin-bottom: 6px;
+      display: block; font-size: 13px; font-weight: 600;
+      color: #374151; margin-bottom: 6px;
     }
 
     .form-group input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 2px solid #e5e7eb;
-      border-radius: 10px;
-      font-size: 15px;
-      font-family: inherit;
-      transition: all 0.2s;
-      box-sizing: border-box;
-      outline: none;
+      width: 100%; padding: 12px 16px;
+      border: 2px solid #e5e7eb; border-radius: 10px;
+      font-size: 15px; font-family: inherit;
+      transition: all 0.2s; outline: none;
     }
 
     .form-group input:focus {
@@ -105,85 +77,202 @@
     }
 
     .btn-login {
-      width: 100%;
-      padding: 14px;
+      width: 100%; padding: 14px;
       background: linear-gradient(135deg, #1a56db, #3b82f6);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 8px;
+      color: white; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.2s; margin-top: 8px;
     }
 
-    .btn-login:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(26, 86, 219, 0.4);
-    }
-
-    .btn-login:active {
-      transform: translateY(0);
-    }
+    .btn-login:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(26, 86, 219, 0.4); }
+    .btn-login:active { transform: translateY(0); }
 
     .error-msg {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #dc2626;
-      padding: 10px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 16px;
-      display: none;
+      background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      margin-bottom: 16px; display: none;
     }
 
-    .ver {
-      text-align: center;
-      margin-top: 24px;
-      color: #94a3b8;
-      font-size: 12px;
+    .ver { text-align: center; margin-top: 20px; color: #94a3b8; font-size: 12px; }
+
+    /* ── DOWNLOAD CARD ── */
+    .download-card {
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 18px;
+      padding: 20px 24px;
+      animation: slideUp 0.5s ease 0.1s both;
     }
+
+    .download-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .download-app-icon {
+      width: 48px; height: 48px; flex-shrink: 0;
+      background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    .download-app-icon svg { width: 26px; height: 26px; fill: #f0c040; }
+
+    .download-app-info { flex: 1; }
+
+    .download-app-name {
+      font-size: 15px; font-weight: 700;
+      color: #ffffff; line-height: 1.2;
+    }
+
+    .download-app-sub {
+      font-size: 12px; color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+    }
+
+    .download-version {
+      background: rgba(240, 192, 64, 0.15);
+      border: 1px solid rgba(240, 192, 64, 0.3);
+      color: #f0c040;
+      font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .btn-download-win {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; width: 100%; padding: 13px 20px;
+      background: linear-gradient(135deg, #0078d4, #106ebe);
+      color: white; border: none; border-radius: 12px;
+      font-size: 14px; font-weight: 700; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(0, 120, 212, 0.4);
+    }
+
+    .btn-download-win:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px rgba(0, 120, 212, 0.55);
+      background: linear-gradient(135deg, #106ebe, #005a9e);
+    }
+
+    .btn-download-win:active { transform: translateY(0); }
+
+    .btn-download-win .win-logo { width: 18px; height: 18px; flex-shrink: 0; }
+
+    .download-chips {
+      display: flex; gap: 8px; margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      display: flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px; padding: 4px 10px;
+      font-size: 11px; font-weight: 500;
+      color: rgba(255,255,255,0.65);
+    }
+
+    .chip svg { width: 11px; height: 11px; stroke: rgba(255,255,255,0.55); }
   </style>
 </head>
 
 <body>
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="icon">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M12.65 10A6 6 0 1 0 22 13h-2a4 4 0 1 1-3.79-5.23L18 9.56V8h2V4h-2v2h-2v2l-3.35-.01zM7 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" />
-        </svg>
+  <div class="page-wrapper">
+
+    <!-- LOGIN CARD -->
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.65 10A6 6 0 1 0 22 13h-2a4 4 0 1 1-3.79-5.23L18 9.56V8h2V4h-2v2h-2v2l-3.35-.01zM7 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+          </svg>
+        </div>
+        <h1 id="empresa-nome">Sistema Chaveiro</h1>
+        <p>Gestão completa do seu negócio</p>
       </div>
-      <h1 id="empresa-nome">Sistema Chaveiro</h1>
-      <p>Gestão completa do seu negócio</p>
+      <div class="error-msg" id="error-msg"></div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="usuario">Usuário</label>
+          <input type="text" id="usuario" placeholder="admin" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-login" id="btn-login">Entrar</button>
+      </form>
+      <p class="ver" id="ver-web">v1.0.0</p>
     </div>
-    <div class="error-msg" id="error-msg"></div>
-    <form id="login-form">
-      <div class="form-group">
-        <label for="usuario">Usuário</label>
-        <input type="text" id="usuario" placeholder="admin" required autocomplete="username">
+
+    <!-- DOWNLOAD CARD -->
+    <div class="download-card">
+      <div class="download-header">
+        <div class="download-app-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12.65 10A6 6 0 1 0 22 13h-2a4 4 0 1 1-3.79-5.23L18 9.56V8h2V4h-2v2h-2v2l-3.35-.01zM7 14a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+          </svg>
+        </div>
+        <div class="download-app-info">
+          <div class="download-app-name">Chaveiro Desktop</div>
+          <div class="download-app-sub">Windows 10 / 11 &nbsp;·&nbsp; 64-bit</div>
+        </div>
+        <span class="download-version" id="ver-desktop">v1.0.0</span>
       </div>
-      <div class="form-group">
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" placeholder="••••••••" required autocomplete="current-password">
+
+      <a href="/download" class="btn-download-win">
+        <!-- Windows logo -->
+        <svg class="win-logo" viewBox="0 0 88 88" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 12.4L35.7 7.6V42H0V12.4Z"/>
+          <path d="M40.3 6.9L88 0V42H40.3V6.9Z"/>
+          <path d="M0 46H35.7V80.3L0 75.5V46Z"/>
+          <path d="M40.3 46H88V88L40.3 81.1V46Z"/>
+        </svg>
+        Baixar para Windows
+      </a>
+
+      <div class="download-chips">
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Atualizações automáticas
+        </span>
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Funciona sem navegador
+        </span>
+        <span class="chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Dados locais seguros
+        </span>
       </div>
-      <button type="submit" class="btn-login" id="btn-login">Entrar</button>
-    </form>
-    <p class="ver">v1.0.0</p>
+    </div>
+
   </div>
+
   <script>
-    // Check already logged in
     if (localStorage.getItem('token')) {
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } })
-        .then(r => r.ok ? window.location.href = '/app.html' : null).catch(() => { });
+        .then(r => r.ok ? window.location.href = '/app' : null).catch(() => {});
     }
-    // Try load empresa name
+
     fetch('/api/config').then(r => r.json()).then(c => {
       if (c.empresa_nome) document.getElementById('empresa-nome').textContent = c.empresa_nome;
-    }).catch(() => { });
+    }).catch(() => {});
+
+    fetch('/api/version').then(r => r.json()).then(d => {
+      const v = 'v' + d.version;
+      document.getElementById('ver-web').textContent = v;
+      document.getElementById('ver-desktop').textContent = v;
+    }).catch(() => {});
 
     document.getElementById('login-form').addEventListener('submit', async e => {
       e.preventDefault();

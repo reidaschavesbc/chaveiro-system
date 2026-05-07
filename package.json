@@ -6,10 +6,17 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "electron": "electron electron/main.js",
+    "electron:dev": "cross-env NODE_ENV=development electron electron/main.js",
+    "build": "electron-builder --win --publish always",
+    "build:linux": "electron-builder --linux --publish always",
+    "build:mac": "electron-builder --mac --publish always",
+    "build:local": "electron-builder --win --publish never",
+    "release": "electron-builder --publish always"
   },
   "keywords": [],
-  "author": "",
+  "author": "tvsxgames",
   "license": "ISC",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.0",
@@ -18,11 +25,90 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "groq-sdk": "^1.1.2",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
-    "whatsapp-web.js": "^1.34.6"
+    "whatsapp-web.js": "^1.34.6",
+    "electron-updater": "^6.8.3"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.chaveiro.system",
+    "productName": "Sistema Chaveiro",
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
+    "copyright": "Copyright © 2025 Chaveiro System",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "server.js",
+      "routes/**/*",
+      "middleware/**/*",
+      "services/**/*",
+      "public/**/*",
+      "database/db.js",
+      "package.json",
+      "node_modules/**/*",
+      "!node_modules/electron/**/*",
+      "!node_modules/electron-builder/**/*",
+      "!dist/**/*",
+      "!whatsapp-session/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "database/chaveiro.db",
+        "to": "database/chaveiro.db",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icon.ico",
+      "artifactName": "SistemaChaveiro-Setup.exe"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "electron/icon.png",
+      "category": "Office"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "electron/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "electron/icon.ico",
+      "installerHeaderIcon": "electron/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sistema Chaveiro"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "tvsxgames",
+      "repo": "chaveiro-system",
+      "private": true
+    }
   }
 }
