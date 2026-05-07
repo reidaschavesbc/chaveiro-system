@@ -131,9 +131,15 @@ function createWindow() {
 
   mainWindow.on('closed', () => { mainWindow = null; });
 
-  mainWindow.webContents.on('did-fail-load', () => {
-    setTimeout(() => { if (mainWindow) mainWindow.reload(); }, 2000);
+  let reloadAttempts = 0;
+  mainWindow.webContents.on('did-fail-load', (_e, code) => {
+    if (code === -3) return; // ignorar aborts normais
+    if (reloadAttempts >= 5) return;
+    reloadAttempts++;
+    setTimeout(() => { if (mainWindow) mainWindow.reload(); }, 3000);
   });
+
+  mainWindow.webContents.on('did-finish-load', () => { reloadAttempts = 0; });
 }
 
 function createTray() {
