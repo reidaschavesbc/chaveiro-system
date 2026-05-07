@@ -1,7 +1,10 @@
 require('dotenv').config();
+// Fallback para quando .env não está disponível (executável Electron no cliente)
+if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'chaveiro_super_secret_key_2024';
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const cron = require('node-cron');
 
 const app = express();
@@ -25,7 +28,7 @@ app.get('/download', (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-  const { version } = require('./package.json');
+  const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
   res.json({ version });
 });
 
@@ -400,6 +403,12 @@ app.get('/api/cep/:cep', (req, res) => {
 // Fallback to SPA
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// Global error handler — sempre retorna JSON (nunca HTML)
+app.use((err, req, res, next) => {
+    console.error('Erro não tratado:', err.message);
+    res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' });
+});
 
 app.listen(PORT, () => {
     console.log(`\n🔑 Sistema Chaveiro rodando em http://localhost:${PORT}`);

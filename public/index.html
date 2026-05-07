@@ -259,6 +259,10 @@
   </div>
 
   <script>
+    if (window.electron) {
+      document.querySelector('.download-card').style.display = 'none';
+    }
+
     if (localStorage.getItem('token')) {
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } })
         .then(r => r.ok ? window.location.href = '/app' : null).catch(() => {});
