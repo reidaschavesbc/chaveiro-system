@@ -15,7 +15,7 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 
 function log(msg) {
-  console.log(`[Electron] ${msg}`);
+  try { console.log(`[Electron] ${msg}`); } catch (_) {}
 }
 
 function getAppRoot() {
@@ -63,15 +63,20 @@ function startServer() {
     });
 
     serverProcess.stdout.on('data', (data) => {
-      const msg = data.toString().trim();
-      log(`Server: ${msg}`);
-      if (msg.includes('rodando') || msg.includes('listening') || msg.includes(String(SERVER_PORT))) {
-        resolve();
-      }
+      try {
+        const msg = data.toString().trim();
+        log(`Server: ${msg}`);
+        if (msg.includes('rodando') || msg.includes('listening') || msg.includes(String(SERVER_PORT))) {
+          resolve();
+        }
+      } catch (_) {}
     });
 
+    serverProcess.stdout.on('error', () => {});
+    serverProcess.stderr.on('error', () => {});
+
     serverProcess.stderr.on('data', (data) => {
-      log(`Server ERRO: ${data.toString().trim()}`);
+      try { log(`Server ERRO: ${data.toString().trim()}`); } catch (_) {}
     });
 
     serverProcess.on('exit', (code) => {
