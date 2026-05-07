@@ -118,7 +118,7 @@ function createTray() {
 
   const menu = Menu.buildFromTemplate([
     { label: 'Abrir Sistema', click: () => { if (mainWindow) mainWindow.show(); } },
-    { label: 'Verificar Atualizações', click: () => autoUpdater.checkForUpdates() },
+    { label: 'Verificar Atualizações', click: () => { checkUpdateManual = true; autoUpdater.checkForUpdates(); } },
     { type: 'separator' },
     { label: 'Sair', click: () => app.quit() },
   ]);
@@ -128,8 +128,24 @@ function createTray() {
   tray.on('double-click', () => { if (mainWindow) mainWindow.show(); });
 }
 
+let checkUpdateManual = false;
+
+autoUpdater.on('update-not-available', () => {
+  log('Nenhuma atualização disponível');
+  if (checkUpdateManual && mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Sistema atualizado',
+      message: 'Você já está na versão mais recente.',
+      buttons: ['OK'],
+    });
+  }
+  checkUpdateManual = false;
+});
+
 autoUpdater.on('update-available', (info) => {
   log('Atualização disponível: v' + info.version);
+  checkUpdateManual = false;
   if (mainWindow) mainWindow.webContents.send('update-status', 'Baixando v' + info.version + '...');
 });
 
@@ -147,7 +163,7 @@ autoUpdater.on('update-downloaded', (info) => {
 
 autoUpdater.on('error', (err) => log('Auto-updater erro: ' + err.message));
 
-ipcMain.on('check-update', () => autoUpdater.checkForUpdates());
+ipcMain.on('check-update', () => { checkUpdateManual = true; autoUpdater.checkForUpdates(); });
 ipcMain.on('retry-load', () => {
   if (mainWindow) mainWindow.loadURL(SERVER_URL);
 });

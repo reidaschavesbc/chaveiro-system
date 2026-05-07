@@ -134,10 +134,6 @@ async function ordens(el) {
               <input type="checkbox" id="os-chave-auto" onchange="toggleChaveAuto()">
               <span style="font-weight:600">Chave Auto</span>
             </label>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
-              <input type="checkbox" id="os-orcamento" onchange="toggleOrcamento()">
-              <span style="font-weight:600">Orçamento</span>
-            </label>
           </div>
 
           <div class="form-full divider" id="os-secao-divider"></div>
@@ -454,7 +450,6 @@ function toggleVencimento() {
 }
 
 function toggleChaveAuto() {}
-function toggleOrcamento() {}
 
 function abrirModalOS() {
   document.getElementById('os-id').value = '';
@@ -477,7 +472,6 @@ function abrirModalOS() {
   document.getElementById('os-data-vencimento').value = '';
   document.getElementById('os-vencimento-wrap').style.display = 'none';
   document.getElementById('os-chave-auto').checked = false;
-  document.getElementById('os-orcamento').checked = false;
   document.getElementById('modal-os-title').textContent = 'Nova Ordem de Serviço';
 
   osItens = [];
@@ -584,7 +578,6 @@ async function editarOS(id) {
   document.getElementById('os-data-vencimento').value = (o.data_vencimento || '').slice(0, 10);
   document.getElementById('os-vencimento-wrap').style.display = o.a_receber ? 'block' : 'none';
   document.getElementById('os-chave-auto').checked = !!o.chave_auto;
-  document.getElementById('os-orcamento').checked = !!o.orcamento;
   document.getElementById('modal-os-title').textContent = 'Editar OS ' + o.numero;
 
   osItens = o.itens || [];
@@ -615,11 +608,11 @@ async function salvarOS() {
     data_vencimento: document.getElementById('os-data-vencimento').value || null,
     solicitado_por: document.getElementById('os-solicitado-por')?.value || null,
     chave_auto: document.getElementById('os-chave-auto').checked ? 1 : 0,
-    orcamento: document.getElementById('os-orcamento').checked ? 1 : 0,
+    orcamento: 0,
     itens: osItens
   };
   if (!body.cliente_id && body.cliente_nome_avulso && !avulsoRua) { toast('Informe a rua do endereço do cliente', 'error'); return; }
-  if (!body.chave_auto && !body.orcamento && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
+  if (!body.chave_auto && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
   if (!body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
   try {
     if (id) await api('PUT', `/ordens/${id}`, body);
