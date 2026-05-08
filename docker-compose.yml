@@ -12,4 +12,6 @@ services:
     volumes:
       - ./database:/app/database
       - ./public/uploads:/app/public/uploads
+      - ./public/downloads:/app/public/downloads
       - ./whatsapp-session:/app/whatsapp-session
+      - ./package.json:/app/package.json

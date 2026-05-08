@@ -1,3 +1,18 @@
-2026/05/06-23:52:08.894 27 Reusing MANIFEST /app/whatsapp-session/session/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/06-23:52:08.911 27 Recovering log #7
-2026/05/06-23:52:08.912 27 Reusing old log /app/whatsapp-session/session/Default/Local Storage/leveldb/000007.log 
+2026/05/07-19:02:12.184 23 Reusing MANIFEST /app/whatsapp-session/session/Default/Local Storage/leveldb/MANIFEST-000001
+2026/05/07-19:02:12.185 23 Recovering log #24
+2026/05/07-19:02:12.187 23 Reusing old log /app/whatsapp-session/session/Default/Local Storage/leveldb/000024.log 
+2026/05/07-19:02:32.231 23 Level-0 table #28: started
+2026/05/07-19:02:32.249 23 Level-0 table #28: 14393 bytes OK
+2026/05/07-19:02:32.253 23 Delete type=0 #24
+2026/05/07-23:52:07.587 23 Level-0 table #30: started
+2026/05/07-23:52:07.591 23 Level-0 table #30: 14592 bytes OK
+2026/05/07-23:52:07.597 23 Delete type=0 #27
+2026/05/07-23:52:07.599 23 Compacting 4@0 + 1@1 files
+2026/05/07-23:52:07.605 23 Generated table #31@0: 111 keys, 7657 bytes
+2026/05/07-23:52:07.605 23 Compacted 4@0 + 1@1 files => 7657 bytes
+2026/05/07-23:52:07.607 23 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/05/07-23:52:07.608 23 Delete type=2 #20
+2026/05/07-23:52:07.608 23 Delete type=2 #22
+2026/05/07-23:52:07.608 23 Delete type=2 #30
+2026/05/07-23:52:07.608 23 Delete type=2 #25
+2026/05/07-23:52:07.608 23 Delete type=2 #28
