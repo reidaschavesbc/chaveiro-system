@@ -1332,3 +1332,547 @@ remote: warning: GH001: Large files detected. You may want to try Git Large File
 To https://github.com/tvsxgames/chaveiro-system.git
    5ba6077..6757f18  main -> main
 [2026-05-07 00:00] Backup enviado ao GitHub com sucesso
+[main 03216d9] backup automatico 2026-05-08 00:00
+ 619 files changed, 24345 insertions(+), 19227 deletions(-)
+ create mode 100644 public/downloads/SistemaChaveiro-Setup.exe.blockmap
+ create mode 100644 public/downloads/latest.yml
+ delete mode 100644 whatsapp-session/session/CertificateRevocation/10509/_metadata/verified_contents.json
+ delete mode 100644 whatsapp-session/session/CertificateRevocation/10509/manifest.fingerprint
+ delete mode 100644 whatsapp-session/session/CertificateRevocation/10509/manifest.json
+ rename whatsapp-session/session/CertificateRevocation/{10509 => 10510}/LICENSE (100%)
+ create mode 100644 whatsapp-session/session/CertificateRevocation/10510/_metadata/verified_contents.json
+ rename whatsapp-session/session/CertificateRevocation/{10509 => 10510}/crl-set (99%)
+ create mode 100644 whatsapp-session/session/CertificateRevocation/10510/manifest.fingerprint
+ create mode 100644 whatsapp-session/session/CertificateRevocation/10510/manifest.json
+ delete mode 100644 whatsapp-session/session/Crowd Deny/2026.4.23.60/Preload Data
+ delete mode 100644 whatsapp-session/session/Crowd Deny/2026.4.23.60/_metadata/verified_contents.json
+ delete mode 100644 whatsapp-session/session/Crowd Deny/2026.4.23.60/manifest.fingerprint
+ create mode 100644 whatsapp-session/session/Crowd Deny/2026.5.7.61/Preload Data
+ create mode 100644 whatsapp-session/session/Crowd Deny/2026.5.7.61/_metadata/verified_contents.json
+ create mode 100644 whatsapp-session/session/Crowd Deny/2026.5.7.61/manifest.fingerprint
+ rename whatsapp-session/session/Crowd Deny/{2026.4.23.60 => 2026.5.7.61}/manifest.json (73%)
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0006add54f0d8c30_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/004a3abd7fd9a401_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/01b7fc607616945f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/02be6c3cbd8f991d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/04a6c67255151113_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0558429dc03fccac_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/061698d825ca4fef_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/06565e60b3422b81_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/08cf7cc2927a6c40_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/092a11fdc2b52d87_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0b20f9769c08a1cb_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0b5cfbe83b505ff9_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0b8fa98bd116db58_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0c21f244ad518ba2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0d277ebb05681b80_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0de99ccad719a4fe_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0e1aebff7d13b544_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0e85c709da728455_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/0eca4865df65453e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/107706a7565da1cf_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/11ff419b2f1c84ea_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/13873e1de5d4c04d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/13e560758b63aa68_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/14bbb84f58a6d862_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1902f6eba3488a76_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1a1357f73328c9c7_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1ab736bae775134a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1ade8640828373ed_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1bc6f339857b2b0a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1c8b47daa3f11696_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/1d9ff7e581dba98a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/21c0c9becc7887fe_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/234459ae7ecd76f2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/239c636c1d20382c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/24b6a95019e7a3b4_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/253116ba9431257d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2671d678ce17a46b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/270e4c3291da2411_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/28576c14da288a82_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/290175453235f944_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2971d0d5515d2a12_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/298290a5ff1d80c0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/29e1e98020ac0996_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2b0ee6e6cf63878a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2c159b2319c0fe59_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2c3c98eeee9ba013_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2cd843f92e64a1ae_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2d94ce1f34289f1f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/2e6494472ca5ed7c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/30ec1a81283811ee_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3195ba9831502fc9_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3250b5a65bee8652_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/327aa71ea117fdea_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3454e81734ba7f7f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3639e2f98a7b8737_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/36624ef2d4669c5f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3798e5453925d64d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/37aa0d33e4da07c6_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/387609a6c48ba8be_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3c088a30c022dd04_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3e1cde5dcae5857d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/3e6e425ad542dd84_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/40868945b780cdde_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/40daa4efa6f08f1a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4312c8d74437ed99_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4420843d1051c330_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4598e7c1fdd66857_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/46da2d984a7126cf_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/494d5647bad10fd2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4a0a832f68c8359c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4a1cbf16515d78f7_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4aaa025063e891e5_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4aee225875a10dd9_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/4c3f818fd1258599_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/518e658ebcec30a1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/52938118c776e42b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/533fc68fcfe07b54_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/53a4daf5e1a39651_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/540309102f913481_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/561cc1fac9b4b39d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5780379643eb7d09_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/57e2680bc096d3f6_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/581b0e3a9e34b028_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/582680ca38865097_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/598007ea6272ed03_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/59e8866b6a0c6edd_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5a9d25c830d671f1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5b85592c78f0cf1b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5b902f720253edbb_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5ba35662959b1f44_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5bf5a711d34e652c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5c7b439f486a2322_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5d677eae9f6f2d9a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5d72b6eb3ffcd8ca_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/5f53c73e1b86b199_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/613094c0af7d07d3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/62098e44d0a92570_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/63216fa7a63aa23b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/635e982a989de630_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/643440bba7428f84_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/660689836804e5e3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/678133dfd0907acc_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/69127f724405daf7_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6a7cc401d14b0dc1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6abafd46fd6bc8a3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6bec92d45b4982d0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6d0e6cf81b4acaeb_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6d4db1fb225de415_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/6e0c1ae6974d1bd0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/73efdf5340a0ad61_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/74173ee56efed0f4_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7829ca94c75d147b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/78a196b2a48be397_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7a20834e796f4dcb_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7ac2c05cf385c3af_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7bf772f00a57c0e8_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7d46ca9efbbca10d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7e2eb72d02eb320c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/7f58e379565b2269_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8101943546a9056c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/827da775aa770132_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/834dbd665bff2db2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8592920a32b70755_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/85d63f66bf7777f0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/86e6b444e6289b17_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/87e6c2536b7fb32f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/88575a6db7a447a4_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8b9ed8c8900a7d29_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8cf0aa5d1d5d04da_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8dcdc2b75637eb47_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8e71dbaf6b0a430d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8fa0b28297b8b0e0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/8fe184dfe20862e1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/905f4047753a3f77_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9070e89e2311f97c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/90ae8265f389aa96_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9166e8db07be4801_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/91c6d69ffaeee331_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9415f7dadb3cb076_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/942d37c2f6f1164e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/945e434d58222712_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/946cf9e054e0efa3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/94977648ee58c956_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/94e61e8dc68cfd16_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9550f4647161f764_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9562f0b6ac168f1c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/965187cfa6d8a894_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9695f65d8ae9f82b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/97085cff00601de0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/980dbc1f9a9825f1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9a43960c2c65a217_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9ae0a62f74c25f6e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9bfce30e4a66b3b3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9c5fd3b6f8436015_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9d796ee70af08558_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9f7fc5146e31784d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/9fcc24037754b849_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a00b147c1e651681_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a04a95f6622271f5_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a08b3460542713ef_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a16deeaa08bd0728_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a21e5a992f73a48b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a2b0e94a06548efb_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a4192fc94b80d35a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a424848f63ac9fd0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a6c0810c96c01171_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/a8434f1e19ed3c0e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/aabd21cb7e1206f0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ab1853293a3f2de1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/aba398d2241742b6_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ae7cf3695caf3196_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/af4a65c9e0cb0d24_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/af58c54214fad2ca_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/b2c8d9fdd9e64158_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/b36c7c25a714c42a_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/b5d944a1478fd097_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/b6c1dfe6dfa45127_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/b90d82b707851929_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/baaf1d77f5f44a16_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bae8a145d17f6ba5_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bb9f57070a312ba0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bca9d2e17018375f_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bcb39beb3a1bbfcf_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bd5894ff5811e324_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/bf66e016672d80e1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c0fc4b69c97bf1f8_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c1f5b335c9d30815_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c2468f72798662dd_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c250ea1328488efd_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c2fd28a5acd51f4d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c3152e22d4cb4fa4_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c4858d1835b55204_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c69ca74ec8564ab1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c6af3ea1931826c1_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c7055b5306338733_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c7cc83da2f6dea72_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c7f6c0dffbbfd565_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c83138a703e48884_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/c9fe8e4815b6ec15_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ca6c8e748474fa09_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ca736a5ea0e99bb8_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ca81233afac41835_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/cad9d43acf2d2add_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/cb0e24e309e2bd07_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/cb191b9603188912_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ce2eefd7060ea3b3_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ceefbe8700bb9e70_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d19c041b85d08326_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d1b68eb97aa85af5_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d35e46c9cdf61ab2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d43b4b6538aa4b91_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d4b8d30ba9f1036d_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/d571702493d578fd_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/dbb4410c726a15e2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/dc46a85b03c9fb07_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/dd189fc17927491b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/dd314a8b0cc0743b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/e00dd52430e12f32_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/e021f4ad8312c0a2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/e22ad3b798110108_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/e8dcb8216aedd86c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ea8c781dacc2c507_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/eb313d2387c201e2_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ec2f1fe9b8d36670_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/ee2014f3f6321234_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/eff9f4869437cc81_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f11022872d2c17b8_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f25d3d9556555be0_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f28a19a5612c38dd_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f2cebf96d8691117_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f45df6c56cf681a5_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f5251b059d12c65e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f56798dbb0336628_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f75e151f1345671e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f888822da7241f0c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/f96066627c8c466b_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/facb857bcd848583_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/fb27adc46734ebc7_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/fe2674c1ed860b07_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/fe28692fd305e97c_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/fe41735a47891d5e_0
+ create mode 100644 whatsapp-session/session/Default/Cache/Cache_Data/fec71f37eb2948d3_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/03f3e83d337113dd_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/06f41ca9b749f6a7_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/0aa755f1a91ee1c6_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/0b299354a92cb063_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/0b94ac94b4018bbf_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/136f328d95bc9a59_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/19052c565aef12a7_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/20a8d1d78917dec8_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/215687a2e8d1408f_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/2610c77ad39f2b33_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/2829cad379402f12_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/28e7089350dd42f7_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/2b8e5a504843b414_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/2bb799eeee0fc010_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/2f086476febd53c9_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/35754ea85a3aac33_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/39304c44fd8beb6f_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/3a4d0d19250899a2_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/3dd8e6fb3b60d029_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/3eb035ceea9941f1_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/4c2018009ea20ff0_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/515df0fcc5b97af8_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/5415e1b86034cfc2_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/54b957ae249d25d3_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/58260dab98856f91_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/5bb5cf2ea02bfdda_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/5e3adb1e57f8161e_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/61fe08311e17a514_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/6375f6825f9b8948_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/643754676a9f9785_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/648c78f321cb518d_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/67758001b90902d2_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/6e0c865ac369fb81_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/7272dc6dddc4ccc5_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/73c8ca28bf1d4e48_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/742192c7bc3fa187_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/803c12f1d501347e_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/82a4b94b4e779c82_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/82d909240645c2ef_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/83da39f733fa5730_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/87a782a7947183a8_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/8e8dcd91d61871cf_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/908c354c4b1323cf_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/91a190aa2d60f19f_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/924831b019611e89_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/96b827ba6d37f946_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/9be56df394901765_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/9ce98bbb0633f2dd_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/9d4034e03be90075_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/a50a486c32dcdd34_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/a718cf8ac23d9d58_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/a728b86958f85f53_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/a9ad7769e08233ae_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/aa981d1279f26fee_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/abf6aa21e5805dd7_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/aeef30f749fcabcf_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/afeff1c925e607a1_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b08bb91703aa9406_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b23c78677209eac8_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b415213c9e88c358_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b5148cff3d506d33_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b7112a2ffd4ba052_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/b758e856a3bead4d_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c0ac8be1ac65785c_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c18604019296edbe_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c260a92d6ed6b11d_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c422fab157df27ea_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c5f241ee6157498a_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c60d4340fdc21065_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/c9f6e2c060f72f80_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/cc119928a422c09e_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/d22f196fc5af7c91_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/d49117b0dab545ad_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/d84bcd98d38e6ad6_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/d9df6f1dd6170423_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/da0cd73095fc82f3_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/db5aa59531ff6242_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/dc4b61b3c3a02f90_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/e51456664be2a660_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/e72c5d5376a7cd38_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/e7e6c1b53880f46f_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/f21018e12de967ba_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/f29073c13a04d554_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/f645e81fd7cc63e7_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/fa9e163c829c459b_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/fbf50b10b1c45de2_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/fc7814b6e93ff6ab_0
+ create mode 100644 whatsapp-session/session/Default/Code Cache/js/fce0a8b202c32b99_0
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000985.log
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000989.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000998.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000999.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001001.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001003.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001004.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001005.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001006.ldb
+ delete mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001007.ldb
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000996.ldb => 001522.ldb} (62%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000997.ldb => 001523.ldb} (62%)
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001575.log
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001579.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001580.ldb
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000990.ldb => 001581.ldb} (52%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000991.ldb => 001582.ldb} (68%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000992.ldb => 001583.ldb} (63%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000993.ldb => 001584.ldb} (63%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000994.ldb => 001585.ldb} (58%)
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{000995.ldb => 001586.ldb} (54%)
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001587.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001588.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001589.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001590.ldb
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{001000.ldb => 001591.ldb} (51%)
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001592.ldb
+ rename whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/{001002.ldb => 001593.ldb} (70%)
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001594.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001595.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001596.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001597.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001598.ldb
+ create mode 100644 whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/001599.ldb
+ delete mode 100644 whatsapp-session/session/Default/Local Storage/leveldb/000007.log
+ delete mode 100644 whatsapp-session/session/Default/Local Storage/leveldb/000008.ldb
+ create mode 100644 whatsapp-session/session/Default/Local Storage/leveldb/000029.log
+ create mode 100644 whatsapp-session/session/Default/Local Storage/leveldb/000031.ldb
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/06ff214fc4a7a07c_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/12901e2ce0c7bd66_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/1ae5cfeab5eeb4a7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/1ec7065fa396c372_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/35d00d21a3dbde11_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/5185d402a0128ae9_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/5649be948d29998e_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/59fe55067ae76008_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/5ee4b5d48ab2673d_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/5f99fd10d0dd1d36_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/6a6e2681c5e535f4_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/788d68b7a16335e7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/79b5cd670fa2ec47_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/7aca1dc4b3504c9b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/8b77f8c5b93fb51d_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/a74633d42f3cefe9_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/ac9465f4a515e7cb_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/ca7f36b44ee2156e_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/cad52f0a69026af6_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/d6294b740d70e79f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/e7a7002f8b4d0bd7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/ee8d73a8e75795b8_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/f3fd0c1f57d43f82_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9ba3d16a-da8d-4326-bcc8-f29110622ad8/f924b0e4ecbb1556_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/05e1b73f7b1dfb6b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/085913faa4989126_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/0bf58889fa2c235f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/0d21b6b9e32e1545_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/0dc9022bc10e2614_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/0e4c63de500cd8db_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/0e9a782bba9be420_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/105b2a5183c59120_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/11c4d89be50a8203_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/13ae3f73df1dd18c_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/13e5035c9a5b21cc_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/14562a6b449cd66a_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/14acb633a2e80fb7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/18e250896ab423c4_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/198a9524364ecd6e_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/19f1837f6f640670_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/2048ead883929eaf_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/22654701a92dd86b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/2b4776a229f65698_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/2caa47bd62de0e94_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/2cf209c9c7e3e414_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/323863830f10febc_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3348a4b9d48653f4_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/350cd5b1b6f22893_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3904ad8df1b2845b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/39794e966a4d76a9_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/397f9f1f8d93ba97_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3adb1c48317a2a44_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3ca83de22d70ab09_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3cb05c7af174f6f6_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3cb9f1858ed56d01_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3e2b39976283fae2_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/3e2b80b6035246f1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/4037aea92a10193d_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/430a5e3d66623e49_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/44b0d6227b12b319_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/46775b37ae6e59fb_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/4737045f60d84cac_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/489634ed7ab8505f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/4a3089fca6defa46_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/4f2c4df7d1d714d5_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/50e538f32196f90c_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/51b1a4604bb10b7b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/524d14f8cf379ce1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/538a60955ff58cfe_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/5419c6a9f4b21859_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/554ab5764bccf703_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/55e6d0f674afe5dd_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/5f0bc6daba98c4c1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/64418ee5db4fa7ec_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/64a4c3cf949c8aac_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/66925ec7b4731236_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/68139a48d9d42649_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/69eeaea0987f4330_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/6ae42f0708f7da3c_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/6b5ace3f01508b50_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/6d81d7cb0722bd72_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/778869577f4ac282_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/7a8cd8250d9935a7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/7f6d647e6ba7d3d2_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/7fc9417175dae3c5_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/8038eb6c1be476a5_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/80594f5257f35a07_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/82f288f7174afaed_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/8734094e14060589_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/8a245ce754ae4921_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/8a3999c2d18267a0_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/8de644b61486a601_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/90d4e0384aed50db_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/911a8e0ab548d1bf_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/947ab4fb15111de1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/950f834395fce957_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/983c259dde43bd7f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/98b570b280139f01_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/9a4b266306e64c70_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/9e7d825a3d3628b3_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/a20cdfb8aff724ce_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/a2db022cf5a6a160_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/a41aae41c26a99b1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/a7d92fa55ee12219_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ab8cebae22748b23_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/acf7ba403a1a8729_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ae3950c0db4aab19_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/b513a5e5fb3b1940_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/b5bd734cd2e463d6_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/b9b4712233da66aa_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ba94904d20def5d1_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ba9631ec23b937bf_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/bb523cdc9f8c9a86_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/c55f4e59bedf94b7_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/c79266b3d31c5811_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/c8b9e3fe2be733f4_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/c8c8b7e7ad65193a_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/cdc0979a1205e7ea_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/cf5916235b338314_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/cf82fde51ec9db3a_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/d30eac1912170089_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/da4c7eb0fb904645_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/db4ba3d2cffcca61_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/de95fd2890750ee2_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/e2f5a3f5d702d008_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/e578b8440b7619ca_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/e75b976af2a94f2b_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ee5de387aa66b52c_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ee850c09645fc548_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/eecd79d994cb1c95_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/eef8ea13aa5f0fd6_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/ef6c8cd09efa6d6f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/f117bad274bf2158_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/f473afdb4cb2e90f_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/f50bef62419818cc_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/f94ecec8c04829b2_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/fa06bc89097f4797_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/fac84d7ffd09e495_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/fb137015b83c7b36_0
+ create mode 100644 whatsapp-session/session/Default/Service Worker/CacheStorage/0bf6ab7f94a21cdc9c1649f884333ec20f40a544/9d8d0763-3212-43f4-837b-16638e18fc30/fce345e8024fc352_0
+ rename whatsapp-session/session/Default/Service Worker/ScriptCache/{7b4fd8111178d5b1_0 => b3bd0d67f800d222_0} (67%)
+ rename whatsapp-session/session/Default/Service Worker/ScriptCache/{7b4fd8111178d5b1_1 => b3bd0d67f800d222_1} (78%)
+ rename whatsapp-session/session/Default/Service Worker/ScriptCache/{08b99d499107ba17_0 => e0d37c7e54672663_0} (96%)
+ rename whatsapp-session/session/Default/Service Worker/ScriptCache/{08b99d499107ba17_1 => e0d37c7e54672663_1} (65%)
+ delete mode 100644 whatsapp-session/session/Default/Sessions/Tabs_13422594139493186
+ rename whatsapp-session/session/Default/Sessions/{Tabs_13422595931466782 => Tabs_13422663977068994} (51%)
+ create mode 100644 whatsapp-session/session/Default/Sessions/Tabs_13422664934792629
+ create mode 100644 whatsapp-session/session/Default/VideoDecodeStats/LOG.old
+ delete mode 100644 whatsapp-session/session/component_crx_cache/ggkkehgbnfjpeggfpleeakpidbkibbmn_1.352899fdf24f33f296c534d9530c5c638e7d3d90228cb9c90a069c240759d84b
+ create mode 100644 whatsapp-session/session/component_crx_cache/ggkkehgbnfjpeggfpleeakpidbkibbmn_1.424b6ad118cb8cfed30da47611514c22962e0b0455c1787c0ff580225c5046be
+ rename whatsapp-session/session/component_crx_cache/{hfnkpimlhhgieaddgfemjhofmfblmnib_1.7c2935e9d5bfaf272b9a5d94e7abea4963081d3fba0d3cb425da9d848669a6b8 => hfnkpimlhhgieaddgfemjhofmfblmnib_1.3ef26bab15f516e7234cc4ad75c554fab0fdde539197cd22a37a3689aaae2266} (91%)
+remote: warning: See https://gh.io/lfs for more information.        
+remote: warning: File public/downloads/SistemaChaveiro-Setup.exe is 95.12 MB; this is larger than GitHub's recommended maximum file size of 50.00 MB        
+remote: warning: GH001: Large files detected. You may want to try Git Large File Storage - https://git-lfs.github.com.        
+To https://github.com/tvsxgames/chaveiro-system.git
+   78febb8..03216d9  main -> main
+[2026-05-08 00:00] Backup enviado ao GitHub com sucesso
