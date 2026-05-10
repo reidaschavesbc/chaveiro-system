@@ -27,6 +27,16 @@ app.get('/download', (req, res) => {
   }
 });
 
+// Download do app Android (público)
+app.get('/download-app', (req, res) => {
+  const localFile = path.join(__dirname, 'public/downloads/ChaveiroOS.apk');
+  if (fs.existsSync(localFile)) {
+    res.download(localFile, 'ChaveiroOS.apk');
+  } else {
+    res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/ChaveiroOS.apk');
+  }
+});
+
 app.get('/api/version', (req, res) => {
   const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
   res.json({ version });
@@ -34,6 +44,7 @@ app.get('/api/version', (req, res) => {
 
 // Public routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/app', require('./routes/app-mobile').router);
 
 // Protected routes
 app.use('/api/clientes', auth, require('./routes/clientes'));
@@ -53,6 +64,9 @@ app.use('/api/lembretes', auth, require('./routes/lembretes'));
 app.use('/api/pedidos', auth, require('./routes/pedidos').router);
 app.use('/api/consumo', auth, require('./routes/consumo'));
 app.use('/api/vales', auth, require('./routes/vales'));
+app.use('/api/usuarios', auth, require('./routes/usuarios'));
+app.use('/api/lojas', auth, require('./routes/lojas'));
+app.use('/api/estoque', auth, require('./routes/estoque').router);
 
 // Config endpoint
 const db = require('./database/db');
@@ -402,6 +416,7 @@ app.get('/api/cep/:cep', (req, res) => {
 
 // Fallback to SPA
 app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // Global error handler — sempre retorna JSON (nunca HTML)

@@ -377,6 +377,69 @@ function migrate() {
     );
   `);
 
+  // Lojas e multi-usuário
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS lojas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
+  // Migrations seguras — adiciona loja_id em todas as tabelas operacionais
+  const addCol = (tabela, col, def = 'INTEGER') => {
+    const cols = db.pragma(`table_info(${tabela})`).map(c => c.name);
+    if (!cols.includes(col)) db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${col} ${def}`);
+  };
+
+  addCol('usuarios',             'loja_id',  'INTEGER REFERENCES lojas(id)');
+  addCol('usuarios',             'principal','INTEGER NOT NULL DEFAULT 0');
+  addCol('clientes',             'loja_id',  'INTEGER');
+  addCol('clientes_autorizados', 'loja_id',  'INTEGER');
+  addCol('produtos',             'loja_id',  'INTEGER');
+  addCol('tipos_servico',        'loja_id',  'INTEGER');
+  addCol('vendedores',           'loja_id',  'INTEGER');
+  addCol('ordens_servico',       'loja_id',  'INTEGER');
+  addCol('vendas',               'loja_id',  'INTEGER');
+  addCol('gastos',               'loja_id',  'INTEGER');
+  addCol('vales',                'loja_id',  'INTEGER');
+  addCol('fechamentos_comissao', 'loja_id',  'INTEGER');
+  addCol('lembretes',            'loja_id',  'INTEGER');
+  addCol('pedidos_compra',       'loja_id',  'INTEGER');
+  addCol('orcamentos',           'loja_id',  'INTEGER');
+  addCol('movimentacoes_estoque','loja_id',  'INTEGER');
+
+  // App mobile — funcionários
+  addCol('vendedores', 'email',           'TEXT');
+  addCol('vendedores', 'senha',           'TEXT');
+  addCol('vendedores', 'expo_push_token', 'TEXT');
+
+  // Estoque por sub-usuário
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS estoque_usuario (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL,
+      produto_id INTEGER NOT NULL,
+      loja_id INTEGER NOT NULL,
+      quantidade INTEGER NOT NULL DEFAULT 0,
+      UNIQUE(usuario_id, produto_id)
+    );
+    CREATE TABLE IF NOT EXISTS pedidos_estoque (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loja_id INTEGER NOT NULL,
+      solicitante_id INTEGER NOT NULL,
+      produto_id INTEGER NOT NULL,
+      quantidade INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pendente',
+      observacao TEXT,
+      respondido_por INTEGER,
+      resposta TEXT,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      respondido_em TEXT
+    );
+  `);
+
   // Default config
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('empresa_nome', 'Chaveiro')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('empresa_telefone', '')").run();

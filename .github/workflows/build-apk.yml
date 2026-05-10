@@ -1,0 +1,59 @@
+name: Build e Publicar APK Android
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Instalar dependências do app
+        working-directory: mobile-app
+        run: npm ci
+
+      - name: Substituir URL do servidor
+        working-directory: mobile-app
+        run: sed -i "s|SERVER_URL_PLACEHOLDER|${{ secrets.SERVER_URL }}|g" services/api.js
+
+      - name: Gerar projeto Android nativo
+        working-directory: mobile-app
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: Permissão Gradle
+        working-directory: mobile-app/android
+        run: chmod +x gradlew
+
+      - name: Build APK
+        working-directory: mobile-app/android
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          JAVA_TOOL_OPTIONS: "-Xmx4g"
+
+      - name: Renomear APK
+        run: mv mobile-app/android/app/build/outputs/apk/release/app-release.apk ChaveiroOS.apk
+
+      - name: Enviar APK para o servidor
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "ChaveiroOS.apk"
+          target: "/root/chaveiro-system/public/downloads/"
