@@ -42,12 +42,12 @@ jobs:
 
       - name: Build APK
         working-directory: mobile-app/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
         env:
           JAVA_TOOL_OPTIONS: "-Xmx4g"
 
       - name: Renomear APK
-        run: mv mobile-app/android/app/build/outputs/apk/release/app-release.apk ChaveiroOS.apk
+        run: mv mobile-app/android/app/build/outputs/apk/debug/app-debug.apk ChaveiroOS.apk
 
       - name: Enviar APK para o servidor
         uses: appleboy/scp-action@v0.1.7
