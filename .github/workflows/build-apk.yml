@@ -36,6 +36,10 @@ jobs:
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
 
+      - name: Fixar versão do Gradle para 8.10.2
+        working-directory: mobile-app/android
+        run: sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip|' gradle/wrapper/gradle-wrapper.properties
+
       - name: Permissão Gradle
         working-directory: mobile-app/android
         run: chmod +x gradlew
