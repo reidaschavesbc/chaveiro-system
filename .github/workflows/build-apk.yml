@@ -36,11 +36,6 @@ jobs:
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Adicionar repositório Maven para AsyncStorage
-        working-directory: mobile-app/android
-        run: |
-          sed -i '/maven { url "https:\/\/www.jitpack.io" }/a\            maven { url "https://pkgs.dev.azure.com/asyncstorage/asyncstorage/_packaging/asyncstorage/maven/v1/index.json" }' settings.gradle
-
       - name: Permissão Gradle
         working-directory: mobile-app/android
         run: chmod +x gradlew
