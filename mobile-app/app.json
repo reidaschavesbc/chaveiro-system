@@ -21,7 +21,11 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "com.chaveiro.os",
-      "permissions": ["NOTIFICATIONS", "RECEIVE_BOOT_COMPLETED", "VIBRATE"]
+      "permissions": [
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
     "plugins": [
       [
@@ -35,8 +39,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "SEU_PROJECT_ID_AQUI"
+        "projectId": "7d16350f-015f-460a-bcab-40ea4bad4d12"
       }
-    }
+    },
+    "owner": "marciodsl"
   }
 }
