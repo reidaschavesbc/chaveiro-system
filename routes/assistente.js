@@ -3,6 +3,7 @@ const db = require('../database/db')
 const Anthropic = require('@anthropic-ai/sdk')
 const { verificarEstoqueBaixo } = require('./pedidos')
 const { executarFechamento: _fecharComissoes, MESES } = require('./comissoes')
+const { ajustarEstoqueUsuario, getQtdUsuario } = require('./estoque')
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -344,50 +345,50 @@ const tools = [
 
 // ─── Executors — Consultas ────────────────────────────────────────────────────
 
-function executarResumoGeral() {
+function executarResumoGeral(lojaId) {
   const hoje = new Date().toLocaleDateString('en-CA')
   const mes = hoje.slice(0, 7)
 
   const osConcluídasHoje = db.prepare(`
     SELECT COUNT(*) as c, COALESCE(SUM(valor), 0) as total
-    FROM ordens_servico WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?
-  `).get(hoje)
+    FROM ordens_servico WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?
+  `).get(hoje, lojaId)
 
   const vendasHoje = db.prepare(`
     SELECT COUNT(*) as c, COALESCE(SUM(total_final), 0) as total
-    FROM vendas WHERE date(data) = ? AND status != 'cancelada'
-  `).get(hoje)
+    FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?
+  `).get(hoje, lojaId)
 
-  const osAbertas = db.prepare(`SELECT COUNT(*) as c FROM ordens_servico WHERE status IN ('aberta', 'em_andamento')`).get()
+  const osAbertas = db.prepare(`SELECT COUNT(*) as c FROM ordens_servico WHERE status IN ('aberta', 'em_andamento') AND loja_id = ?`).get(lojaId)
 
   const aReceberTotal = db.prepare(`
     SELECT COUNT(*) as c, COALESCE(SUM(valor - valor_pago), 0) as total
-    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0
-  `).get()
+    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND loja_id = ?
+  `).get(lojaId)
 
   const aReceberVencido = db.prepare(`
     SELECT COUNT(*) as c, COALESCE(SUM(valor - valor_pago), 0) as total
-    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ?
-  `).get(hoje)
+    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ? AND loja_id = ?
+  `).get(hoje, lojaId)
 
-  const estoqueBaixo = db.prepare(`SELECT COUNT(*) as c FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo`).get()
+  const estoqueBaixo = db.prepare(`SELECT COUNT(*) as c FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ?`).get(lojaId)
 
-  const gastosMes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE strftime('%Y-%m', data) = ?`).get(mes)
+  const gastosMes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total FROM gastos WHERE strftime('%Y-%m', data) = ? AND loja_id = ?`).get(mes, lojaId)
 
   const fatMesOS = db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total FROM ordens_servico
-    WHERE status = 'concluida' AND strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ?
-  `).get(mes)
+    WHERE status = 'concluida' AND strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?
+  `).get(mes, lojaId)
 
   const fatMesVendas = db.prepare(`
     SELECT COALESCE(SUM(total_final), 0) as total FROM vendas
-    WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada'
-  `).get(mes)
+    WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?
+  `).get(mes, lojaId)
 
   const faturamentoMes = fatMesOS.total + fatMesVendas.total
 
-  const pedidosPendentes = db.prepare(`SELECT COUNT(*) as c FROM pedidos_compra WHERE status = 'pendente'`).get()
-  const lembretesPendentes = db.prepare(`SELECT COUNT(*) as c FROM lembretes WHERE status = 'pendente' AND date(data_envio) <= ?`).get(hoje)
+  const pedidosPendentes = db.prepare(`SELECT COUNT(*) as c FROM pedidos_compra WHERE status = 'pendente' AND loja_id = ?`).get(lojaId)
+  const lembretesPendentes = db.prepare(`SELECT COUNT(*) as c FROM lembretes WHERE status = 'pendente' AND date(data_envio) <= ? AND loja_id = ?`).get(hoje, lojaId)
 
   return {
     hoje,
@@ -412,11 +413,11 @@ function executarResumoGeral() {
   }
 }
 
-function executarFechamentoCaixa({ periodo, data_inicio, data_fim }) {
+function executarFechamentoCaixa({ periodo, data_inicio, data_fim }, lojaId) {
   const { di, df } = getDateRange(periodo, data_inicio, data_fim)
 
-  const whereV = `v.status != 'cancelada' AND date(v.data) BETWEEN '${di}' AND '${df}'`
-  const whereO = `os.status = 'concluida' AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN '${di}' AND '${df}'`
+  const whereV = `v.status != 'cancelada' AND date(v.data) BETWEEN '${di}' AND '${df}' AND v.loja_id = ${lojaId}`
+  const whereO = `os.status = 'concluida' AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN '${di}' AND '${df}' AND os.loja_id = ${lojaId}`
 
   const vendas = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(v.total_final), 0) as total FROM vendas v WHERE ${whereV}`).get()
   const ordens = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(os.valor), 0) as total FROM ordens_servico os WHERE ${whereO}`).get()
@@ -437,7 +438,7 @@ function executarFechamentoCaixa({ periodo, data_inicio, data_fim }) {
   }
 }
 
-function executarBuscarOS({ numero, cliente_nome, status, limite = 10 } = {}) {
+function executarBuscarOS({ numero, cliente_nome, status, limite = 10 } = {}, lojaId) {
   let sql = `
     SELECT os.id, os.numero, os.descricao, os.valor, os.valor_pago, os.status,
            os.data_entrada, os.data_prevista, os.data_conclusao,
@@ -447,8 +448,8 @@ function executarBuscarOS({ numero, cliente_nome, status, limite = 10 } = {}) {
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN vendedores v ON os.vendedor_id = v.id
-    WHERE 1=1`
-  const params = []
+    WHERE os.loja_id = ?`
+  const params = [lojaId]
 
   if (numero) { sql += ` AND os.numero LIKE ?`; params.push(`%${numero}%`) }
   if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`) }
@@ -461,7 +462,7 @@ function executarBuscarOS({ numero, cliente_nome, status, limite = 10 } = {}) {
   return { ordens: rows, quantidade: rows.length }
 }
 
-function executarCobrancasAbertas({ cliente_nome } = {}) {
+function executarCobrancasAbertas({ cliente_nome } = {}, lojaId) {
   let sql = `
     SELECT os.numero, os.descricao, os.valor, os.data_entrada, os.data_prevista, os.status,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
@@ -469,8 +470,8 @@ function executarCobrancasAbertas({ cliente_nome } = {}) {
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN vendedores v ON os.vendedor_id = v.id
-    WHERE os.status IN ('aberta', 'em_andamento')`
-  const params = []
+    WHERE os.status IN ('aberta', 'em_andamento') AND os.loja_id = ?`
+  const params = [lojaId]
   if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`) }
   sql += ` ORDER BY os.data_prevista ASC, os.data_entrada DESC LIMIT 50`
 
@@ -478,12 +479,12 @@ function executarCobrancasAbertas({ cliente_nome } = {}) {
   return { cobrancas: rows, total_em_aberto: rows.reduce((s, r) => s + (r.valor || 0), 0), quantidade: rows.length }
 }
 
-function executarHistoricoCliente({ cliente_nome }) {
-  const cliente = db.prepare(`SELECT * FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${cliente_nome}%`)
+function executarHistoricoCliente({ cliente_nome }, lojaId) {
+  const cliente = db.prepare(`SELECT * FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, lojaId)
   if (!cliente) return { encontrado: false, mensagem: `Nenhum cliente encontrado com "${cliente_nome}"` }
 
-  const ordens = db.prepare(`SELECT numero, descricao, valor, valor_pago, status, data_entrada, data_conclusao, forma_pagamento FROM ordens_servico WHERE cliente_id = ? ORDER BY data_entrada DESC LIMIT 20`).all(cliente.id)
-  const vendas = db.prepare(`SELECT numero, total_final, status, data FROM vendas WHERE cliente_id = ? AND status != 'cancelada' ORDER BY data DESC LIMIT 20`).all(cliente.id)
+  const ordens = db.prepare(`SELECT numero, descricao, valor, valor_pago, status, data_entrada, data_conclusao, forma_pagamento FROM ordens_servico WHERE cliente_id = ? AND loja_id = ? ORDER BY data_entrada DESC LIMIT 20`).all(cliente.id, lojaId)
+  const vendas = db.prepare(`SELECT numero, total_final, status, data FROM vendas WHERE cliente_id = ? AND status != 'cancelada' AND loja_id = ? ORDER BY data DESC LIMIT 20`).all(cliente.id, lojaId)
 
   const totalGasto =
     vendas.reduce((s, v) => s + v.total_final, 0) +
@@ -495,24 +496,24 @@ function executarHistoricoCliente({ cliente_nome }) {
   return { encontrado: true, cliente: { nome: cliente.nome, telefone: cliente.telefone }, ordens, vendas, total_gasto: totalGasto, total_em_aberto: emAberto }
 }
 
-function executarEstoqueBaixo() {
-  const rows = db.prepare(`SELECT nome, codigo, estoque, estoque_minimo, preco_venda, unidade FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo ORDER BY (estoque_minimo - estoque) DESC`).all()
+function executarEstoqueBaixo(lojaId) {
+  const rows = db.prepare(`SELECT nome, codigo, estoque, estoque_minimo, preco_venda, unidade FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ? ORDER BY (estoque_minimo - estoque) DESC`).all(lojaId)
   return { produtos: rows, quantidade: rows.length }
 }
 
-function executarBuscarProduto({ busca }) {
-  const rows = db.prepare(`SELECT nome, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade FROM produtos WHERE ativo = 1 AND (norm(nome) LIKE norm(?) OR norm(codigo) LIKE norm(?)) ORDER BY nome LIMIT 10`).all(`%${busca}%`, `%${busca}%`)
+function executarBuscarProduto({ busca }, lojaId) {
+  const rows = db.prepare(`SELECT nome, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade FROM produtos WHERE ativo = 1 AND loja_id = ? AND (norm(nome) LIKE norm(?) OR norm(codigo) LIKE norm(?)) ORDER BY nome LIMIT 10`).all(lojaId, `%${busca}%`, `%${busca}%`)
   return { produtos: rows, quantidade: rows.length }
 }
 
-function executarAReceberPendente({ apenas_vencidas } = {}) {
+function executarAReceberPendente({ apenas_vencidas } = {}, lojaId) {
   const hoje = new Date().toLocaleDateString('en-CA')
   let sql = `
     SELECT os.numero, os.valor, os.valor_pago, os.data_vencimento,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
-    WHERE os.a_receber = 1 AND os.a_receber_pago = 0`
+    WHERE os.a_receber = 1 AND os.a_receber_pago = 0 AND os.loja_id = ${lojaId}`
   if (apenas_vencidas) sql += ` AND (os.data_vencimento IS NULL OR os.data_vencimento <= '${hoje}')`
   sql += ` ORDER BY os.data_vencimento ASC`
 
@@ -528,16 +529,16 @@ function executarAReceberPendente({ apenas_vencidas } = {}) {
   }
 }
 
-function executarGastosPeriodo({ periodo, categoria, data_inicio, data_fim }) {
+function executarGastosPeriodo({ periodo, categoria, data_inicio, data_fim }, lojaId) {
   const { di, df } = getDateRange(periodo, data_inicio, data_fim)
-  let sql = `SELECT * FROM gastos WHERE date(data) BETWEEN ? AND ?`
-  const params = [di, df]
+  let sql = `SELECT * FROM gastos WHERE date(data) BETWEEN ? AND ? AND loja_id = ?`
+  const params = [di, df, lojaId]
   if (categoria) { sql += ` AND categoria = ?`; params.push(categoria) }
   sql += ` ORDER BY data DESC`
 
   const gastos = db.prepare(sql).all(...params)
-  let catSql = `SELECT categoria, COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE date(data) BETWEEN ? AND ?`
-  const catParams = [di, df]
+  let catSql = `SELECT categoria, COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE date(data) BETWEEN ? AND ? AND loja_id = ?`
+  const catParams = [di, df, lojaId]
   if (categoria) { catSql += ` AND categoria = ?`; catParams.push(categoria) }
   catSql += ` GROUP BY categoria ORDER BY total DESC`
 
@@ -549,9 +550,9 @@ function executarGastosPeriodo({ periodo, categoria, data_inicio, data_fim }) {
   }
 }
 
-function executarDesempenhoVendedor({ periodo, vendedor_nome }) {
+function executarDesempenhoVendedor({ periodo, vendedor_nome }, lojaId) {
   const { di, df } = getDateRange(periodo)
-  const where = `os.status = 'concluida' AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN '${di}' AND '${df}'`
+  const where = `os.status = 'concluida' AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN '${di}' AND '${df}' AND os.loja_id = ${lojaId}`
   let sql = `
     SELECT v.nome, v.percentual_comissao, v.salario_base, v.meta, v.bonus_meta,
            COUNT(os.id) as qtd_os,
@@ -559,8 +560,8 @@ function executarDesempenhoVendedor({ periodo, vendedor_nome }) {
            COALESCE(SUM(os.valor * v.percentual_comissao / 100.0), 0) as comissao_estimada
     FROM vendedores v
     LEFT JOIN ordens_servico os ON os.vendedor_id = v.id AND ${where}
-    WHERE v.ativo = 1`
-  const params2 = []
+    WHERE v.ativo = 1 AND v.loja_id = ?`
+  const params2 = [lojaId]
   if (vendedor_nome) { sql += ` AND norm(v.nome) LIKE norm(?)`; params2.push(`%${vendedor_nome}%`) }
   sql += ` GROUP BY v.id ORDER BY total_os DESC`
   const vendedores = db.prepare(sql).all(...params2).map(v => ({
@@ -570,30 +571,30 @@ function executarDesempenhoVendedor({ periodo, vendedor_nome }) {
   return { periodo, data_inicio: di, data_fim: df, vendedores }
 }
 
-function executarResultadoLiquido({ periodo, data_inicio, data_fim }) {
+function executarResultadoLiquido({ periodo, data_inicio, data_fim }, lojaId) {
   const { di, df } = getDateRange(periodo, data_inicio, data_fim)
 
   // Faturamento OS concluídas
   const fatOS = db.prepare(`
     SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd
     FROM ordens_servico
-    WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) BETWEEN ? AND ?
-  `).get(di, df)
+    WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) BETWEEN ? AND ? AND loja_id = ?
+  `).get(di, df, lojaId)
 
   // Faturamento Vendas
   const fatVendas = db.prepare(`
     SELECT COALESCE(SUM(total_final), 0) as total, COUNT(*) as qtd
-    FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada'
-  `).get(di, df)
+    FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada' AND loja_id = ?
+  `).get(di, df, lojaId)
 
   const faturamento_bruto = fatOS.total + fatVendas.total
 
   // Gastos por categoria
   const gastos = db.prepare(`
     SELECT categoria, COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd
-    FROM gastos WHERE date(data) BETWEEN ? AND ?
+    FROM gastos WHERE date(data) BETWEEN ? AND ? AND loja_id = ?
     GROUP BY categoria ORDER BY total DESC
-  `).all(di, df)
+  `).all(di, df, lojaId)
   const total_gastos = gastos.reduce((s, g) => s + g.total, 0)
 
   // Todos os funcionários ativos com comissão, salário, meta e bônus no período
@@ -606,18 +607,19 @@ function executarResultadoLiquido({ periodo, data_inicio, data_fim }) {
     LEFT JOIN ordens_servico os ON os.vendedor_id = v.id
         AND os.status = 'concluida'
         AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ?
-    WHERE v.ativo = 1
+        AND os.loja_id = ?
+    WHERE v.ativo = 1 AND v.loja_id = ?
     GROUP BY v.id
     ORDER BY v.nome
-  `).all(di, df)
+  `).all(di, df, lojaId, lojaId)
 
   const valesMap = {}
   db.prepare(`
     SELECT vd.nome as nome, COALESCE(SUM(v.valor), 0) as total
     FROM vales v JOIN vendedores vd ON vd.id = v.vendedor_id
-    WHERE date(v.data) BETWEEN ? AND ?
+    WHERE date(v.data) BETWEEN ? AND ? AND vd.loja_id = ?
     GROUP BY v.vendedor_id
-  `).all(di, df).forEach(v => { valesMap[v.nome] = v.total })
+  `).all(di, df, lojaId).forEach(v => { valesMap[v.nome] = v.total })
 
   const por_funcionario = funcionarios.map(f => {
     const bonus = (f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0
@@ -649,18 +651,18 @@ function executarResultadoLiquido({ periodo, data_inicio, data_fim }) {
   const pagosOS = db.prepare(`
     SELECT COALESCE(forma_pagamento, 'outros') as metodo, COALESCE(SUM(valor), 0) as total
     FROM ordens_servico
-    WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) BETWEEN ? AND ?
+    WHERE status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) BETWEEN ? AND ? AND loja_id = ?
     GROUP BY forma_pagamento
-  `).all(di, df)
+  `).all(di, df, lojaId)
 
   // Pagamentos Vendas por forma
   const pagosVendas = db.prepare(`
     SELECT COALESCE(pv.metodo, 'outros') as metodo, COALESCE(SUM(pv.valor), 0) as total
     FROM pagamentos_venda pv
     JOIN vendas v ON pv.venda_id = v.id
-    WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada'
+    WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?
     GROUP BY pv.metodo
-  `).all(di, df)
+  `).all(di, df, lojaId)
 
   // Merge por método
   const mapaMetodos = {}
@@ -673,8 +675,8 @@ function executarResultadoLiquido({ periodo, data_inicio, data_fim }) {
   // A receber em aberto (fora do período — é posição atual)
   const aReceber = db.prepare(`
     SELECT COUNT(*) as qtd, COALESCE(SUM(valor - COALESCE(valor_pago, 0)), 0) as total
-    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0
-  `).get()
+    FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND loja_id = ?
+  `).get(lojaId)
 
   return {
     periodo, data_inicio: di, data_fim: df,
@@ -700,15 +702,15 @@ function executarResultadoLiquido({ periodo, data_inicio, data_fim }) {
   }
 }
 
-function executarConsumoPeriodo({ periodo = 'mes', categoria, data_inicio, data_fim } = {}) {
+function executarConsumoPeriodo({ periodo = 'mes', categoria, data_inicio, data_fim } = {}, lojaId) {
   const { di, df } = getDateRange(periodo, data_inicio, data_fim)
   let sql = `
     SELECT m.id, m.quantidade, m.estoque_anterior, m.estoque_posterior, m.referencia, m.observacao, m.data,
            p.nome as produto_nome, p.unidade
     FROM movimentacoes_estoque m
     JOIN produtos p ON m.produto_id = p.id
-    WHERE m.tipo = 'consumo_interno' AND date(m.data) BETWEEN ? AND ?`
-  const params = [di, df]
+    WHERE m.tipo = 'consumo_interno' AND date(m.data) BETWEEN ? AND ? AND m.loja_id = ?`
+  const params = [di, df, lojaId]
   if (categoria) { sql += ` AND m.referencia = ?`; params.push(categoria) }
   sql += ` ORDER BY m.data DESC LIMIT 50`
 
@@ -727,57 +729,57 @@ function executarConsumoPeriodo({ periodo = 'mes', categoria, data_inicio, data_
   }
 }
 
-function executarListarPedidos({ status } = {}) {
+function executarListarPedidos({ status } = {}, lojaId) {
   const st = status || 'pendente'
   const rows = db.prepare(`
     SELECT pc.id, pc.descricao, pc.quantidade, pc.status, pc.origem, pc.criado_em,
            p.nome as produto_nome, p.estoque, p.unidade, p.estoque_minimo
     FROM pedidos_compra pc
     LEFT JOIN produtos p ON pc.produto_id = p.id
-    WHERE pc.status = ?
+    WHERE pc.status = ? AND pc.loja_id = ?
     ORDER BY pc.criado_em DESC LIMIT 50
-  `).all(st)
+  `).all(st, lojaId)
   return { pedidos: rows, quantidade: rows.length, status: st }
 }
 
-function executarListarLembretes({ status = 'pendente' } = {}) {
-  const rows = db.prepare(`SELECT * FROM lembretes WHERE status = ? ORDER BY data_envio ASC LIMIT 30`).all(status)
+function executarListarLembretes({ status = 'pendente' } = {}, lojaId) {
+  const rows = db.prepare(`SELECT * FROM lembretes WHERE status = ? AND loja_id = ? ORDER BY data_envio ASC LIMIT 30`).all(status, lojaId)
   return { lembretes: rows, quantidade: rows.length }
 }
 
 // ─── Executors — Ações ────────────────────────────────────────────────────────
 
-function executarRegistrarGasto({ descricao, valor, categoria, data, observacoes }) {
+function executarRegistrarGasto({ descricao, valor, categoria, data, observacoes }, ctx) {
   const CATS = ['material', 'combustivel', 'alimentacao', 'manutencao', 'servicos', 'outros']
   const cat = CATS.includes(categoria) ? categoria : 'outros'
   const dataGasto = data || new Date().toLocaleDateString('en-CA')
-  const result = db.prepare(`INSERT INTO gastos (descricao, valor, categoria, data, observacoes) VALUES (?, ?, ?, ?, ?)`).run(descricao.trim(), parseFloat(valor), cat, dataGasto, observacoes?.trim() || null)
+  const result = db.prepare(`INSERT INTO gastos (descricao, valor, categoria, data, observacoes, loja_id) VALUES (?, ?, ?, ?, ?, ?)`).run(descricao.trim(), parseFloat(valor), cat, dataGasto, observacoes?.trim() || null, ctx.loja_id)
   const catLabels = { material: 'Material', combustivel: 'Combustível', alimentacao: 'Alimentação', manutencao: 'Manutenção', servicos: 'Serviços', outros: 'Outros' }
   return { ok: true, status_execucao: 'CONCLUIDO', id: result.lastInsertRowid, registrado: { descricao, valor: parseFloat(valor), categoria: catLabels[cat], data: dataGasto } }
 }
 
-function executarCriarOS({ cliente_nome, cliente_avulso_nome, descricao, valor, vendedor_nome, data_prevista, a_receber, forma_pagamento, observacoes }) {
+function executarCriarOS({ cliente_nome, cliente_avulso_nome, descricao, valor, vendedor_nome, data_prevista, a_receber, forma_pagamento, observacoes }, ctx) {
   if (!descricao?.trim()) return { error: 'Descrição é obrigatória' }
 
   let cliente_id = null
   let clienteEncontrado = null
   if (cliente_nome) {
-    clienteEncontrado = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${cliente_nome}%`)
+    clienteEncontrado = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, ctx.loja_id)
     if (!clienteEncontrado) return { error: `Cliente "${cliente_nome}" não encontrado no cadastro. Se for avulso, use o campo cliente_avulso_nome.` }
     cliente_id = clienteEncontrado.id
   }
 
   let vendedor_id = null
   if (vendedor_nome) {
-    const v = db.prepare(`SELECT id, nome FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${vendedor_nome}%`)
+    const v = db.prepare(`SELECT id, nome FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${vendedor_nome}%`, ctx.loja_id)
     if (v) vendedor_id = v.id
   }
 
   const numero = gerarNumeroOS()
   const result = db.prepare(`
-    INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, descricao, valor, vendedor_id, data_prevista, a_receber, forma_pagamento, observacoes, usuario_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-  `).run(numero, cliente_id, cliente_id ? null : (cliente_avulso_nome?.trim() || null), descricao.trim(), valor || 0, vendedor_id, data_prevista || null, a_receber ? 1 : 0, forma_pagamento || null, observacoes?.trim() || null)
+    INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, descricao, valor, vendedor_id, data_prevista, a_receber, forma_pagamento, observacoes, usuario_id, loja_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(numero, cliente_id, cliente_id ? null : (cliente_avulso_nome?.trim() || null), descricao.trim(), valor || 0, vendedor_id, data_prevista || null, a_receber ? 1 : 0, forma_pagamento || null, observacoes?.trim() || null, ctx.id, ctx.loja_id)
 
   return {
     ok: true, status_execucao: 'CONCLUIDO',
@@ -787,8 +789,8 @@ function executarCriarOS({ cliente_nome, cliente_avulso_nome, descricao, valor, 
   }
 }
 
-function executarAtualizarStatusOS({ numero_os, novo_status, forma_pagamento, valor }) {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE numero = ?`).get(numero_os)
+function executarAtualizarStatusOS({ numero_os, novo_status, forma_pagamento, valor }, ctx) {
+  const os = db.prepare(`SELECT * FROM ordens_servico WHERE numero = ? AND loja_id = ?`).get(numero_os, ctx.loja_id)
   if (!os) return { error: `OS ${numero_os} não encontrada` }
 
   if (novo_status === 'a_receber') {
@@ -816,11 +818,11 @@ function executarAtualizarStatusOS({ numero_os, novo_status, forma_pagamento, va
   return { ok: true, status_execucao: 'CONCLUIDO', numero: numero_os, status_anterior: os.status, status_novo: novo_status, valor_registrado: valor || os.valor }
 }
 
-function executarRegistrarConsumoInterno({ produto_nome, quantidade, categoria, os_referencia, observacao }) {
+function executarRegistrarConsumoInterno({ produto_nome, quantidade, categoria, os_referencia, observacao }, ctx) {
   const CATS = ['erro_corte', 'garantia', 'uso_interno', 'outros']
   const cat = CATS.includes(categoria) ? categoria : 'outros'
 
-  const produto = db.prepare(`SELECT * FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${produto_nome}%`)
+  const produto = db.prepare(`SELECT * FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${produto_nome}%`, ctx.loja_id)
   if (!produto) return { error: `Produto "${produto_nome}" não encontrado no cadastro` }
   if (produto.estoque < quantidade) return { error: `Estoque insuficiente para "${produto.nome}". Disponível: ${produto.estoque} ${produto.unidade}` }
 
@@ -829,59 +831,59 @@ function executarRegistrarConsumoInterno({ produto_nome, quantidade, categoria, 
 
   db.prepare(`UPDATE produtos SET estoque = ? WHERE id = ?`).run(novoEstoque, produto.id)
   db.prepare(`
-    INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-    VALUES (?, 'consumo_interno', ?, ?, ?, ?, ?, 1)
-  `).run(produto.id, quantidade, produto.estoque, novoEstoque, cat, obs)
+    INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id)
+    VALUES (?, 'consumo_interno', ?, ?, ?, ?, ?, ?, ?)
+  `).run(produto.id, quantidade, produto.estoque, novoEstoque, cat, obs, ctx.id, ctx.loja_id)
 
   verificarEstoqueBaixo(produto.id)
 
   return { ok: true, status_execucao: 'CONCLUIDO', produto: produto.nome, quantidade, estoque_anterior: produto.estoque, estoque_atual: novoEstoque, unidade: produto.unidade }
 }
 
-function executarCriarLembrete({ mensagem, data_hora, destinatarios }) {
+function executarCriarLembrete({ mensagem, data_hora, destinatarios }, ctx) {
   if (!mensagem?.trim()) return { error: 'Mensagem é obrigatória' }
   if (!data_hora) return { error: 'Data/hora é obrigatória' }
 
   let dest = 'todos'
   if (destinatarios && destinatarios !== 'todos') {
-    const v = db.prepare(`SELECT id FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${destinatarios}%`)
+    const v = db.prepare(`SELECT id FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${destinatarios}%`, ctx.loja_id)
     if (v) dest = String(v.id)
   }
 
-  const r = db.prepare(`INSERT INTO lembretes (mensagem, data_envio, destinatarios) VALUES (?, ?, ?)`).run(mensagem.trim(), data_hora, dest)
+  const r = db.prepare(`INSERT INTO lembretes (mensagem, data_envio, destinatarios, loja_id) VALUES (?, ?, ?, ?)`).run(mensagem.trim(), data_hora, dest, ctx.loja_id)
   return { ok: true, status_execucao: 'CONCLUIDO', id: r.lastInsertRowid, mensagem: mensagem.trim(), data_hora, destinatarios: dest }
 }
 
-function executarAdicionarPedidoCompra({ produto_nome, quantidade, descricao }) {
+function executarAdicionarPedidoCompra({ produto_nome, quantidade, descricao }, ctx) {
   let produto_id = null
   let nomeFinal = descricao || produto_nome
 
   if (produto_nome) {
-    const p = db.prepare(`SELECT id, nome FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${produto_nome}%`)
+    const p = db.prepare(`SELECT id, nome FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${produto_nome}%`, ctx.loja_id)
     if (p) { produto_id = p.id; nomeFinal = descricao || p.nome }
   }
 
   if (produto_id) {
-    const existente = db.prepare(`SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente'`).get(produto_id)
+    const existente = db.prepare(`SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente' AND loja_id = ?`).get(produto_id, ctx.loja_id)
     if (existente) return { aviso: `Já existe um pedido pendente para "${nomeFinal}"`, pedido_id: existente.id }
   }
 
-  const r = db.prepare(`INSERT INTO pedidos_compra (produto_id, descricao, quantidade, status, origem) VALUES (?, ?, ?, 'pendente', 'manual')`).run(produto_id, nomeFinal, quantidade || 1)
+  const r = db.prepare(`INSERT INTO pedidos_compra (produto_id, descricao, quantidade, status, origem, loja_id) VALUES (?, ?, ?, 'pendente', 'manual', ?)`).run(produto_id, nomeFinal, quantidade || 1, ctx.loja_id)
   return { ok: true, status_execucao: 'CONCLUIDO', id: r.lastInsertRowid, produto: nomeFinal, quantidade: quantidade || 1 }
 }
 
-function executarEditarOS({ numero_os, descricao, valor, cliente_nome, cliente_avulso_nome, vendedor_nome, data_prevista, observacoes, forma_pagamento, a_receber, data_vencimento }) {
+function executarEditarOS({ numero_os, descricao, valor, cliente_nome, cliente_avulso_nome, vendedor_nome, data_prevista, observacoes, forma_pagamento, a_receber, data_vencimento }, ctx) {
   const os = db.prepare(`
     SELECT os.*, c.nome as cliente_nome_cat FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
-    WHERE os.numero = ?
-  `).get(numero_os)
+    WHERE os.numero = ? AND os.loja_id = ?
+  `).get(numero_os, ctx.loja_id)
   if (!os) return { error: `OS ${numero_os} não encontrada` }
 
   let novo_cliente_id = os.cliente_id
   let novo_avulso = os.cliente_nome_avulso
   if (cliente_nome) {
-    const cli = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${cliente_nome}%`)
+    const cli = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, ctx.loja_id)
     if (!cli) return { error: `Cliente "${cliente_nome}" não encontrado no cadastro` }
     novo_cliente_id = cli.id
     novo_avulso = null
@@ -895,7 +897,7 @@ function executarEditarOS({ numero_os, descricao, valor, cliente_nome, cliente_a
     if (!vendedor_nome) {
       novo_vendedor_id = null
     } else {
-      const v = db.prepare(`SELECT id, nome FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${vendedor_nome}%`)
+      const v = db.prepare(`SELECT id, nome FROM vendedores WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${vendedor_nome}%`, ctx.loja_id)
       if (v) novo_vendedor_id = v.id
       else return { error: `Funcionário "${vendedor_nome}" não encontrado` }
     }
@@ -925,8 +927,8 @@ function executarEditarOS({ numero_os, descricao, valor, cliente_nome, cliente_a
   return { ok: true, status_execucao: 'CONCLUIDO', numero: numero_os, mensagem: 'OS atualizada com sucesso' }
 }
 
-function executarAjustarEstoque({ produto_nome, modo, quantidade, motivo }) {
-  const produto = db.prepare(`SELECT * FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${produto_nome}%`)
+function executarAjustarEstoque({ produto_nome, modo, quantidade, motivo }, ctx) {
+  const produto = db.prepare(`SELECT * FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${produto_nome}%`, ctx.loja_id)
   if (!produto) return { error: `Produto "${produto_nome}" não encontrado` }
 
   let novoEstoque
@@ -939,19 +941,19 @@ function executarAjustarEstoque({ produto_nome, modo, quantidade, motivo }) {
 
   db.prepare(`UPDATE produtos SET estoque = ? WHERE id = ?`).run(novoEstoque, produto.id)
   db.prepare(`
-    INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-    VALUES (?, 'ajuste_manual', ?, ?, ?, 'ajuste', ?, 1)
-  `).run(produto.id, Math.abs(novoEstoque - produto.estoque), produto.estoque, novoEstoque, motivo || 'Ajuste via assistente')
+    INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id)
+    VALUES (?, 'ajuste_manual', ?, ?, ?, 'ajuste', ?, ?, ?)
+  `).run(produto.id, Math.abs(novoEstoque - produto.estoque), produto.estoque, novoEstoque, motivo || 'Ajuste via assistente', ctx.id, ctx.loja_id)
 
   verificarEstoqueBaixo(produto.id)
   return { ok: true, status_execucao: 'CONCLUIDO', produto: produto.nome, estoque_anterior: produto.estoque, estoque_atual: novoEstoque }
 }
 
-function executarMarcarPedidoComprado({ produto_nome, quantidade_recebida, atualizar_estoque }) {
-  const produto = db.prepare(`SELECT id, nome, estoque FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 LIMIT 1`).get(`%${produto_nome}%`)
+function executarMarcarPedidoComprado({ produto_nome, quantidade_recebida, atualizar_estoque }, ctx) {
+  const produto = db.prepare(`SELECT id, nome, estoque FROM produtos WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${produto_nome}%`, ctx.loja_id)
   const pedido = produto
-    ? db.prepare(`SELECT * FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente' LIMIT 1`).get(produto.id)
-    : db.prepare(`SELECT * FROM pedidos_compra WHERE norm(descricao) LIKE norm(?) AND status = 'pendente' LIMIT 1`).get(`%${produto_nome}%`)
+    ? db.prepare(`SELECT * FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente' AND loja_id = ? LIMIT 1`).get(produto.id, ctx.loja_id)
+    : db.prepare(`SELECT * FROM pedidos_compra WHERE norm(descricao) LIKE norm(?) AND status = 'pendente' AND loja_id = ? LIMIT 1`).get(`%${produto_nome}%`, ctx.loja_id)
 
   if (!pedido) return { error: `Nenhum pedido pendente encontrado para "${produto_nome}"` }
 
@@ -961,9 +963,9 @@ function executarMarcarPedidoComprado({ produto_nome, quantidade_recebida, atual
     const novoEstoque = produto.estoque + quantidade_recebida
     db.prepare(`UPDATE produtos SET estoque = ? WHERE id = ?`).run(novoEstoque, produto.id)
     db.prepare(`
-      INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id)
-      VALUES (?, 'entrada', ?, ?, ?, 'pedido_compra', 'Recebimento via pedido de compra', 1)
-    `).run(produto.id, quantidade_recebida, produto.estoque, novoEstoque)
+      INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id)
+      VALUES (?, 'entrada', ?, ?, ?, 'pedido_compra', 'Recebimento via pedido de compra', ?, ?)
+    `).run(produto.id, quantidade_recebida, produto.estoque, novoEstoque, ctx.id, ctx.loja_id)
     return { ok: true, status_execucao: 'CONCLUIDO', pedido_id: pedido.id, produto: produto.nome, estoque_anterior: produto.estoque, estoque_atual: novoEstoque }
   }
 
@@ -1050,9 +1052,9 @@ function executarFecharMesComissoes({ mes, ano }) {
   }
 }
 
-function executarExcluirGasto({ descricao, data, valor }) {
-  let sql = `SELECT * FROM gastos WHERE norm(descricao) LIKE norm(?)`
-  const params = [`%${descricao}%`]
+function executarExcluirGasto({ descricao, data, valor }, ctx) {
+  let sql = `SELECT * FROM gastos WHERE norm(descricao) LIKE norm(?) AND loja_id = ?`
+  const params = [`%${descricao}%`, ctx.loja_id]
   if (data) { sql += ` AND date(data) = ?`; params.push(data) }
   if (valor) { sql += ` AND ABS(valor - ?) < 0.01`; params.push(valor) }
   sql += ` ORDER BY data DESC LIMIT 5`
@@ -1068,32 +1070,33 @@ function executarExcluirGasto({ descricao, data, valor }) {
 
 // ─── Dispatcher ───────────────────────────────────────────────────────────────
 
-function executarFerramenta(name, input) {
+function executarFerramenta(name, input, ctx) {
+  const lojaId = ctx.loja_id
   switch (name) {
-    case 'resumo_geral':              return executarResumoGeral()
-    case 'fechamento_caixa':          return executarFechamentoCaixa(input)
-    case 'buscar_os':                 return executarBuscarOS(input)
-    case 'cobrancas_abertas':         return executarCobrancasAbertas(input)
-    case 'historico_cliente':         return executarHistoricoCliente(input)
-    case 'estoque_baixo':             return executarEstoqueBaixo()
-    case 'buscar_produto':            return executarBuscarProduto(input)
-    case 'a_receber_pendente':        return executarAReceberPendente(input)
-    case 'gastos_periodo':            return executarGastosPeriodo(input)
-    case 'desempenho_vendedor':       return executarDesempenhoVendedor(input)
-    case 'resultado_liquido':         return executarResultadoLiquido(input)
-    case 'consumo_periodo':           return executarConsumoPeriodo(input)
-    case 'listar_pedidos':            return executarListarPedidos(input)
-    case 'listar_lembretes':          return executarListarLembretes(input)
-    case 'registrar_gasto':           return executarRegistrarGasto(input)
-    case 'criar_os':                  return executarCriarOS(input)
-    case 'atualizar_status_os':       return executarAtualizarStatusOS(input)
-    case 'registrar_consumo_interno': return executarRegistrarConsumoInterno(input)
-    case 'criar_lembrete':            return executarCriarLembrete(input)
-    case 'adicionar_pedido_compra':   return executarAdicionarPedidoCompra(input)
-    case 'editar_os':                 return executarEditarOS(input)
-    case 'ajustar_estoque':           return executarAjustarEstoque(input)
-    case 'marcar_pedido_comprado':    return executarMarcarPedidoComprado(input)
-    case 'excluir_gasto':             return executarExcluirGasto(input)
+    case 'resumo_geral':              return executarResumoGeral(lojaId)
+    case 'fechamento_caixa':          return executarFechamentoCaixa(input, lojaId)
+    case 'buscar_os':                 return executarBuscarOS(input, lojaId)
+    case 'cobrancas_abertas':         return executarCobrancasAbertas(input, lojaId)
+    case 'historico_cliente':         return executarHistoricoCliente(input, lojaId)
+    case 'estoque_baixo':             return executarEstoqueBaixo(lojaId)
+    case 'buscar_produto':            return executarBuscarProduto(input, lojaId)
+    case 'a_receber_pendente':        return executarAReceberPendente(input, lojaId)
+    case 'gastos_periodo':            return executarGastosPeriodo(input, lojaId)
+    case 'desempenho_vendedor':       return executarDesempenhoVendedor(input, lojaId)
+    case 'resultado_liquido':         return executarResultadoLiquido(input, lojaId)
+    case 'consumo_periodo':           return executarConsumoPeriodo(input, lojaId)
+    case 'listar_pedidos':            return executarListarPedidos(input, lojaId)
+    case 'listar_lembretes':          return executarListarLembretes(input, lojaId)
+    case 'registrar_gasto':           return executarRegistrarGasto(input, ctx)
+    case 'criar_os':                  return executarCriarOS(input, ctx)
+    case 'atualizar_status_os':       return executarAtualizarStatusOS(input, ctx)
+    case 'registrar_consumo_interno': return executarRegistrarConsumoInterno(input, ctx)
+    case 'criar_lembrete':            return executarCriarLembrete(input, ctx)
+    case 'adicionar_pedido_compra':   return executarAdicionarPedidoCompra(input, ctx)
+    case 'editar_os':                 return executarEditarOS(input, ctx)
+    case 'ajustar_estoque':           return executarAjustarEstoque(input, ctx)
+    case 'marcar_pedido_comprado':    return executarMarcarPedidoComprado(input, ctx)
+    case 'excluir_gasto':             return executarExcluirGasto(input, ctx)
     case 'fechar_mes_comissoes':      return executarFecharMesComissoes(input)
     default: return { error: `Ferramenta desconhecida: ${name}` }
   }
@@ -1102,6 +1105,8 @@ function executarFerramenta(name, input) {
 // ─── Route ────────────────────────────────────────────────────────────────────
 
 router.post('/', async (req, res) => {
+  if (!req.user?.principal) return res.status(403).json({ error: 'Assistente disponível apenas para o usuário principal' })
+
   const { mensagem, historico = [] } = req.body
   if (!mensagem?.trim()) return res.status(400).json({ error: 'mensagem é obrigatória' })
 
@@ -1266,7 +1271,7 @@ REGRAS IMPORTANTES:
       const toolResults = []
       for (const block of toolBlocks) {
         let result
-        try { result = executarFerramenta(block.name, block.input) }
+        try { result = executarFerramenta(block.name, block.input, req.user) }
         catch (e) { result = { error: e.message } }
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(result) })
       }

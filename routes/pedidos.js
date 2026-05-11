@@ -13,6 +13,7 @@ function getWhatsappPedidos() {
     return cfg && cfg.valor ? cfg.valor : null;
 }
 
+// enviarAvisoPedido: chamado por cron e por rotas — opera sem req.user (nível sistema)
 async function enviarAvisoPedido(pedido, tipo = 'criacao') {
     const num = getWhatsappPedidos();
     if (!num) return;
@@ -33,7 +34,7 @@ async function enviarAvisoPedido(pedido, tipo = 'criacao') {
     }
 }
 
-// Envia resumo diário de todos os pedidos não confirmados
+// enviarResumoDiario: chamado por cron — opera sem req.user, abrange TODAS as lojas
 async function enviarResumoDiario() {
     const num = getWhatsappPedidos();
     if (!num) return;
@@ -78,7 +79,8 @@ async function enviarResumoDiario() {
     }
 }
 
-// Verifica se produto está com estoque baixo e cria pedido automático (prioridade alta)
+// verificarEstoqueBaixo: chamado por cron e por rotas de venda/OS
+// Não recebe loja_id pois só precisa do produto_id para checar estoque mínimo
 function verificarEstoqueBaixo(produto_id) {
     const p = db.prepare('SELECT id, nome, estoque, estoque_minimo FROM produtos WHERE id = ? AND ativo = 1').get(produto_id);
     if (!p || p.estoque > p.estoque_minimo) return;
@@ -90,15 +92,15 @@ function verificarEstoqueBaixo(produto_id) {
     enviarAvisoPedido(pedido, 'criacao').catch(() => {});
 }
 
-// GET /api/pedidos/count — badge sidebar
+// GET /api/pedidos/count — badge sidebar (filtrado por loja)
 router.get('/count', (req, res) => {
-    const row = db.prepare("SELECT COUNT(*) as total FROM pedidos_compra WHERE status = 'pendente'").get();
+    const row = db.prepare("SELECT COUNT(*) as total FROM pedidos_compra WHERE status = 'pendente' AND loja_id = ?").get(req.user.loja_id);
     res.json({ total: row.total });
 });
 
-// POST /api/pedidos/verificar-estoque
+// POST /api/pedidos/verificar-estoque (filtrado por loja)
 router.post('/verificar-estoque', (req, res) => {
-    const baixos = db.prepare(`SELECT id FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo`).all();
+    const baixos = db.prepare(`SELECT id FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ?`).all(req.user.loja_id);
     let adicionados = 0;
     baixos.forEach(p => {
         const antes = db.prepare("SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente'").get(p.id);
@@ -107,31 +109,33 @@ router.post('/verificar-estoque', (req, res) => {
     res.json({ verificados: baixos.length, adicionados });
 });
 
-// GET /api/pedidos
+// GET /api/pedidos (filtrado por loja)
 router.get('/', (req, res) => {
     const { status, prioridade } = req.query;
+    const lojaId = req.user.loja_id;
     let query = `
         SELECT pc.*, p.nome as produto_nome, p.estoque as produto_estoque, p.estoque_minimo as produto_estoque_minimo
         FROM pedidos_compra pc
         LEFT JOIN produtos p ON pc.produto_id = p.id
-        WHERE 1=1
+        WHERE pc.loja_id = ?
     `;
-    const params = [];
+    const params = [lojaId];
     if (status)     { query += ' AND pc.status = ?';     params.push(status); }
     if (prioridade) { query += ' AND pc.prioridade = ?'; params.push(prioridade); }
     query += " ORDER BY CASE pc.prioridade WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, pc.status ASC, pc.criado_em DESC";
     res.json(db.prepare(query).all(...params));
 });
 
-// POST /api/pedidos
+// POST /api/pedidos (salva loja_id do usuário)
 router.post('/', async (req, res) => {
     const { produto_id, descricao, quantidade, observacoes, prioridade } = req.body;
     if (!descricao) return res.status(400).json({ error: 'Descrição é obrigatória' });
     const pri = PRIORIDADES.includes(prioridade) ? prioridade : 'media';
+    const lojaId = req.user.loja_id;
     const result = db.prepare(`
-        INSERT INTO pedidos_compra (produto_id, descricao, quantidade, observacoes, status, origem, prioridade)
-        VALUES (?, ?, ?, ?, 'pendente', 'manual', ?)
-    `).run(produto_id || null, descricao.trim(), quantidade || 1, observacoes || null, pri);
+        INSERT INTO pedidos_compra (produto_id, descricao, quantidade, observacoes, status, origem, prioridade, loja_id)
+        VALUES (?, ?, ?, ?, 'pendente', 'manual', ?, ?)
+    `).run(produto_id || null, descricao.trim(), quantidade || 1, observacoes || null, pri, lojaId);
     const pedido = db.prepare('SELECT * FROM pedidos_compra WHERE id = ?').get(result.lastInsertRowid);
     enviarAvisoPedido(pedido, 'criacao').catch(() => {});
     res.status(201).json({ id: result.lastInsertRowid });
@@ -139,7 +143,7 @@ router.post('/', async (req, res) => {
 
 // PUT /api/pedidos/:id/confirmar — marca aviso como confirmado
 router.put('/:id/confirmar', (req, res) => {
-    db.prepare(`UPDATE pedidos_compra SET confirmado = 1, confirmado_em = datetime('now','localtime') WHERE id = ?`).run(req.params.id);
+    db.prepare(`UPDATE pedidos_compra SET confirmado = 1, confirmado_em = datetime('now','localtime') WHERE id = ? AND loja_id = ?`).run(req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 
@@ -151,14 +155,14 @@ router.put('/:id/silenciar', (req, res) => {
     amanha.setDate(amanha.getDate() + 1);
     amanha.setHours(9, 0, 0, 0);
     const iso = amanha.toISOString().slice(0, 19).replace('T', ' ');
-    db.prepare(`UPDATE pedidos_compra SET silenciado_ate = ? WHERE id = ?`).run(iso, req.params.id);
+    db.prepare(`UPDATE pedidos_compra SET silenciado_ate = ? WHERE id = ? AND loja_id = ?`).run(iso, req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 
 // PUT /api/pedidos/:id
 router.put('/:id', (req, res) => {
     const { descricao, quantidade, observacoes, status, prioridade } = req.body;
-    const pedido = db.prepare('SELECT * FROM pedidos_compra WHERE id = ?').get(req.params.id);
+    const pedido = db.prepare('SELECT * FROM pedidos_compra WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
 
     const comprado_em = status === 'comprado' && pedido.status !== 'comprado'
@@ -170,7 +174,7 @@ router.put('/:id', (req, res) => {
     db.prepare(`
         UPDATE pedidos_compra SET descricao=?, quantidade=?, observacoes=?, status=?, comprado_em=?, prioridade=?,
         confirmado = CASE WHEN ? = 'pendente' AND status != 'pendente' THEN 0 ELSE confirmado END
-        WHERE id=?
+        WHERE id=? AND loja_id=?
     `).run(
         descricao ?? pedido.descricao,
         quantidade ?? pedido.quantidade,
@@ -179,14 +183,15 @@ router.put('/:id', (req, res) => {
         comprado_em,
         pri,
         status ?? pedido.status,
-        req.params.id
+        req.params.id,
+        req.user.loja_id
     );
     res.json({ ok: true });
 });
 
 // DELETE /api/pedidos/:id
 router.delete('/:id', (req, res) => {
-    db.prepare('DELETE FROM pedidos_compra WHERE id = ?').run(req.params.id);
+    db.prepare('DELETE FROM pedidos_compra WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 

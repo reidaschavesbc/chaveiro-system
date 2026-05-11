@@ -1,5 +1,5 @@
 // === APP ROUTER ===
-const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, relatorios, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, comissoes, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, vales };
+const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, relatorios, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, comissoes, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, vales, estoque: estoquePage };
 
 let _navTimeout = null;
 function navigateTo(page) {
@@ -16,7 +16,7 @@ function navigateTo(page) {
         servicos: 'Tipos de Serviço', vendedores: 'Funcionários', ordens: 'Ordens de Serviço',
         'vendas-nova': 'Vendas', vendas: 'Histórico',
         orcamentos: 'Orçamentos', relatorios: 'Relatórios', configuracoes: 'Configurações', whatsapp: 'WhatsApp',
-        assistente: 'Assistente IA', comissoes: 'Fechamento & Comissões', 'a-receber': 'A Receber', gastos: 'Controle de Gastos', lembretes: 'Lembretes', pedidos: 'Pedidos de Compra', consumo: 'Consumo Interno', vales: 'Vales de Funcionários'
+        assistente: 'Assistente IA', comissoes: 'Fechamento & Comissões', 'a-receber': 'A Receber', gastos: 'Controle de Gastos', lembretes: 'Lembretes', pedidos: 'Pedidos de Compra', consumo: 'Consumo Interno', vales: 'Vales de Funcionários', estoque: 'Meu Estoque'
     };
     document.getElementById('page-title').textContent = titles[page] || page;
     const fn = pages[page];
@@ -34,7 +34,7 @@ function modalSenhaGerente(titulo, descricao) {
       <div style="background:#fff;border-radius:16px;padding:28px 32px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
         <div style="font-size:20px;font-weight:700;margin-bottom:6px">🔒 ${titulo || 'Acesso Restrito'}</div>
         <div style="color:#64748b;font-size:13px;margin-bottom:22px">${descricao || 'Esta ação requer senha de gerente.'}</div>
-        <input type="password" id="_mg-input" placeholder="Digite a senha..." autocomplete="off"
+        <input type="password" id="_mg-input" autocomplete="off"
                style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px 13px;font-size:14px;outline:none;box-sizing:border-box">
         <div id="_mg-erro" style="color:#ef4444;font-size:12px;margin-top:7px;min-height:16px"></div>
         <div style="display:flex;gap:10px;margin-top:18px">
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = getUser();
     if (user) {
         document.getElementById('user-name').textContent = user.nome;
-        document.getElementById('user-role').textContent = user.perfil;
+        document.getElementById('user-role').textContent = user.perfil === 'admin' ? 'Administrador' : 'Operador';
         document.getElementById('user-avatar').textContent = user.nome.charAt(0).toUpperCase();
     }
     // Load empresa name
@@ -118,4 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Badge de pedidos pendentes — atualiza ao carregar e a cada 5 minutos
     atualizarBadgePedidos();
     setInterval(atualizarBadgePedidos, 5 * 60 * 1000);
+    // Badge de pedidos de estoque pendentes (para principal)
+    atualizarBadgeEstoque();
+    setInterval(atualizarBadgeEstoque, 5 * 60 * 1000);
 });

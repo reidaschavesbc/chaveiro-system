@@ -8,7 +8,7 @@ async function clientes(el) {
       <div class="flex gap-2 align-center">
         <div class="search-box">
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="search-clientes" placeholder="Buscar por nome, CPF/CNPJ, telefone..." oninput="filtrarClientes()">
+          <input type="text" id="search-clientes" oninput="filtrarClientes()">
         </div>
         <button class="btn btn-primary" onclick="abrirModalCliente()">
           <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -42,13 +42,13 @@ async function clientes(el) {
                   <option value="cpf">CPF</option>
                   <option value="cnpj">CNPJ</option>
                 </select>
-                <input type="text" id="cliente-doc" placeholder="000.000.000-00" style="border-radius:0 6px 6px 0;flex:1">
+                <input type="text" id="cliente-doc" style="border-radius:0 6px 6px 0;flex:1">
               </div>
             </div>
 
             <div class="form-group">
               <label>Telefone / WhatsApp</label>
-              <input type="text" id="cliente-telefone" placeholder="(00) 00000-0000" oninput="mascaraTelefone(this)">
+              <input type="text" id="cliente-telefone" oninput="mascaraTelefone(this)">
             </div>
 
             <div class="form-group form-full">
@@ -59,7 +59,7 @@ async function clientes(el) {
             <div class="form-group">
               <label>CEP</label>
               <div style="display:flex;gap:6px">
-                <input type="text" id="cliente-cep" placeholder="00000-000" maxlength="9" style="flex:1" oninput="formatarCEP(this)" onkeydown="if(event.key==='Enter'){buscarCEPCliente();event.preventDefault()}">
+                <input type="text" id="cliente-cep" maxlength="9" style="flex:1" oninput="formatarCEP(this)" onkeydown="if(event.key==='Enter'){buscarCEPCliente();event.preventDefault()}">
                 <button type="button" class="btn btn-secondary" style="padding:0 14px;white-space:nowrap" onclick="buscarCEPCliente()">Buscar</button>
               </div>
             </div>
@@ -91,7 +91,7 @@ async function clientes(el) {
 
             <div class="form-group form-full">
               <label>Referência</label>
-              <input type="text" id="cliente-referencia" placeholder="Ex: próximo ao mercado, em frente à escola...">
+              <input type="text" id="cliente-referencia">
             </div>
 
             <div class="form-group form-full">
@@ -286,9 +286,9 @@ async function abrirModalAutorizados(clienteId, clienteNome) {
               <div style="border-top:1px solid #e2e8f0;padding-top:14px">
                 <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">Adicionar Autorizado</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
-                  <input type="text" id="aut-nome" placeholder="Nome *" style="flex:2;min-width:140px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
-                  <input type="text" id="aut-telefone" placeholder="Telefone" oninput="mascaraTelefone(this)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
-                  <input type="text" id="aut-cargo" placeholder="Cargo (opcional)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                  <input type="text" id="aut-nome" style="flex:2;min-width:140px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                  <input type="text" id="aut-telefone" oninput="mascaraTelefone(this)" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+                  <input type="text" id="aut-cargo" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
                   <button class="btn btn-primary" style="white-space:nowrap" onclick="adicionarAutorizado()">+ Adicionar</button>
                 </div>
               </div>

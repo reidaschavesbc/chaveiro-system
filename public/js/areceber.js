@@ -228,7 +228,7 @@ async function arParcial(id, numero, restante) {
        </div>
        <div>
          <label style="font-size:13px;display:block;margin-bottom:4px">Observação</label>
-         <input type="text" id="ar-obs-parcial" placeholder="Opcional" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px">
+         <input type="text" id="ar-obs-parcial" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px">
        </div>
      </div>`,
     async () => {
@@ -264,7 +264,7 @@ async function arParcialAvulso(osId, nome, restante) {
        </div>
        <div>
          <label style="font-size:13px;display:block;margin-bottom:4px">Observação</label>
-         <input type="text" id="ar-obs-parcial" placeholder="Opcional" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px">
+         <input type="text" id="ar-obs-parcial" style="width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px">
        </div>
      </div>`,
     async () => {

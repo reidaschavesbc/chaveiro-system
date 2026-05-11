@@ -8,23 +8,23 @@ async function vendedores(el) {
       <div class="form-grid">
         <div class="form-group form-full">
           <label>Nome do Funcionário</label>
-          <input type="text" id="vendedor-nome" placeholder="Ex: João Silva">
+          <input type="text" id="vendedor-nome">
         </div>
         <div class="form-group">
           <label>WhatsApp <span style="color:#64748b;font-weight:400;font-size:12px">(para notificações de OS)</span></label>
-          <input type="text" id="vendedor-telefone" placeholder="Ex: (11) 99999-9999" oninput="mascaraTelefone(this)">
+          <input type="text" id="vendedor-telefone" oninput="mascaraTelefone(this)">
         </div>
         <div class="form-group">
           <label>Comissão (%) <span style="color:#64748b;font-weight:400;font-size:12px">(sobre OS)</span></label>
-          <input type="number" id="vendedor-comissao" placeholder="Ex: 10" min="0" max="100" step="0.1">
+          <input type="number" id="vendedor-comissao" min="0" max="100" step="0.1">
         </div>
         <div class="form-group">
           <label>Meta Mensal (R$) <span style="color:#64748b;font-weight:400;font-size:12px">(opcional)</span></label>
-          <input type="number" id="vendedor-meta" placeholder="Ex: 3000" min="0" step="0.01">
+          <input type="number" id="vendedor-meta" min="0" step="0.01">
         </div>
         <div class="form-group">
           <label>Bônus por Meta (R$) <span style="color:#64748b;font-weight:400;font-size:12px">(ao atingir meta)</span></label>
-          <input type="number" id="vendedor-bonus" placeholder="Ex: 200" min="0" step="0.01">
+          <input type="number" id="vendedor-bonus" min="0" step="0.01">
         </div>
       </div>
 
@@ -37,7 +37,7 @@ async function vendedores(el) {
         </div>
         <div id="vendedor-salario-edit" style="display:none">
           <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Salário Base (R$)</label>
-          <input type="number" id="vendedor-salario" placeholder="Ex: 1500" min="0" step="0.01"
+          <input type="number" id="vendedor-salario" min="0" step="0.01"
                  style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:200px;font-size:14px;outline:none">
         </div>
       </div>

@@ -156,11 +156,11 @@ function gastosModalHtml() {
         <div class="form-grid">
           <div class="form-group form-full">
             <label>Descrição *</label>
-            <input type="text" id="g-descricao" placeholder="Ex: Compra de chaves brutas, gasolina...">
+            <input type="text" id="g-descricao">
           </div>
           <div class="form-group">
             <label>Valor (R$) *</label>
-            <input type="number" id="g-valor" min="0.01" step="0.01" placeholder="0,00">
+            <input type="number" id="g-valor" min="0.01" step="0.01">
           </div>
           <div class="form-group">
             <label>Data</label>
@@ -174,7 +174,7 @@ function gastosModalHtml() {
           </div>
           <div class="form-group form-full">
             <label>Observações</label>
-            <input type="text" id="g-obs" placeholder="Opcional">
+            <input type="text" id="g-obs">
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">

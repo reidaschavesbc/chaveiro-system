@@ -52,7 +52,7 @@ function assistentePage(contentDiv) {
       </div>
 
       <div class="ass-input-area">
-        <input type="text" id="ass-input" class="ass-input" placeholder="Ex: Quanto entrou hoje? Quem deve? Estoque baixo..." autocomplete="off" />
+        <input type="text" id="ass-input" class="ass-input" autocomplete="off" />
         <button class="ass-btn-send" title="Enviar (Enter)" onclick="assEnviar()">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>

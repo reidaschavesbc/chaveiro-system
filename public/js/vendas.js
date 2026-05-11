@@ -49,7 +49,7 @@ async function vendasNova(el) {
             <div class="form-grid">
               <div class="form-group form-full">
                 <label>Descrição do Item</label>
-                <input type="text" id="venda-manual-desc" placeholder="Ex: Serviço especial...">
+                <input type="text" id="venda-manual-desc">
               </div>
               <div class="form-group">
                 <label>Quantidade</label>
@@ -81,7 +81,7 @@ async function vendasNova(el) {
               <option value="">-- Sem cliente --</option>
               ${vendaClientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')}
             </select>
-            <input type="text" id="venda-cliente-avulso" placeholder="Nome do cliente (opcional)" style="margin-top:6px;padding:8px 12px;border:2px solid #e5e7eb;border-radius:9px;font-size:13px;width:100%">
+            <input type="text" id="venda-cliente-avulso" style="margin-top:6px;padding:8px 12px;border:2px solid #e5e7eb;border-radius:9px;font-size:13px;width:100%">
           </div>
           <div class="form-group" style="margin-bottom:14px">
             <label>Funcionário</label>

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; }
+
+    /* ─── LOGIN ─── */
+    #view-login {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 24px;
+    }
+    .login-box {
+      background: #1e293b; border: 1px solid #334155; border-radius: 20px;
+      padding: 48px 44px; width: 100%; max-width: 420px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5); animation: fadeUp .4s ease;
+    }
+    .login-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3);
+      color: #818cf8; font-size: 11px; font-weight: 600;
+      padding: 4px 12px; border-radius: 20px; letter-spacing: .5px; margin-bottom: 24px;
+    }
+    .login-box h1 { font-size: 26px; font-weight: 700; color: #f1f5f9; margin-bottom: 6px; }
+    .login-box p  { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block; font-size: 12px; font-weight: 600; color: #94a3b8;
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .field input {
+      width: 100%; background: #0f172a; border: 1.5px solid #334155; border-radius: 10px;
+      padding: 11px 14px; font-size: 14px; font-family: inherit; color: #f1f5f9; outline: none; transition: border-color .2s;
+    }
+    .field input:focus { border-color: #6366f1; }
+    .field input::placeholder { color: #475569; }
+    .btn-login {
+      width: 100%; padding: 13px; background: #6366f1; color: white; border: none;
+      border-radius: 10px; font-size: 14px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: background .2s, transform .15s; margin-top: 8px;
+    }
+    .btn-login:hover { background: #4f46e5; transform: translateY(-1px); }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .login-error {
+      background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none;
+    }
+
+    /* ─── PAINEL ─── */
+    #view-painel { display: none; min-height: 100vh; }
+    .topbar {
+      background: #1e293b; border-bottom: 1px solid #334155; padding: 0 32px;
+      height: 60px; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-left  { display: flex; align-items: center; gap: 12px; }
+    .topbar-icon  { width: 32px; height: 32px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .topbar-icon svg { width: 16px; height: 16px; fill: white; }
+    .topbar-title { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+    .topbar-sub   { font-size: 12px; color: #64748b; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .topbar-user  { display: flex; align-items: center; gap: 8px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 6px 12px; }
+    .topbar-avatar { width: 28px; height: 28px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+    .topbar-nome  { font-size: 13px; font-weight: 500; color: #cbd5e1; }
+    .btn-sair     { padding: 7px 14px; background: transparent; border: 1px solid #334155; border-radius: 8px; color: #94a3b8; font-size: 13px; font-family: inherit; cursor: pointer; transition: all .2s; }
+    .btn-sair:hover { background: #334155; color: #f1f5f9; }
+
+    .painel-body  { padding: 32px; max-width: 900px; margin: 0 auto; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .section-title  { font-size: 20px; font-weight: 700; color: #f1f5f9; }
+    .section-sub    { font-size: 13px; color: #64748b; margin-top: 3px; }
+
+    .btn-novo {
+      display: flex; align-items: center; gap: 8px; padding: 9px 18px;
+      background: #6366f1; color: white; border: none; border-radius: 10px;
+      font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: background .2s, transform .15s;
+    }
+    .btn-novo:hover { background: #4f46e5; transform: translateY(-1px); }
+
+    /* ─── LOJA CARD ─── */
+    .loja-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+      margin-bottom: 20px; overflow: hidden;
+    }
+    .loja-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; background: #0f172a; border-bottom: 1px solid #334155;
+    }
+    .loja-header-left { display: flex; align-items: center; gap: 12px; }
+    .loja-icon {
+      width: 36px; height: 36px; background: rgba(99,102,241,.2); border: 1px solid rgba(99,102,241,.3);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    }
+    .loja-icon svg { width: 18px; height: 18px; fill: #818cf8; }
+    .loja-nome  { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+    .loja-meta  { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .loja-acoes { display: flex; gap: 8px; align-items: center; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .badge-ativo   { background: rgba(34,197,94,.15);  color: #4ade80; }
+    .badge-inativo { background: rgba(239,68,68,.15);  color: #f87171; }
+    .badge-principal { background: rgba(99,102,241,.15); color: #818cf8; }
+    .badge-sub     { background: rgba(100,116,139,.15); color: #94a3b8; }
+
+    /* ─── USUARIOS TABLE ─── */
+    .usuarios-table { width: 100%; border-collapse: collapse; }
+    .usuarios-table th {
+      padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600;
+      color: #475569; text-transform: uppercase; letter-spacing: .5px; background: #1e293b;
+    }
+    .usuarios-table td { padding: 12px 16px; font-size: 13px; color: #cbd5e1; vertical-align: middle; border-top: 1px solid #1e293b; }
+    .usuarios-table tr { border-top: 1px solid #334155; }
+    .usuarios-table tr:hover td { background: rgba(99,102,241,.04); }
+    .td-nome { font-weight: 600; color: #f1f5f9; }
+    .td-email { color: #64748b; font-size: 12px; }
+
+    .add-sub-row { padding: 12px 16px; border-top: 1px solid #334155; }
+
+    .btn-add-sub {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; background: transparent; border: 1px dashed #334155;
+      border-radius: 8px; color: #64748b; font-size: 12px; font-family: inherit;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-add-sub:hover { border-color: #6366f1; color: #818cf8; background: rgba(99,102,241,.05); }
+
+    .acoes { display: flex; gap: 6px; }
+    .btn-acao {
+      padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; font-family: inherit;
+      cursor: pointer; border: 1px solid #334155; background: #0f172a; color: #94a3b8; transition: all .15s;
+    }
+    .btn-acao:hover { background: #334155; color: #f1f5f9; }
+    .btn-acao.danger { border-color: rgba(239,68,68,.3); color: #f87171; }
+    .btn-acao.danger:hover { background: rgba(239,68,68,.15); }
+    .btn-acao.success { border-color: rgba(34,197,94,.3); color: #4ade80; }
+    .btn-acao.success:hover { background: rgba(34,197,94,.1); }
+    .btn-acao.loja { border-color: #334155; color: #94a3b8; font-size: 11px; }
+
+    .empty-loja { padding: 24px 16px; color: #475569; font-size: 13px; text-align: center; }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px;
+      animation: fadeIn .2s ease;
+    }
+    .modal {
+      background: #1e293b; border: 1px solid #334155; border-radius: 18px;
+      width: 100%; max-width: 460px; box-shadow: 0 24px 64px rgba(0,0,0,.6); animation: fadeUp .25s ease;
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #334155; }
+    .modal-title  { font-size: 16px; font-weight: 700; color: #f1f5f9; }
+    .modal-close  { background: none; border: none; color: #64748b; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; transition: color .15s; }
+    .modal-close:hover { color: #f1f5f9; }
+    .modal-body   { padding: 20px 24px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px 20px; border-top: 1px solid #334155; }
+    .modal-divider { border: none; border-top: 1px dashed #334155; margin: 16px 0; }
+    .modal-section { font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+
+    .m-field { margin-bottom: 14px; }
+    .m-field label { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .4px; }
+    .m-field input, .m-field select {
+      width: 100%; background: #0f172a; border: 1.5px solid #334155; border-radius: 9px;
+      padding: 10px 13px; font-size: 14px; font-family: inherit; color: #f1f5f9; outline: none; transition: border-color .2s;
+    }
+    .m-field input:focus, .m-field select:focus { border-color: #6366f1; }
+    .m-field input::placeholder { color: #475569; }
+    .m-field select option { background: #1e293b; }
+    .m-erro { color: #f87171; font-size: 12px; min-height: 16px; margin-top: 6px; }
+
+    .btn-modal { padding: 9px 20px; border-radius: 9px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s; }
+    .btn-modal.secondary { background: transparent; border: 1px solid #334155; color: #94a3b8; }
+    .btn-modal.secondary:hover { background: #334155; color: #f1f5f9; }
+    .btn-modal.primary { background: #6366f1; border: none; color: white; }
+    .btn-modal.primary:hover { background: #4f46e5; }
+
+    /* ─── TOAST ─── */
+    #toast { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: none; }
+    #toast-inner { padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 500; color: white; box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: fadeUp .25s ease; }
+
+    .empty-state { text-align: center; padding: 60px 24px; color: #475569; }
+    .empty-state p { font-size: 15px; margin-bottom: 6px; }
+    .empty-state small { font-size: 13px; }
+
+    @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 600px) {
+      .topbar { padding: 0 16px; }
+      .painel-body { padding: 20px 16px; }
+      .login-box { padding: 32px 24px; }
+      .topbar-sub { display: none; }
+      .acoes { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ──────────────────────────────────────────────────────────────── -->
+<div id="view-login">
+  <div class="login-box">
+    <div class="login-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      ACESSO RESTRITO
+    </div>
+    <h1>Painel Admin</h1>
+    <p>Entre com sua conta de administrador</p>
+    <div class="login-error" id="login-erro"></div>
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="l-usuario" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="l-senha" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-entrar">Entrar no painel</button>
+  </div>
+</div>
+
+<!-- ── PAINEL ──────────────────────────────────────────────────────────────── -->
+<div id="view-painel">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      </div>
+      <div>
+        <div class="topbar-title">Painel Admin</div>
+        <div class="topbar-sub" id="p-sub">Gestão de lojas e usuários</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-user">
+        <div class="topbar-avatar" id="p-avatar">A</div>
+        <span class="topbar-nome" id="p-nome">Admin</span>
+      </div>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="painel-body">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Lojas</div>
+        <div class="section-sub" id="p-contagem">Carregando...</div>
+      </div>
+      <button class="btn-novo" onclick="abrirModalNovaLoja()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Nova Loja
+      </button>
+    </div>
+
+    <div id="lojas-lista"></div>
+  </div>
+</div>
+
+<!-- ── TOAST ──────────────────────────────────────────────────────────────── -->
+<div id="toast"><div id="toast-inner"></div></div>
+
+<script>
+  const API = '/api';
+  let _token = sessionStorage.getItem('admin_token');
+  let _user  = null;
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function authH() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token }; }
+
+  async function req(method, path, body) {
+    const opts = { method, headers: authH() };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(API + path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+    return data;
+  }
+
+  function toast(msg, type = 'success') {
+    const colors = { success: '#16a34a', error: '#dc2626', warning: '#d97706' };
+    document.getElementById('toast-inner').style.background = colors[type] || colors.success;
+    document.getElementById('toast-inner').textContent = msg;
+    document.getElementById('toast').style.display = 'block';
+    clearTimeout(window._t);
+    window._t = setTimeout(() => document.getElementById('toast').style.display = 'none', 3000);
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtData(str) {
+    if (!str) return '-';
+    return str.slice(0,10).split('-').reverse().join('/');
+  }
+
+  function sair() {
+    sessionStorage.removeItem('admin_token');
+    document.getElementById('view-painel').style.display = 'none';
+    document.getElementById('view-login').style.display = 'flex';
+    _token = null; _user = null;
+  }
+
+  // ── Login ────────────────────────────────────────────────────────────────
+  async function fazerLogin() {
+    const btn  = document.getElementById('btn-entrar');
+    const erro = document.getElementById('login-erro');
+    const usuario = document.getElementById('l-usuario').value.trim();
+    const senha   = document.getElementById('l-senha').value;
+    if (!usuario || !senha) { mostrarErroLogin('Preencha todos os campos'); return; }
+    btn.textContent = 'Entrando...'; btn.disabled = true; erro.style.display = 'none';
+    try {
+      const res  = await fetch(API + '/auth/admin-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ usuario, senha }) });
+      const data = await res.json();
+      if (!data.token) throw new Error(data.error || 'Credenciais inválidas');
+      if (data.user.perfil !== 'admin') throw new Error('Acesso negado — apenas administradores podem entrar aqui');
+      _token = data.token; _user = data.user;
+      sessionStorage.setItem('admin_token', _token);
+      entrarNoPainel();
+    } catch (e) { mostrarErroLogin(e.message); }
+    finally { btn.textContent = 'Entrar no painel'; btn.disabled = false; }
+  }
+
+  function mostrarErroLogin(msg) {
+    const erro = document.getElementById('login-erro');
+    erro.textContent = msg; erro.style.display = 'block';
+  }
+
+  function entrarNoPainel() {
+    document.getElementById('view-login').style.display = 'none';
+    document.getElementById('view-painel').style.display = 'block';
+    document.getElementById('p-avatar').textContent = _user.nome.charAt(0).toUpperCase();
+    document.getElementById('p-nome').textContent = _user.nome;
+    carregarLojas();
+  }
+
+  // ── Lojas ────────────────────────────────────────────────────────────────
+  let _lojas = [];
+
+  async function carregarLojas() {
+    try {
+      _lojas = await req('GET', '/lojas');
+      renderLojas();
+    } catch (e) {
+      document.getElementById('lojas-lista').innerHTML = `<div style="color:#f87171;padding:24px">${e.message}</div>`;
+    }
+  }
+
+  function renderLojas() {
+    const total = _lojas.length;
+    const totalUsuarios = _lojas.reduce((s, l) => s + l.usuarios.length, 0);
+    document.getElementById('p-contagem').textContent = `${total} loja(s) · ${totalUsuarios} usuário(s)`;
+
+    if (!total) {
+      document.getElementById('lojas-lista').innerHTML = `
+        <div class="empty-state">
+          <p>Nenhuma loja cadastrada ainda</p>
+          <small>Clique em "Nova Loja" para começar</small>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('lojas-lista').innerHTML = _lojas.map(l => `
+      <div class="loja-card">
+        <div class="loja-header">
+          <div class="loja-header-left">
+            <div class="loja-icon">
+              <svg viewBox="0 0 24 24"><path d="M20 4H4v2l8 5 8-5V4zM4 13h16v7H4z"/></svg>
+            </div>
+            <div>
+              <div class="loja-nome">${esc(l.nome)}</div>
+              <div class="loja-meta">${l.usuarios.length} usuário(s) · cadastrada em ${fmtData(l.criado_em)}</div>
+            </div>
+          </div>
+          <div class="loja-acoes">
+            <span class="badge badge-${l.ativo ? 'ativo' : 'inativo'}">${l.ativo ? 'Ativa' : 'Inativa'}</span>
+            <button class="btn-acao loja" onclick="abrirModalEditarLoja(${l.id}, '${esc(l.nome)}')">Editar</button>
+            <button class="btn-acao loja ${l.ativo ? 'danger' : 'success'}" onclick="toggleLoja(${l.id}, ${l.ativo})">
+              ${l.ativo ? 'Desativar' : 'Ativar'}
+            </button>
+          </div>
+        </div>
+
+        ${l.usuarios.length ? `
+        <table class="usuarios-table">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>E-mail / Login</th>
+              <th>Tipo</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${l.usuarios.map(u => `
+            <tr>
+              <td class="td-nome">${esc(u.nome)}</td>
+              <td class="td-email">${esc(u.email)}</td>
+              <td><span class="badge badge-${u.principal ? 'principal' : 'sub'}">${u.principal ? 'Usuário' : 'Sub-usuário'}</span></td>
+              <td><span class="badge badge-${u.ativo ? 'ativo' : 'inativo'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+              <td>
+                <div class="acoes">
+                  <button class="btn-acao" onclick='abrirModalEditarUsuario(${JSON.stringify(u)})'>Editar</button>
+                  <button class="btn-acao" onclick="abrirModalSenha(${u.id}, '${esc(u.nome)}')">Senha</button>
+                  <button class="btn-acao ${u.ativo ? 'danger' : 'success'}" onclick="toggleUsuario(${u.id}, ${u.ativo})">
+                    ${u.ativo ? 'Desativar' : 'Ativar'}
+                  </button>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>` : `<div class="empty-loja">Nenhum usuário nesta loja</div>`}
+
+        <div class="add-sub-row">
+          <button class="btn-add-sub" onclick="abrirModalSubUsuario(${l.id}, '${esc(l.nome)}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            Adicionar sub-usuário
+          </button>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Modal nova loja ──────────────────────────────────────────────────────
+  function abrirModalNovaLoja() {
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Nova Loja</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">Dados da loja</div>
+        <div class="m-field">
+          <label>Nome da loja</label>
+          <input type="text" id="nl-nome" autocomplete="off">
+        </div>
+        <hr class="modal-divider">
+        <div class="modal-section">Usuário principal</div>
+        <div class="m-field">
+          <label>Nome do responsável</label>
+          <input type="text" id="nl-usnome" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>E-mail / Login</label>
+          <input type="text" id="nl-email" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Senha</label>
+          <input type="password" id="nl-senha" autocomplete="new-password">
+        </div>
+        <div class="m-erro" id="nl-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarNovaLoja()">Criar Loja</button>
+      </div>`);
+    ov.querySelector('#nl-nome').focus();
+  }
+
+  async function salvarNovaLoja() {
+    const nome_loja    = document.getElementById('nl-nome').value.trim();
+    const nome_usuario = document.getElementById('nl-usnome').value.trim();
+    const email        = document.getElementById('nl-email').value.trim();
+    const senha        = document.getElementById('nl-senha').value;
+    const erro         = document.getElementById('nl-erro');
+
+    if (!nome_loja || !nome_usuario || !email || !senha) { erro.textContent = 'Preencha todos os campos'; return; }
+    if (senha.length < 4) { erro.textContent = 'A senha deve ter pelo menos 4 caracteres'; return; }
+
+    try {
+      await req('POST', '/lojas', { nome_loja, nome_usuario, email, senha });
+      fecharModal(); toast('Loja criada com sucesso!'); carregarLojas();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Modal editar loja ────────────────────────────────────────────────────
+  function abrirModalEditarLoja(id, nome) {
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Editar Loja</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="m-field">
+          <label>Nome da loja</label>
+          <input type="text" id="el-nome" value="${esc(nome)}" autocomplete="off">
+        </div>
+        <div class="m-erro" id="el-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarEditarLoja(${id})">Salvar</button>
+      </div>`);
+    ov.querySelector('#el-nome').focus();
+  }
+
+  async function salvarEditarLoja(id) {
+    const nome = document.getElementById('el-nome').value.trim();
+    const erro = document.getElementById('el-erro');
+    if (!nome) { erro.textContent = 'Informe o nome da loja'; return; }
+    try {
+      await req('PUT', `/lojas/${id}`, { nome });
+      fecharModal(); toast('Loja atualizada!'); carregarLojas();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Toggle loja ──────────────────────────────────────────────────────────
+  async function toggleLoja(id, ativoAtual) {
+    if (!confirm(`Deseja ${ativoAtual ? 'desativar' : 'ativar'} esta loja?`)) return;
+    try {
+      await req('PUT', `/lojas/${id}`, { ativo: !ativoAtual });
+      toast(`Loja ${ativoAtual ? 'desativada' : 'ativada'}!`); carregarLojas();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ── Modal sub-usuário ────────────────────────────────────────────────────
+  function abrirModalSubUsuario(loja_id, loja_nome) {
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Novo Sub-usuário</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748b;font-size:13px;margin-bottom:16px">Adicionando sub-usuário à loja <strong style="color:#818cf8">${esc(loja_nome)}</strong></p>
+        <div class="m-field">
+          <label>Nome</label>
+          <input type="text" id="su-nome" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>E-mail / Login</label>
+          <input type="text" id="su-email" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Senha</label>
+          <input type="password" id="su-senha" autocomplete="new-password">
+        </div>
+        <div class="m-erro" id="su-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarSubUsuario(${loja_id})">Criar Sub-usuário</button>
+      </div>`);
+    ov.querySelector('#su-nome').focus();
+  }
+
+  async function salvarSubUsuario(loja_id) {
+    const nome  = document.getElementById('su-nome').value.trim();
+    const email = document.getElementById('su-email').value.trim();
+    const senha = document.getElementById('su-senha').value;
+    const erro  = document.getElementById('su-erro');
+    if (!nome || !email || !senha) { erro.textContent = 'Preencha todos os campos'; return; }
+    if (senha.length < 4) { erro.textContent = 'A senha deve ter pelo menos 4 caracteres'; return; }
+    try {
+      await req('POST', `/lojas/${loja_id}/usuarios`, { nome, email, senha });
+      fecharModal(); toast('Sub-usuário criado!'); carregarLojas();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Modal editar usuário ─────────────────────────────────────────────────
+  function abrirModalEditarUsuario(u) {
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Editar Usuário</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="m-field">
+          <label>Nome</label>
+          <input type="text" id="eu-nome" value="${esc(u.nome)}" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>E-mail / Login</label>
+          <input type="text" id="eu-email" value="${esc(u.email)}" autocomplete="off">
+        </div>
+        <div class="m-erro" id="eu-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarEditarUsuario(${u.id})">Salvar</button>
+      </div>`);
+    ov.querySelector('#eu-nome').focus();
+  }
+
+  async function salvarEditarUsuario(id) {
+    const nome  = document.getElementById('eu-nome').value.trim();
+    const email = document.getElementById('eu-email').value.trim();
+    const erro  = document.getElementById('eu-erro');
+    if (!nome || !email) { erro.textContent = 'Nome e e-mail são obrigatórios'; return; }
+    try {
+      await req('PUT', `/usuarios/${id}`, { nome, email });
+      fecharModal(); toast('Usuário atualizado!'); carregarLojas();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Modal senha ──────────────────────────────────────────────────────────
+  function abrirModalSenha(id, nome) {
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Redefinir Senha</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#64748b;font-size:13px;margin-bottom:16px">Nova senha para <strong style="color:#f1f5f9">${esc(nome)}</strong></p>
+        <div class="m-field">
+          <label>Nova senha</label>
+          <input type="password" id="ms-senha" autocomplete="new-password">
+        </div>
+        <div class="m-erro" id="ms-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarSenha(${id})">Redefinir</button>
+      </div>`);
+    ov.querySelector('#ms-senha').focus();
+  }
+
+  async function salvarSenha(id) {
+    const senha = document.getElementById('ms-senha').value;
+    const erro  = document.getElementById('ms-erro');
+    if (!senha || senha.length < 4) { erro.textContent = 'A senha deve ter pelo menos 4 caracteres'; return; }
+    try {
+      await req('PUT', `/usuarios/${id}/senha`, { senha });
+      fecharModal(); toast('Senha redefinida!');
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Toggle usuário ───────────────────────────────────────────────────────
+  async function toggleUsuario(id, ativoAtual) {
+    if (!confirm(`Deseja ${ativoAtual ? 'desativar' : 'ativar'} este usuário?`)) return;
+    try {
+      await req('PUT', `/usuarios/${id}`, { ativo: !ativoAtual });
+      toast(`Usuário ${ativoAtual ? 'desativado' : 'ativado'}!`); carregarLojas();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  // ── Overlay ──────────────────────────────────────────────────────────────
+  function criarOverlay(conteudo) {
+    fecharModal();
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay'; ov.id = 'modal-ativo';
+    ov.innerHTML = `<div class="modal" onclick="event.stopPropagation()">${conteudo}</div>`;
+    let _mdTarget = null;
+    ov.addEventListener('mousedown', e => { _mdTarget = e.target; });
+    ov.addEventListener('mouseup',   e => { if (_mdTarget === ov && e.target === ov) fecharModal(); _mdTarget = null; });
+    document.body.appendChild(ov);
+    return ov;
+  }
+
+  function fecharModal() { const ov = document.getElementById('modal-ativo'); if (ov) ov.remove(); }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+  document.getElementById('l-senha').addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); });
+  document.getElementById('l-usuario').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('l-senha').focus(); });
+  document.getElementById('btn-entrar').addEventListener('click', fazerLogin);
+
+  if (_token) {
+    fetch(API + '/auth/me', { headers: { Authorization: 'Bearer ' + _token } })
+      .then(r => r.ok ? r.json() : null)
+      .then(u => {
+        if (u && u.perfil === 'admin') { _user = u; entrarNoPainel(); }
+        else { sessionStorage.removeItem('admin_token'); _token = null; }
+      }).catch(() => { sessionStorage.removeItem('admin_token'); _token = null; });
+  }
+</script>
+</body>
+</html>

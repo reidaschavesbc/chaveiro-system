@@ -610,6 +610,26 @@ tbody tr:hover {
     color: #c2410c;
 }
 
+.badge-blue {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-gray {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.badge-green {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-red {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 /* === MODAL === */
 .modal-overlay {
     position: fixed;

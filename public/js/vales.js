@@ -46,7 +46,7 @@ async function vales(el) {
           </div>
           <div class="form-group" style="margin-bottom:14px">
             <label>Valor (R$) *</label>
-            <input type="number" id="vale-valor" step="0.01" min="0.01" placeholder="0,00">
+            <input type="number" id="vale-valor" step="0.01" min="0.01">
           </div>
           <div class="form-group" style="margin-bottom:14px">
             <label>Data *</label>
@@ -54,7 +54,7 @@ async function vales(el) {
           </div>
           <div class="form-group">
             <label>Descrição</label>
-            <input type="text" id="vale-descricao" placeholder="Ex: adiantamento, alimentação...">
+            <input type="text" id="vale-descricao">
           </div>
         </div>
         <div class="modal-footer">

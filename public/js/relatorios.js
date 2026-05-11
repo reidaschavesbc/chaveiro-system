@@ -96,10 +96,39 @@ async function visualizarOS(id) {
   }
 }
 
+let _relUsuarioFiltro = 'all'; // 'all' | usuario_id
+
+function relGetFiltroParam() {
+  return _relUsuarioFiltro === 'all' ? '' : `&usuario_id=${_relUsuarioFiltro}`;
+}
+
 async function relatorios(el) {
   const ok = await modalSenhaGerente('Relatórios', 'Os relatórios financeiros são restritos ao gerente.');
   if (!ok) { navigateTo('dashboard'); return; }
+
+  const user = getUser();
+  const isPrincipal = user && user.principal;
+
+  // Carrega usuários da loja para o filtro (só para principal)
+  let usuariosHtml = '';
+  if (isPrincipal) {
+    try {
+      const usuarios = await api('GET', '/relatorios/usuarios');
+      if (usuarios.length > 1) {
+        const btns = [
+          `<button class="rel-filtro-btn active" onclick="relFiltroUsuario('all', this)">Geral (todos)</button>`,
+          ...usuarios.map(u => `<button class="rel-filtro-btn" onclick="relFiltroUsuario(${u.id}, this)">${u.nome}${u.principal ? ' (principal)' : ''}</button>`)
+        ].join('');
+        usuariosHtml = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
+          <span style="font-size:12px;font-weight:600;color:#64748b">Ver:</span>${btns}</div>
+          <style>.rel-filtro-btn{padding:5px 14px;border:1.5px solid #e2e8f0;border-radius:20px;background:#f8fafc;cursor:pointer;font-size:12px;font-weight:500;color:#475569;transition:all .15s}
+          .rel-filtro-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}</style>`;
+      }
+    } catch (_) {}
+  }
+
   el.innerHTML = `
+  ${usuariosHtml}
   <div class="tabs" id="tabs-relatorios">
     <button class="tab active" onclick="showRelatorio('geral', this)">Geral (Tudo)</button>
     <button class="tab" onclick="showRelatorio('vendas', this)">Vendas</button>
@@ -111,6 +140,15 @@ async function relatorios(el) {
   <div id="relatorio-os" style="display:none"></div>
   <div id="relatorio-estoque" style="display:none"></div>`;
   mostrarRelatorioGeral();
+}
+
+function relFiltroUsuario(id, btn) {
+  _relUsuarioFiltro = id;
+  document.querySelectorAll('.rel-filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // Recarrega a aba ativa
+  const tabAtiva = document.querySelector('#tabs-relatorios .tab.active');
+  if (tabAtiva) tabAtiva.click();
 }
 
 async function showRelatorio(tipo, btn) {
@@ -166,7 +204,7 @@ function imprimirFechamentoCaixa(tipo = 'geral') {
 async function carregarRelatorioGeral() {
   const di = document.getElementById('rel-geral-ini').value;
   const df = document.getElementById('rel-geral-fim').value;
-  const data = await api('GET', `/relatorios/geral?data_inicio=${di}&data_fim=${df}`);
+  const data = await api('GET', `/relatorios/geral?data_inicio=${di}&data_fim=${df}${relGetFiltroParam()}`);
   const el = document.getElementById('rel-geral-content');
   const r = data.resultado;
 
@@ -295,7 +333,7 @@ async function mostrarRelatorioVendas() {
 async function carregarRelatorioVendas() {
   const di = document.getElementById('rel-venda-ini').value;
   const df = document.getElementById('rel-venda-fim').value;
-  const data = await api('GET', `/relatorios/vendas?data_inicio=${di}&data_fim=${df}`);
+  const data = await api('GET', `/relatorios/vendas?data_inicio=${di}&data_fim=${df}${relGetFiltroParam()}`);
   const el = document.getElementById('rel-vendas-content');
   const totalGeral = data.totais.reduce((a, v) => a + v.total, 0);
   el.innerHTML = `
@@ -358,7 +396,7 @@ async function mostrarRelatorioOS() {
 async function carregarRelatorioOS() {
   const di = document.getElementById('rel-os-ini').value;
   const df = document.getElementById('rel-os-fim').value;
-  const data = await api('GET', `/relatorios/os?data_inicio=${di}&data_fim=${df}`);
+  const data = await api('GET', `/relatorios/os?data_inicio=${di}&data_fim=${df}${relGetFiltroParam()}`);
   const list = data.os;
   const el = document.getElementById('rel-os-content');
   const totalOS = data.totais.reduce((a, v) => a + v.total, 0);

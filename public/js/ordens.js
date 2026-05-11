@@ -31,7 +31,7 @@ async function ordens(el) {
         </select>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-          <input type="text" id="search-os" placeholder="Buscar OS, cliente..." oninput="filtrarOS()">
+          <input type="text" id="search-os" oninput="filtrarOS()">
         </div>
         <button class="btn btn-primary" onclick="abrirModalOS()">
           <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -54,7 +54,7 @@ async function ordens(el) {
           <div class="form-group">
             <label>Cliente</label>
             <select id="os-cliente" onchange="toggleClienteAvulso('os');carregarAutorizadosOS()"><option value="">-- Sem cliente --</option>${clienteOptions}</select>
-            <input type="text" id="os-cliente-avulso" placeholder="Nome do cliente (opcional)" style="margin-top:6px">
+            <input type="text" id="os-cliente-avulso" style="margin-top:6px">
             <div id="os-solicitado-wrap" style="display:none;margin-top:6px">
               <select id="os-solicitado-por" style="width:100%">
                 <option value="">-- Solicitado por (opcional) --</option>
@@ -63,14 +63,14 @@ async function ordens(el) {
             <div id="os-avulso-endereco" style="margin-top:8px;padding:10px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">
               <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Endereço do Cliente</div>
               <div style="display:flex;gap:6px;margin-bottom:6px">
-                <input type="text" id="os-avulso-rua" placeholder="Rua *" style="flex:1">
-                <input type="text" id="os-avulso-numero" placeholder="Nº *" style="width:68px">
+                <input type="text" id="os-avulso-rua" style="flex:1">
+                <input type="text" id="os-avulso-numero" style="width:68px">
               </div>
               <div style="display:flex;gap:6px;margin-bottom:6px">
-                <input type="text" id="os-avulso-complemento" placeholder="Ap / Complemento" style="flex:1">
-                <input type="text" id="os-avulso-cidade" placeholder="Cidade" style="flex:1">
+                <input type="text" id="os-avulso-complemento" style="flex:1">
+                <input type="text" id="os-avulso-cidade" style="flex:1">
               </div>
-              <input type="text" id="os-avulso-referencia" placeholder="Referência (opcional)" style="width:100%;box-sizing:border-box">
+              <input type="text" id="os-avulso-referencia" style="width:100%;box-sizing:border-box">
             </div>
           </div>
           <div class="form-group">
@@ -153,10 +153,10 @@ async function ordens(el) {
                   </select>
                 </div>
                 <div class="form-group">
-                  <input type="number" id="os-item-servico-qtd" min="1" value="1" placeholder="Qtd">
+                  <input type="number" id="os-item-servico-qtd" min="1" value="1">
                 </div>
                 <div class="form-group">
-                  <input type="number" id="os-item-servico-preco" step="0.01" min="0" value="0" placeholder="Preço">
+                  <input type="number" id="os-item-servico-preco" step="0.01" min="0" value="0">
                 </div>
               </div>
               <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('servico')">Adicionar Serviço</button>
@@ -170,10 +170,10 @@ async function ordens(el) {
                   </select>
                 </div>
                 <div class="form-group">
-                  <input type="number" id="os-item-produto-qtd" min="1" value="1" placeholder="Qtd">
+                  <input type="number" id="os-item-produto-qtd" min="1" value="1">
                 </div>
                 <div class="form-group">
-                  <input type="number" id="os-item-produto-preco" step="0.01" min="0" value="0" placeholder="Preço">
+                  <input type="number" id="os-item-produto-preco" step="0.01" min="0" value="0">
                 </div>
               </div>
               <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('produto')">Adicionar Produto</button>

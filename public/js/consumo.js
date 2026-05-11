@@ -159,11 +159,11 @@ function consModalHtml() {
           </div>
           <div class="form-group">
             <label>OS Relacionada (opcional)</label>
-            <input type="text" id="cons-os" placeholder="Ex: OS2404001">
+            <input type="text" id="cons-os">
           </div>
           <div class="form-group form-full">
             <label>Observação</label>
-            <input type="text" id="cons-obs" placeholder="Ex: Chave travou na máquina, cliente trouxe chave com defeito...">
+            <input type="text" id="cons-obs">
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">

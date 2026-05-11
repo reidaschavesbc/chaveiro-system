@@ -15,6 +15,31 @@ router.post('/login', (req, res) => {
     const valid = bcrypt.compareSync(senha, user.senha);
     if (!valid) return res.status(401).json({ error: 'Credenciais inválidas' });
 
+    if (user.perfil === 'admin') return res.status(403).json({ error: 'Acesso negado. Administradores devem entrar pelo painel admin.' });
+    if (!user.loja_id) return res.status(403).json({ error: 'Usuário sem loja vinculada. Contate o administrador.' });
+
+    const token = jwt.sign(
+        { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, loja_id: user.loja_id, principal: user.principal },
+        process.env.JWT_SECRET,
+        { expiresIn: '12h' }
+    );
+
+    res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil, loja_id: user.loja_id, principal: user.principal } });
+});
+
+// POST /api/auth/admin-login — exclusivo para o painel /admin
+router.post('/admin-login', (req, res) => {
+    const { usuario, senha } = req.body;
+    if (!usuario || !senha) return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+
+    const user = db.prepare('SELECT * FROM usuarios WHERE email = ? AND ativo = 1').get(usuario);
+    if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
+
+    const valid = bcrypt.compareSync(senha, user.senha);
+    if (!valid) return res.status(401).json({ error: 'Credenciais inválidas' });
+
+    if (user.perfil !== 'admin') return res.status(403).json({ error: 'Acesso negado — apenas administradores' });
+
     const token = jwt.sign(
         { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil },
         process.env.JWT_SECRET,

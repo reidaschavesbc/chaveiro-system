@@ -26,13 +26,14 @@ function dataValidade(criadoEm, dias) {
 // GET /api/orcamentos
 router.get('/', (req, res) => {
     const { status, q } = req.query;
+    const lojaId = req.user.loja_id;
     let query = `SELECT o.*, c.nome as cliente_nome, c.telefone as cliente_telefone,
         v.nome as vendedor_nome
         FROM orcamentos o
         LEFT JOIN clientes c ON o.cliente_id = c.id
         LEFT JOIN vendedores v ON o.vendedor_id = v.id
-        WHERE 1=1`;
-    const params = [];
+        WHERE o.loja_id = ?`;
+    const params = [lojaId];
     if (status) { query += ' AND o.status = ?'; params.push(status); }
     if (q) { query += ' AND (o.numero LIKE ? OR c.nome LIKE ? OR o.descricao LIKE ? OR o.cliente_nome_avulso LIKE ?)'; params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
     query += ' ORDER BY o.criado_em DESC';
@@ -46,8 +47,9 @@ router.get('/:id', (req, res) => {
         FROM orcamentos o
         LEFT JOIN clientes c ON o.cliente_id = c.id
         LEFT JOIN vendedores v ON o.vendedor_id = v.id
-        WHERE o.id = ?`).get(req.params.id);
+        WHERE o.id = ? AND o.loja_id = ?`).get(req.params.id, req.user.loja_id);
     if (!orc) return res.status(404).json({ error: 'Orçamento não encontrado' });
+    // itens seguem FK de orcamento_id, que já está filtrada por loja_id acima
     const itens = db.prepare('SELECT * FROM itens_orcamento WHERE orcamento_id = ? ORDER BY id').all(req.params.id);
     res.json({ ...orc, itens });
 });
@@ -57,13 +59,14 @@ router.post('/', (req, res) => {
     const { cliente_id, cliente_nome_avulso, cliente_telefone_avulso, descricao, validade_dias, observacoes, vendedor_id, itens } = req.body;
     if (!descricao) return res.status(400).json({ error: 'Descrição é obrigatória' });
     const numero = gerarNumero();
+    const lojaId = req.user.loja_id;
     const total = (itens || []).reduce((s, i) => s + (i.quantidade * i.preco_unitario), 0);
 
     const tx = db.transaction(() => {
         const r = db.prepare(`
-            INSERT INTO orcamentos (numero, cliente_id, cliente_nome_avulso, cliente_telefone_avulso, descricao, validade_dias, observacoes, vendedor_id, total, usuario_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, req.user?.id || null);
+            INSERT INTO orcamentos (numero, cliente_id, cliente_nome_avulso, cliente_telefone_avulso, descricao, validade_dias, observacoes, vendedor_id, total, usuario_id, loja_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, req.user?.id || null, lojaId);
 
         if (itens && itens.length) {
             const stmt = db.prepare('INSERT INTO itens_orcamento (orcamento_id, produto_id, servico_id, descricao, quantidade, preco_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -78,14 +81,14 @@ router.post('/', (req, res) => {
 
 // PUT /api/orcamentos/:id
 router.put('/:id', (req, res) => {
-    const orc = db.prepare('SELECT * FROM orcamentos WHERE id = ?').get(req.params.id);
+    const orc = db.prepare('SELECT * FROM orcamentos WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!orc) return res.status(404).json({ error: 'Orçamento não encontrado' });
     const { cliente_id, cliente_nome_avulso, cliente_telefone_avulso, descricao, validade_dias, observacoes, vendedor_id, itens, status } = req.body;
     const total = (itens || []).reduce((s, i) => s + (i.quantidade * i.preco_unitario), 0);
 
     db.transaction(() => {
-        db.prepare(`UPDATE orcamentos SET cliente_id=?, cliente_nome_avulso=?, cliente_telefone_avulso=?, descricao=?, validade_dias=?, observacoes=?, vendedor_id=?, total=?, status=? WHERE id=?`)
-            .run(cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, status || orc.status, req.params.id);
+        db.prepare(`UPDATE orcamentos SET cliente_id=?, cliente_nome_avulso=?, cliente_telefone_avulso=?, descricao=?, validade_dias=?, observacoes=?, vendedor_id=?, total=?, status=? WHERE id=? AND loja_id=?`)
+            .run(cliente_id || null, cliente_nome_avulso || null, cliente_telefone_avulso || null, descricao, validade_dias || 7, observacoes || null, vendedor_id || null, total, status || orc.status, req.params.id, req.user.loja_id);
         if (itens !== undefined) {
             db.prepare('DELETE FROM itens_orcamento WHERE orcamento_id = ?').run(req.params.id);
             const stmt = db.prepare('INSERT INTO itens_orcamento (orcamento_id, produto_id, servico_id, descricao, quantidade, preco_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -99,14 +102,16 @@ router.put('/:id', (req, res) => {
 router.patch('/:id/status', (req, res) => {
     const { status } = req.body;
     if (!['pendente', 'aprovado', 'recusado', 'expirado'].includes(status)) return res.status(400).json({ error: 'Status inválido' });
-    db.prepare('UPDATE orcamentos SET status = ? WHERE id = ?').run(status, req.params.id);
+    db.prepare('UPDATE orcamentos SET status = ? WHERE id = ? AND loja_id = ?').run(status, req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 
 // DELETE /api/orcamentos/:id
 router.delete('/:id', (req, res) => {
+    const orc = db.prepare('SELECT id FROM orcamentos WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    if (!orc) return res.status(404).json({ error: 'Orçamento não encontrado' });
     db.prepare('DELETE FROM itens_orcamento WHERE orcamento_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM orcamentos WHERE id = ?').run(req.params.id);
+    db.prepare('DELETE FROM orcamentos WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 
@@ -116,7 +121,7 @@ router.post('/:id/enviar', async (req, res) => {
     if (!telefone) return res.status(400).json({ error: 'Telefone é obrigatório' });
 
     const orc = db.prepare(`SELECT o.*, c.nome as cliente_nome
-        FROM orcamentos o LEFT JOIN clientes c ON o.cliente_id = c.id WHERE o.id = ?`).get(req.params.id);
+        FROM orcamentos o LEFT JOIN clientes c ON o.cliente_id = c.id WHERE o.id = ? AND o.loja_id = ?`).get(req.params.id, req.user.loja_id);
     if (!orc) return res.status(404).json({ error: 'Orçamento não encontrado' });
     const itens = db.prepare('SELECT * FROM itens_orcamento WHERE orcamento_id = ? ORDER BY id').all(req.params.id);
     const cfg = db.prepare('SELECT chave, valor FROM configuracoes').all().reduce((o, r) => { o[r.chave] = r.valor; return o; }, {});

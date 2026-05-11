@@ -12,7 +12,7 @@ async function configuracoes(el) {
           </div>
           <div class="form-group">
             <label>Telefone</label>
-            <input type="text" id="cfg-empresa-telefone" value="${aplicarMascaraTelefone(cfg.empresa_telefone)}" oninput="mascaraTelefone(this)" placeholder="(00) 00000-0000">
+            <input type="text" id="cfg-empresa-telefone" value="${aplicarMascaraTelefone(cfg.empresa_telefone)}" oninput="mascaraTelefone(this)">
           </div>
           <div class="form-group">
             <label>CNPJ</label>
@@ -57,15 +57,15 @@ async function configuracoes(el) {
         </p>
         <div class="form-group" style="max-width:300px;margin-bottom:16px">
           <label>WhatsApp para Comissões</label>
-          <input type="text" id="cfg-whatsapp-comissao" value="${aplicarMascaraTelefone(cfg.whatsapp_comissao)}" placeholder="Ex: (11) 99999-9999" oninput="mascaraTelefone(this)">
+          <input type="text" id="cfg-whatsapp-comissao" value="${aplicarMascaraTelefone(cfg.whatsapp_comissao)}" oninput="mascaraTelefone(this)">
         </div>
         <div class="form-group" style="max-width:300px;margin-bottom:16px">
           <label>WhatsApp para Cobranças <span style="color:#64748b;font-weight:400;font-size:12px">(aviso diário às 08h)</span></label>
-          <input type="text" id="cfg-whatsapp-cobrancas" value="${aplicarMascaraTelefone(cfg.whatsapp_cobrancas)}" placeholder="Ex: (11) 99999-9999" oninput="mascaraTelefone(this)">
+          <input type="text" id="cfg-whatsapp-cobrancas" value="${aplicarMascaraTelefone(cfg.whatsapp_cobrancas)}" oninput="mascaraTelefone(this)">
         </div>
         <div class="form-group" style="max-width:300px;margin-bottom:16px">
           <label>WhatsApp para Pedidos de Compra <span style="color:#64748b;font-weight:400;font-size:12px">(avisos por prioridade)</span></label>
-          <input type="text" id="cfg-whatsapp-pedidos" value="${aplicarMascaraTelefone(cfg.whatsapp_pedidos)}" placeholder="Ex: (11) 99999-9999" oninput="mascaraTelefone(this)">
+          <input type="text" id="cfg-whatsapp-pedidos" value="${aplicarMascaraTelefone(cfg.whatsapp_pedidos)}" oninput="mascaraTelefone(this)">
         </div>
         <button class="btn btn-primary" onclick="salvarWhatsappComissao()">Salvar</button>
       </div>
@@ -102,7 +102,7 @@ async function configuracoes(el) {
              </div>
              <div class="form-group" style="margin-bottom:14px">
                <label>Senha Atual</label>
-               <input type="password" id="cfg-senha-ger-atual" placeholder="Digite a senha atual...">
+               <input type="password" id="cfg-senha-ger-atual">
              </div>`
           : `<div style="background:#fefce8;border:1px solid #fde047;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#854d0e">
                ⚠ Nenhuma senha configurada. Sem ela, qualquer usuário logado pode ver informações financeiras no assistente.
@@ -110,7 +110,7 @@ async function configuracoes(el) {
         }
         <div class="form-group" style="margin-bottom:14px">
           <label>Nova Senha do Gerente</label>
-          <input type="password" id="cfg-senha-ger-nova" placeholder="Mínimo 4 caracteres">
+          <input type="password" id="cfg-senha-ger-nova">
         </div>
         <div class="form-group" style="margin-bottom:16px">
           <label>Confirmar Nova Senha</label>

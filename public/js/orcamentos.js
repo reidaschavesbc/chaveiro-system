@@ -62,7 +62,7 @@ async function orcamentos(el) {
           </select>
           <div class="search-box">
             <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-            <input type="text" id="search-orc" placeholder="Buscar orçamento..." oninput="filtrarOrc()">
+            <input type="text" id="search-orc" oninput="filtrarOrc()">
           </div>
           <button class="btn btn-primary" onclick="abrirModalOrc()">
             <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
@@ -89,8 +89,8 @@ async function orcamentos(el) {
                 <option value="">-- Sem cliente --</option>
                 ${orcClientes.map(c => `<option value="${c.id}" data-tel="${c.telefone || ''}">${c.nome}</option>`).join('')}
               </select>
-              <input type="text" id="orc-cliente-avulso" placeholder="Nome do cliente (sem cadastro)" style="margin-top:6px">
-              <input type="text" id="orc-cliente-tel-avulso" placeholder="Telefone (para WhatsApp)" style="margin-top:6px" oninput="mascaraTelefone(this)">
+              <input type="text" id="orc-cliente-avulso" style="margin-top:6px">
+              <input type="text" id="orc-cliente-tel-avulso" style="margin-top:6px" oninput="mascaraTelefone(this)">
             </div>
             <div class="form-group">
               <label>Funcionário</label>
@@ -101,7 +101,7 @@ async function orcamentos(el) {
             </div>
             <div class="form-group form-full">
               <label>Descrição *</label>
-              <textarea id="orc-descricao" placeholder="Descreva o serviço/produto solicitado..."></textarea>
+              <textarea id="orc-descricao"></textarea>
             </div>
             <div class="form-group">
               <label>Validade (dias)</label>
@@ -139,8 +139,8 @@ async function orcamentos(el) {
                     ${orcServicos.map(s => `<option value="${s.id}" data-nome="${s.nome}" data-preco="${s.preco_base}">${s.nome} — ${formatCurrency(s.preco_base)}</option>`).join('')}
                   </select>
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-serv-qtd" min="1" value="1" placeholder="Qtd"></div>
-                <div class="form-group"><input type="number" id="orc-item-serv-preco" step="0.01" min="0" value="0" placeholder="Preço"></div>
+                <div class="form-group"><input type="number" id="orc-item-serv-qtd" min="1" value="1"></div>
+                <div class="form-group"><input type="number" id="orc-item-serv-preco" step="0.01" min="0" value="0"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('servico')">Adicionar Serviço</button>
             </div>
@@ -152,18 +152,18 @@ async function orcamentos(el) {
                     ${orcProdutos.map(p => `<option value="${p.id}" data-nome="${p.nome}" data-preco="${p.preco_venda}">${p.nome} — ${formatCurrency(p.preco_venda)}</option>`).join('')}
                   </select>
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-prod-qtd" min="1" value="1" placeholder="Qtd"></div>
-                <div class="form-group"><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0" placeholder="Preço"></div>
+                <div class="form-group"><input type="number" id="orc-item-prod-qtd" min="1" value="1"></div>
+                <div class="form-group"><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('produto')">Adicionar Produto</button>
             </div>
             <div id="tab-orc-manual" style="display:none">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <input type="text" id="orc-item-man-desc" placeholder="Descrição do item">
+                  <input type="text" id="orc-item-man-desc">
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-man-qtd" min="1" value="1" placeholder="Qtd"></div>
-                <div class="form-group"><input type="number" id="orc-item-man-preco" step="0.01" min="0" value="0" placeholder="Preço"></div>
+                <div class="form-group"><input type="number" id="orc-item-man-qtd" min="1" value="1"></div>
+                <div class="form-group"><input type="number" id="orc-item-man-preco" step="0.01" min="0" value="0"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('manual')">Adicionar Item</button>
             </div>
@@ -190,7 +190,7 @@ async function orcamentos(el) {
           <p id="orc-enviar-numero" style="font-weight:600;color:#1a56db;margin-bottom:14px"></p>
           <div class="form-group">
             <label>Telefone do destinatário</label>
-            <input type="text" id="orc-enviar-tel" placeholder="(00) 00000-0000" oninput="mascaraTelefone(this)">
+            <input type="text" id="orc-enviar-tel" oninput="mascaraTelefone(this)">
           </div>
           <div class="form-group" style="margin-top:14px">
             <label style="margin-bottom:10px;display:block;font-weight:600">Enviar como:</label>

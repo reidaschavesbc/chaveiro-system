@@ -200,7 +200,7 @@ function pedidosModalHtml() {
         <div class="form-grid">
           <div class="form-group form-full">
             <label>Item / Produto *</label>
-            <input type="text" id="p-descricao" placeholder="Ex: Chaves brutas tamanho 66, cadeado 40mm...">
+            <input type="text" id="p-descricao">
           </div>
           <div class="form-group">
             <label>Quantidade</label>
@@ -216,7 +216,7 @@ function pedidosModalHtml() {
           </div>
           <div class="form-group form-full">
             <label>Observações</label>
-            <input type="text" id="p-obs" placeholder="Fornecedor, detalhes, etc. (opcional)">
+            <input type="text" id="p-obs">
           </div>
         </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">

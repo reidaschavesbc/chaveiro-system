@@ -105,7 +105,7 @@ function lembretesModalHtml() {
 
                 <div class="form-group" style="margin-bottom:16px">
                     <label>Mensagem *</label>
-                    <textarea id="lb-mensagem" rows="3" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit" placeholder="Digite a mensagem que será enviada pelo WhatsApp..."></textarea>
+                    <textarea id="lb-mensagem" rows="3" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">

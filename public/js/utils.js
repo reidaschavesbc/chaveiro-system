@@ -91,7 +91,7 @@ function modalPrompt({ titulo, mensagem, placeholder = '', obrigatorio = true })
             </div>
             <div class="modal-body">
                 <p style="font-size:13px;color:#374151;margin:0 0 12px">${mensagem}</p>
-                <input type="text" id="input-mp-valor" placeholder="${placeholder}" style="width:100%;box-sizing:border-box">
+                <input type="text" id="input-mp-valor" style="width:100%;box-sizing:border-box">
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="btn-mp-cancelar">Cancelar</button>
@@ -187,7 +187,7 @@ function pedirSenhaExclusao(descricao) {
                 </div>
                 <div class="form-group">
                     <label>Senha do gerente</label>
-                    <input type="password" id="input-senha-excl" placeholder="Digite a senha do gerente...">
+                    <input type="password" id="input-senha-excl">
                 </div>
             </div>
             <div class="modal-footer">
