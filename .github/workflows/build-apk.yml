@@ -54,10 +54,14 @@ jobs:
         run: mv mobile-app/android/app/build/outputs/apk/debug/app-debug.apk ChaveiroOS.apk
 
       - name: Enviar APK para o servidor
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "ChaveiroOS.apk"
-          target: "/root/chaveiro-system/public/downloads/"
+        env:
+          VPS_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          echo "$VPS_KEY" > /tmp/vps_key
+          chmod 600 /tmp/vps_key
+          for i in 1 2 3; do
+            scp -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+              ChaveiroOS.apk ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/chaveiro-system/public/downloads/ChaveiroOS.apk \
+              && echo "Enviado com sucesso" && break || echo "Tentativa $i falhou, aguardando..."
+            sleep 10
+          done
