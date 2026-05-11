@@ -53,15 +53,13 @@ jobs:
       - name: Renomear APK
         run: mv mobile-app/android/app/build/outputs/apk/debug/app-debug.apk ChaveiroOS.apk
 
-      - name: Enviar APK para o servidor
+      - name: Publicar APK no GitHub Releases
         env:
-          VPS_KEY: ${{ secrets.VPS_SSH_KEY }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          echo "$VPS_KEY" > /tmp/vps_key
-          chmod 600 /tmp/vps_key
-          for i in 1 2 3; do
-            scp -i /tmp/vps_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
-              ChaveiroOS.apk ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/root/chaveiro-system/public/downloads/ChaveiroOS.apk \
-              && echo "Enviado com sucesso" && break || echo "Tentativa $i falhou, aguardando..."
-            sleep 10
-          done
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" ChaveiroOS.apk \
+            --title "Release $TAG" \
+            --notes "APK Android - Chaveiro OS" \
+            --repo tvsxgames/chaveiro-system

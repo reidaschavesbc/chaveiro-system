@@ -29,12 +29,7 @@ app.get('/download', (req, res) => {
 
 // Download do app Android (público)
 app.get('/download-app', (req, res) => {
-  const localFile = path.join(__dirname, 'public/downloads/ChaveiroOS.apk');
-  if (fs.existsSync(localFile)) {
-    res.download(localFile, 'ChaveiroOS.apk');
-  } else {
-    res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/ChaveiroOS.apk');
-  }
+  res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/ChaveiroOS.apk');
 });
 
 app.get('/api/version', (req, res) => {
