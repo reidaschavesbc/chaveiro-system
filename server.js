@@ -30,9 +30,12 @@ app.get('/download', (req, res) => {
 // Download do app Android — busca o release mais recente com APK no GitHub
 app.get('/download-app', async (req, res) => {
   try {
-    const r = await fetch('https://api.github.com/repos/tvsxgames/chaveiro-system/releases?per_page=20');
+    const r = await fetch('https://api.github.com/repos/tvsxgames/chaveiro-system/releases?per_page=20', {
+      headers: { Authorization: 'token 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', 'User-Agent': 'chaveiro-system' }
+    });
     const releases = await r.json();
-    const rel = releases.find(r => !r.draft && !r.prerelease && r.assets.some(a => a.name === 'ChaveiroOS.apk'));
+    const hasApk = r => !r.draft && !r.prerelease && r.assets.some(a => a.name === 'ChaveiroOS.apk');
+    const rel = releases.find(r => hasApk(r) && r.tag_name.startsWith('apk-')) || releases.find(hasApk);
     if (rel) {
       const asset = rel.assets.find(a => a.name === 'ChaveiroOS.apk');
       return res.redirect(302, asset.browser_download_url);
