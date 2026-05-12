@@ -76,6 +76,11 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [aReceber, setAReceber] = useState(false);
   const [dataVencimento, setDataVencimento] = useState('');
 
+  // Edição inline de item
+  const [editandoItemId, setEditandoItemId] = useState(null);
+  const [editItemQtd, setEditItemQtd] = useState('');
+  const [editItemPreco, setEditItemPreco] = useState('');
+
   // Modal consumo de estoque
   const [modalEstoque, setModalEstoque] = useState(false);
   const [estoqueItens, setEstoqueItens] = useState([]);
@@ -203,6 +208,25 @@ export default function OSDetalheScreen({ route, navigation }) {
     } finally { setSalvando(false); }
   }
 
+  function iniciarEdicaoItem(it) {
+    setEditandoItemId(it.id);
+    setEditItemQtd(String(it.quantidade));
+    setEditItemPreco(String(it.preco_unitario));
+  }
+
+  async function salvarItemEditado(itemId) {
+    const qty = parseFloat(String(editItemQtd).replace(',', '.')) || 1;
+    const preco = parseFloat(String(editItemPreco).replace(',', '.')) || 0;
+    setSalvando(true);
+    try {
+      await api.put(`/os/${osId}/item/${itemId}`, { quantidade: qty, preco_unitario: preco });
+      setEditandoItemId(null);
+      await carregarOS();
+    } catch (e) {
+      Alert.alert('Erro', e.response?.data?.error || 'Falha ao editar item');
+    } finally { setSalvando(false); }
+  }
+
   async function removerItem(itemId) {
     Alert.alert('Remover item', 'Tem certeza?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -288,8 +312,6 @@ export default function OSDetalheScreen({ route, navigation }) {
   // ── Modal consumo de estoque ────────────────────────────────────────────────
 
   async function verificarEAbrirEstoque(osIdLocal) {
-    const temPergunta = (os.itens || []).some(it => it.perguntar_estoque);
-    if (!temPergunta) return;
     try {
       const { data } = await api.get('/produtos');
       setEstoqueProdutos(data);
@@ -396,16 +418,47 @@ export default function OSDetalheScreen({ route, navigation }) {
               <Text style={s.emptyText}>Nenhum item adicionado</Text>
             ) : (
               os.itens.map((it, i) => (
-                <View key={it.id || i} style={s.itemRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
-                    <Text style={s.itemSub}>{it.quantidade}x · {fmtVal(it.preco_unitario)}</Text>
-                  </View>
-                  <Text style={s.itemVal}>{fmtVal(it.subtotal)}</Text>
-                  {podeEditar && (
-                    <TouchableOpacity onPress={() => removerItem(it.id)} style={s.removeBtn}>
-                      <Text style={s.removeBtnText}>✕</Text>
-                    </TouchableOpacity>
+                <View key={it.id || i} style={[s.itemRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+                  {editandoItemId === it.id ? (
+                    <View>
+                      <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.fieldLabel}>Qtd</Text>
+                          <TextInput style={s.fieldInput} value={editItemQtd} onChangeText={setEditItemQtd} keyboardType="decimal-pad" placeholderTextColor="#999" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.fieldLabel}>Preço (R$)</Text>
+                          <TextInput style={s.fieldInput} value={editItemPreco} onChangeText={setEditItemPreco} keyboardType="decimal-pad" placeholderTextColor="#999" />
+                        </View>
+                      </View>
+                      <View style={s.row}>
+                        <TouchableOpacity style={s.cancelBtn} onPress={() => setEditandoItemId(null)}>
+                          <Text style={s.cancelBtnText}>Cancelar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.saveBtn} onPress={() => salvarItemEditado(it.id)} disabled={salvando}>
+                          {salvando ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
+                        <Text style={s.itemSub}>{it.quantidade}x · {fmtVal(it.preco_unitario)}</Text>
+                      </View>
+                      <Text style={s.itemVal}>{fmtVal(it.subtotal)}</Text>
+                      {podeEditar && (
+                        <>
+                          <TouchableOpacity onPress={() => iniciarEdicaoItem(it)} style={[s.removeBtn, { backgroundColor: '#eff6ff', marginRight: 6 }]}>
+                            <Text style={[s.removeBtnText, { color: '#2563eb' }]}>✎</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => removerItem(it.id)} style={s.removeBtn}>
+                            <Text style={s.removeBtnText}>✕</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
                   )}
                 </View>
               ))

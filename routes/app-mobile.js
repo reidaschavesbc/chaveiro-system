@@ -208,6 +208,22 @@ router.post('/os/:id/item', authFuncionario, (req, res) => {
   res.json({ ok: true, valor: novoValor });
 });
 
+// PUT /api/app/os/:id/item/:itemId
+router.put('/os/:id/item/:itemId', authFuncionario, (req, res) => {
+  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
+    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  if (!os) return res.status(404).json({ error: 'OS não encontrada' });
+  if (['concluida', 'cancelada'].includes(os.status)) return res.status(400).json({ error: 'OS já finalizada' });
+
+  const { quantidade, preco_unitario } = req.body;
+  const qty = Math.max(0.01, Number(quantidade) || 1);
+  const preco = Math.max(0, Number(preco_unitario) || 0);
+  db.prepare(`UPDATE itens_ordem_servico SET quantidade = ?, preco_unitario = ?, subtotal = ? WHERE id = ? AND ordem_id = ?`)
+    .run(qty, preco, qty * preco, req.params.itemId, os.id);
+  const novoValor = recalcularValorOS(os.id);
+  res.json({ ok: true, valor: novoValor });
+});
+
 // DELETE /api/app/os/:id/item/:itemId
 router.delete('/os/:id/item/:itemId', authFuncionario, (req, res) => {
   const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
