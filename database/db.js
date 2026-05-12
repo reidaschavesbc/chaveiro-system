@@ -271,6 +271,9 @@ function migrate() {
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN produto_id INTEGER'); } catch (_) {}
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN produto_quantidade REAL NOT NULL DEFAULT 1'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN orcamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE produtos ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE tipos_servico ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_vales REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_liquido REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_salarios REAL NOT NULL DEFAULT 0'); } catch (_) {}

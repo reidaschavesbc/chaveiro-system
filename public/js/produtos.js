@@ -100,6 +100,13 @@ async function produtos(el) {
               <textarea id="produto-desc"></textarea>
             </div>
             <div class="form-group form-full">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500">
+                <input type="checkbox" id="produto-perguntar-estoque" style="width:16px;height:16px;cursor:pointer;accent-color:#6366f1">
+                <span>Perguntar sobre uso de estoque ao finalizar OS</span>
+              </label>
+              <p style="font-size:12px;color:#94a3b8;margin-top:4px;margin-left:26px">Quando ativado, ao concluir uma OS com este produto, o sistema pergunta se houve consumo adicional de materiais.</p>
+            </div>
+            <div class="form-group form-full">
               <label>Foto do Produto</label>
               <div class="img-upload-area">
                 <div class="img-upload-preview" id="produto-img-preview">
@@ -235,6 +242,7 @@ function editarProduto(id) {
     document.getElementById('produto-estoque').value = p.estoque;
     document.getElementById('produto-estoque-min').value = p.estoque_minimo;
     document.getElementById('produto-desc').value = p.descricao || '';
+    document.getElementById('produto-perguntar-estoque').checked = !!p.perguntar_estoque;
     document.getElementById('modal-produto-title').textContent = 'Editar Produto';
     _resetImagemForm();
     if (p.imagem) _setImagemPreview(p.imagem);
@@ -289,6 +297,7 @@ async function salvarProduto() {
         estoque: parseInt(document.getElementById('produto-estoque').value) || 0,
         estoque_minimo: parseInt(document.getElementById('produto-estoque-min').value) || 5,
         descricao: document.getElementById('produto-desc').value,
+        perguntar_estoque: document.getElementById('produto-perguntar-estoque').checked ? 1 : 0,
     };
     if (!body.nome) { toast('Nome é obrigatório', 'error'); return; }
     try {

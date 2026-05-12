@@ -63,13 +63,13 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode criar produtos' });
     const loja_id = req.user.loja_id;
-    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade } = req.body;
+    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, perguntar_estoque } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     try {
         const result = db.prepare(`
-            INSERT INTO produtos (nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, loja_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque||0, estoque_minimo||5, unidade||'un', loja_id);
+            INSERT INTO produtos (nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, loja_id, perguntar_estoque)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque||0, estoque_minimo||5, unidade||'un', loja_id, perguntar_estoque ? 1 : 0);
         res.status(201).json({ id: result.lastInsertRowid });
     } catch (e) {
         if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Código já cadastrado' });
@@ -80,13 +80,13 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode editar produtos' });
     const loja_id = req.user.loja_id;
-    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade } = req.body;
+    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, perguntar_estoque } = req.body;
     const p = db.prepare('SELECT * FROM produtos WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!p) return res.status(404).json({ error: 'Produto não encontrado' });
 
     const estoqueAnterior = p.estoque;
-    db.prepare(`UPDATE produtos SET nome=?,descricao=?,codigo=?,preco_custo=?,preco_venda=?,estoque=?,estoque_minimo=?,unidade=? WHERE id=? AND loja_id=?`)
-        .run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque??p.estoque, estoque_minimo||5, unidade||'un', req.params.id, loja_id);
+    db.prepare(`UPDATE produtos SET nome=?,descricao=?,codigo=?,preco_custo=?,preco_venda=?,estoque=?,estoque_minimo=?,unidade=?,perguntar_estoque=? WHERE id=? AND loja_id=?`)
+        .run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque??p.estoque, estoque_minimo||5, unidade||'un', perguntar_estoque ? 1 : 0, req.params.id, loja_id);
 
     if (estoque !== undefined && estoque !== p.estoque) {
         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, observacao, usuario_id, loja_id)

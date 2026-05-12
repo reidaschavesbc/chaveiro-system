@@ -190,12 +190,35 @@
     @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 
-    @media (max-width: 600px) {
-      .topbar { padding: 0 16px; }
-      .painel-body { padding: 20px 16px; }
-      .login-box { padding: 32px 24px; }
+    @media (max-width: 640px) {
+      .topbar { padding: 0 14px; }
+      .topbar-nome { display: none; }
       .topbar-sub { display: none; }
+      .painel-body { padding: 16px 12px; }
+      .login-box { padding: 32px 20px; }
+
+      .section-header { flex-wrap: wrap; gap: 10px; }
+
+      .loja-header { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; }
+      .loja-header-left { width: 100%; }
+      .loja-acoes { flex-wrap: wrap; width: 100%; gap: 6px; }
+      .loja-acoes .btn-acao { flex: 1; min-width: 60px; text-align: center; }
+
+      .loja-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .usuarios-table { min-width: 460px; }
+      .col-tipo { display: none; }
+
+      .add-sub-row { padding: 10px 14px; }
+
       .acoes { flex-wrap: wrap; }
+
+      .modal-header { padding: 16px 18px 14px; }
+      .modal-body   { padding: 16px 18px; }
+      .modal-footer { padding: 14px 18px 18px; gap: 8px; }
+      .modal-footer .btn-modal { flex: 1; text-align: center; }
+
+      #toast { bottom: 16px; right: 12px; left: 12px; }
+      #toast-inner { text-align: center; }
     }
   </style>
 </head>
@@ -398,12 +421,13 @@
         </div>
 
         ${l.usuarios.length ? `
+        <div class="loja-table-wrap">
         <table class="usuarios-table">
           <thead>
             <tr>
               <th>Nome</th>
               <th>E-mail / Login</th>
-              <th>Tipo</th>
+              <th class="col-tipo">Tipo</th>
               <th>Status</th>
               <th>Ações</th>
             </tr>
@@ -413,7 +437,7 @@
             <tr>
               <td class="td-nome">${esc(u.nome)}</td>
               <td class="td-email">${esc(u.email)}</td>
-              <td><span class="badge badge-${u.principal ? 'principal' : 'sub'}">${u.principal ? 'Usuário' : 'Sub-usuário'}</span></td>
+              <td class="col-tipo"><span class="badge badge-${u.principal ? 'principal' : 'sub'}">${u.principal ? 'Usuário' : 'Sub-usuário'}</span></td>
               <td><span class="badge badge-${u.ativo ? 'ativo' : 'inativo'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
               <td>
                 <div class="acoes">
@@ -426,7 +450,8 @@
               </td>
             </tr>`).join('')}
           </tbody>
-        </table>` : `<div class="empty-loja">Nenhum usuário nesta loja</div>`}
+        </table>
+        </div>` : `<div class="empty-loja">Nenhum usuário nesta loja</div>`}
 
         <div class="add-sub-row">
           <button class="btn-add-sub" onclick="abrirModalSubUsuario(${l.id}, '${esc(l.nome)}')">

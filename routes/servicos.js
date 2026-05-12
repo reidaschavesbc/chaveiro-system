@@ -14,19 +14,19 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-    const { nome, descricao, preco_base, produto_id, produto_quantidade } = req.body;
+    const { nome, descricao, preco_base, produto_id, produto_quantidade, perguntar_estoque } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
-    const result = db.prepare('INSERT INTO tipos_servico (nome, descricao, preco_base, produto_id, produto_quantidade, loja_id) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(nome, descricao||null, preco_base||0, produto_id||null, produto_quantidade||1, req.user.loja_id);
+    const result = db.prepare('INSERT INTO tipos_servico (nome, descricao, preco_base, produto_id, produto_quantidade, loja_id, perguntar_estoque) VALUES (?, ?, ?, ?, ?, ?, ?)')
+        .run(nome, descricao||null, preco_base||0, produto_id||null, produto_quantidade||1, req.user.loja_id, perguntar_estoque ? 1 : 0);
     res.status(201).json({ id: result.lastInsertRowid });
 });
 
 router.put('/:id', (req, res) => {
-    const { nome, descricao, preco_base, produto_id, produto_quantidade } = req.body;
+    const { nome, descricao, preco_base, produto_id, produto_quantidade, perguntar_estoque } = req.body;
     const s = db.prepare('SELECT id FROM tipos_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!s) return res.status(404).json({ error: 'Serviço não encontrado' });
-    db.prepare('UPDATE tipos_servico SET nome=?,descricao=?,preco_base=?,produto_id=?,produto_quantidade=? WHERE id=? AND loja_id=?')
-        .run(nome, descricao||null, preco_base||0, produto_id||null, produto_quantidade||1, req.params.id, req.user.loja_id);
+    db.prepare('UPDATE tipos_servico SET nome=?,descricao=?,preco_base=?,produto_id=?,produto_quantidade=?,perguntar_estoque=? WHERE id=? AND loja_id=?')
+        .run(nome, descricao||null, preco_base||0, produto_id||null, produto_quantidade||1, perguntar_estoque ? 1 : 0, req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 

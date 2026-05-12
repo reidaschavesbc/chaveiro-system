@@ -50,6 +50,16 @@ function deduzirEstoqueOS(osId, osNumero, user) {
     });
 }
 
+function verificarPerguntaEstoque(osId) {
+    const row = db.prepare(`
+        SELECT COUNT(*) as cnt FROM itens_ordem_servico ios
+        LEFT JOIN produtos p ON ios.produto_id = p.id
+        LEFT JOIN tipos_servico ts ON ios.servico_id = ts.id
+        WHERE ios.ordem_id = ? AND (COALESCE(p.perguntar_estoque, 0) = 1 OR COALESCE(ts.perguntar_estoque, 0) = 1)
+    `).get(osId);
+    return row.cnt > 0;
+}
+
 function gerarNumeroOS() {
     const now = new Date();
     const ano = now.getFullYear().toString().slice(2);
@@ -244,7 +254,9 @@ router.put('/:id', (req, res) => {
     });
 
     updateOS();
-    res.json({ ok: true });
+    const foi_concluida = status === 'concluida' && os.status !== 'concluida';
+    const tem_pergunta_estoque = foi_concluida ? verificarPerguntaEstoque(req.params.id) : false;
+    res.json({ ok: true, tem_pergunta_estoque });
 });
 
 // PUT /api/ordens/:id/receber — marca o pagamento pendente como recebido (quitação total)
@@ -306,7 +318,8 @@ router.patch('/:id/status', (req, res) => {
         }
     })();
 
-    res.json({ ok: true, status, data_conclusao: dc });
+    const tem_pergunta_estoque = (status === 'concluida' && os.status !== 'concluida') ? verificarPerguntaEstoque(req.params.id) : false;
+    res.json({ ok: true, status, data_conclusao: dc, tem_pergunta_estoque });
 });
 
 // PUT /api/ordens/:id/pausar-cobranca
@@ -394,6 +407,39 @@ router.get('/historico-pagamentos', (req, res) => {
         LIMIT 50
     `).all(req.user.loja_id);
     res.json(rows);
+});
+
+// POST /api/ordens/:id/consumo-estoque — registra consumo adicional de estoque após finalizar OS
+router.post('/:id/consumo-estoque', (req, res) => {
+    const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    if (!os) return res.status(404).json({ error: 'OS não encontrada' });
+    const { itens } = req.body;
+    if (!itens || !itens.length) return res.json({ ok: true });
+
+    const { id: userId, loja_id: lojaId, principal } = req.user;
+    const stmtMov = db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id) VALUES (?, 'saida', ?, ?, ?, ?, 'Consumo OS', ?, ?)`);
+
+    db.transaction(() => {
+        for (const { produto_id, quantidade } of itens) {
+            const qtd = parseFloat(quantidade) || 0;
+            if (!produto_id || qtd <= 0) continue;
+            const pid = parseInt(produto_id);
+            if (principal) {
+                const p = db.prepare('SELECT estoque FROM produtos WHERE id = ?').get(pid);
+                if (!p) continue;
+                const novoEstoque = Math.max(0, p.estoque - qtd);
+                db.prepare('UPDATE produtos SET estoque = MAX(0, estoque - ?) WHERE id = ?').run(qtd, pid);
+                stmtMov.run(pid, qtd, p.estoque, novoEstoque, `OS ${os.numero}`, userId, lojaId);
+            } else {
+                const anterior = getQtdUsuario(userId, pid);
+                ajustarEstoqueUsuario(userId, pid, lojaId, -qtd);
+                const posterior = getQtdUsuario(userId, pid);
+                stmtMov.run(pid, qtd, anterior, posterior, `OS ${os.numero}`, userId, lojaId);
+            }
+        }
+    })();
+
+    res.json({ ok: true });
 });
 
 // DELETE /api/ordens/:id

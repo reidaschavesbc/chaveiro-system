@@ -38,6 +38,13 @@ async function servicos(el) {
           <label>Descrição</label>
           <textarea id="servico-desc" style="min-height:60px"></textarea>
         </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500">
+            <input type="checkbox" id="servico-perguntar-estoque" style="width:16px;height:16px;cursor:pointer;accent-color:#6366f1">
+            <span>Perguntar sobre uso de estoque ao finalizar OS</span>
+          </label>
+          <p style="font-size:12px;color:#94a3b8;margin-top:4px;margin-left:26px">Ao concluir uma OS com este serviço, pergunta se houve consumo de materiais.</p>
+        </div>
         <div style="border-top:1px solid #e2e8f0;padding-top:14px;margin-top:4px">
           <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">Produto consumido no estoque</div>
           <div class="form-group" style="margin-bottom:10px">
@@ -119,6 +126,7 @@ function editarServico(id) {
     document.getElementById('servico-desc').value = s.descricao || '';
     document.getElementById('servico-produto').value = s.produto_id || '';
     document.getElementById('servico-produto-qtd').value = s.produto_quantidade || 1;
+    document.getElementById('servico-perguntar-estoque').checked = !!s.perguntar_estoque;
     const wrap = document.getElementById('servico-qtd-wrap');
     wrap.style.display = s.produto_id ? '' : 'none';
     if (s.produto_id) {
@@ -137,6 +145,7 @@ async function salvarServico() {
         descricao: document.getElementById('servico-desc').value,
         produto_id: produto_id ? parseInt(produto_id) : null,
         produto_quantidade: produto_id ? (parseFloat(document.getElementById('servico-produto-qtd').value) || 1) : 1,
+        perguntar_estoque: document.getElementById('servico-perguntar-estoque').checked ? 1 : 0,
     };
     if (!body.nome) { toast('Nome é obrigatório', 'error'); return; }
     try {

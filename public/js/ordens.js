@@ -378,6 +378,104 @@ function _pgFechar(action) {
   _pgResolve = null;
 }
 
+// ── Modal pergunta de estoque ─────────────────────────────────────────────
+let _estoqueResolve = null;
+let _estoqueItens = [];
+let _estoqueProdutos = [];
+let _estoqueBusca = '';
+
+async function osModalEstoque(osId) {
+  try { _estoqueProdutos = await api('GET', '/produtos'); } catch { _estoqueProdutos = []; }
+  _estoqueItens = [];
+  _estoqueBusca = '';
+  return new Promise(resolve => {
+    _estoqueResolve = resolve;
+    const el = document.createElement('div');
+    el.id = 'es-modal-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    el.addEventListener('click', () => _esFechar(false));
+    document.body.appendChild(el);
+    _esRender();
+  });
+}
+
+function _esRender() {
+  const el = document.getElementById('es-modal-overlay');
+  if (!el) return;
+  const fmtV = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
+  const prodsFiltrados = _estoqueProdutos.filter(p => p.nome.toLowerCase().includes(_estoqueBusca.toLowerCase()));
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:22px 24px;width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+      <div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:4px">📦 Consumo de Estoque</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px">Houve uso de materiais do estoque nesta OS?</div>
+
+      ${_estoqueItens.length ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Itens adicionados</div>
+        ${_estoqueItens.map((it, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;margin-bottom:6px;font-size:13px">
+          <div>
+            <div style="font-weight:600;color:#1e293b">${it.nome}</div>
+            <div style="color:#64748b;font-size:12px">${it.quantidade} ${it.unidade || 'un'}</div>
+          </div>
+          <button onclick="_esRemoverItem(${i})" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;padding:0 4px">✕</button>
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:8px">Adicionar produto</div>
+        <input type="text" id="es-busca" value="${_estoqueBusca}" oninput="_esBuscar(this.value)" placeholder="Buscar produto..." style="width:100%;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:8px">
+        <div style="max-height:150px;overflow-y:auto">
+          ${prodsFiltrados.slice(0,20).map(p => `
+          <div onclick="_esAbrirQtd(${p.id},'${p.nome.replace(/'/g,"\\'")}','${p.unidade||'un'}')" style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:13px;color:#1e293b;display:flex;justify-content:space-between" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+            <span>${p.nome}</span>
+            <span style="color:#94a3b8;font-size:12px">${p.estoque} ${p.unidade||'un'}</span>
+          </div>`).join('') || '<div style="color:#94a3b8;font-size:13px;padding:8px">Nenhum produto encontrado</div>'}
+        </div>
+        <div id="es-qtd-form" style="display:none;margin-top:10px;border-top:1px solid #f1f5f9;padding-top:10px">
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px" id="es-qtd-nome"></div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="es-qtd-inp" value="1" min="0.01" step="0.01" style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+            <button onclick="_esAddItem()" style="padding:7px 16px;background:#6366f1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button onclick="_esFechar(false)" style="flex:1;padding:9px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;color:#64748b;background:#fff">Não houve</button>
+        <button onclick="_esFechar(true)" style="flex:1;padding:9px;background:#6366f1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" ${!_estoqueItens.length?'disabled style="opacity:.4;cursor:default"':''}>Registrar</button>
+      </div>
+    </div>`;
+}
+
+let _esProdSel = null;
+function _esAbrirQtd(id, nome, unidade) {
+  _esProdSel = { id, nome, unidade };
+  const form = document.getElementById('es-qtd-form');
+  document.getElementById('es-qtd-nome').textContent = nome;
+  if (form) form.style.display = '';
+}
+function _esBuscar(v) { _estoqueBusca = v; _esRender(); setTimeout(() => { const el = document.getElementById('es-busca'); if (el) { el.focus(); el.value = v; el.selectionStart = el.selectionEnd = v.length; } }, 0); }
+function _esAddItem() {
+  if (!_esProdSel) return;
+  const qtd = parseFloat(document.getElementById('es-qtd-inp')?.value) || 0;
+  if (qtd <= 0) { toast('Informe uma quantidade válida', 'warning'); return; }
+  const existente = _estoqueItens.findIndex(i => i.produto_id === _esProdSel.id);
+  if (existente >= 0) _estoqueItens[existente].quantidade += qtd;
+  else _estoqueItens.push({ produto_id: _esProdSel.id, nome: _esProdSel.nome, unidade: _esProdSel.unidade, quantidade: qtd });
+  _esProdSel = null; _estoqueBusca = '';
+  _esRender();
+}
+function _esRemoverItem(i) { _estoqueItens.splice(i, 1); _esRender(); }
+
+async function _esFechar(confirmar) {
+  const el = document.getElementById('es-modal-overlay');
+  if (el) document.body.removeChild(el);
+  if (!_estoqueResolve) return;
+  _estoqueResolve(confirmar && _estoqueItens.length ? [..._estoqueItens] : null);
+  _estoqueResolve = null;
+}
+
 async function mudarStatusOS(sel) {
   const id = parseInt(sel.dataset.id);
   const novoStatus = sel.value;
@@ -392,17 +490,23 @@ async function mudarStatusOS(sel) {
   }
 
   try {
-    await api('PATCH', `/ordens/${id}/status`, {
+    const resp = await api('PATCH', `/ordens/${id}/status`, {
       status: novoStatus,
       pagamentos: pagamentos || undefined,
       forma_pagamento: pagamentos?.length === 1 ? pagamentos[0].metodo : undefined
     });
     sel.dataset.original = novoStatus;
     osAtualizarEstiloSelect(sel, novoStatus);
-    // Atualiza o dado em memória também
     const item = ordensData.find(o => o.id === id);
     if (item) item.status = novoStatus;
     toast(`Status atualizado: ${OS_STATUS_CFG[novoStatus]?.label}`);
+    if (resp.tem_pergunta_estoque) {
+      const consumo = await osModalEstoque(id);
+      if (consumo) {
+        try { await api('POST', `/ordens/${id}/consumo-estoque`, { itens: consumo }); toast('Consumo de estoque registrado!'); }
+        catch { toast('Erro ao registrar consumo de estoque', 'error'); }
+      }
+    }
   } catch (e) {
     sel.value = statusAnterior;
     toast(e.message, 'error');
@@ -615,11 +719,19 @@ async function salvarOS() {
   if (!body.chave_auto && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
   if (!body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
   try {
-    if (id) await api('PUT', `/ordens/${id}`, body);
-    else { const r = await api('POST', '/ordens', body); toast(`OS ${r.numero} criada!`); closeModal('modal-os'); await carregarOrdens(); return; }
-    toast('OS atualizada!');
-    closeModal('modal-os');
-    await carregarOrdens();
+    if (id) {
+      const resp = await api('PUT', `/ordens/${id}`, body);
+      toast('OS atualizada!');
+      closeModal('modal-os');
+      await carregarOrdens();
+      if (resp.tem_pergunta_estoque) {
+        const consumo = await osModalEstoque(parseInt(id));
+        if (consumo) {
+          try { await api('POST', `/ordens/${id}/consumo-estoque`, { itens: consumo }); toast('Consumo de estoque registrado!'); }
+          catch { toast('Erro ao registrar consumo de estoque', 'error'); }
+        }
+      }
+    } else { const r = await api('POST', '/ordens', body); toast(`OS ${r.numero} criada!`); closeModal('modal-os'); await carregarOrdens(); return; }
   } catch (e) { toast(e.message, 'error'); }
 }
 
