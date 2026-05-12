@@ -365,7 +365,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   const descontoAtual = Number(os.desconto || 0);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
         <ScrollView contentContainerStyle={{ padding: 16 }}>
 
@@ -570,7 +570,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         {/* ── Modal Adicionar Item ─────────────────────────────────────────── */}
         <Modal visible={modalItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+            <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
             <View style={[s.modalCard, { maxHeight: '85%' }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Adicionar Item</Text>
@@ -653,15 +653,15 @@ export default function OSDetalheScreen({ route, navigation }) {
                     />
                   </View>
                 )}
-              </ScrollView>
 
               {(itemSel || tabItem === 'manual') && (
-                <View style={s.modalFooter}>
+                <View style={[s.modalFooter, { marginHorizontal: 16, marginBottom: 8 }]}>
                   <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#2563eb' }]} onPress={confirmarItem} disabled={salvando}>
                     {salvando ? <ActivityIndicator color="#fff" /> : <Text style={s.actionBtnText}>Adicionar Item</Text>}
                   </TouchableOpacity>
                 </View>
               )}
+              </ScrollView>
             </View>
             </KeyboardAvoidingView>
           </View>
@@ -670,7 +670,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         {/* ── Modal Finalizar ──────────────────────────────────────────────── */}
         <Modal visible={modalFinalizar} transparent animationType="slide">
           <View style={s.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+            <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
               <View style={[s.modalCard, { maxHeight: '90%' }]}>
                 <View style={s.modalHeader}>
                   <Text style={s.modalTitle}>Finalizar OS</Text>
@@ -758,17 +758,17 @@ export default function OSDetalheScreen({ route, navigation }) {
                       )}
                     </View>
                   )}
-                </ScrollView>
 
-                <View style={s.modalFooter}>
-                  <TouchableOpacity
-                    style={[s.actionBtn, { backgroundColor: '#10b981' }]}
-                    onPress={confirmarFinalizar}
-                    disabled={salvando}
-                  >
-                    {salvando ? <ActivityIndicator color="#fff" /> : <Text style={s.actionBtnText}>Confirmar Finalização</Text>}
-                  </TouchableOpacity>
-                </View>
+                  <View style={[s.modalFooter, { marginHorizontal: 0, marginBottom: 8, borderTopWidth: 0 }]}>
+                    <TouchableOpacity
+                      style={[s.actionBtn, { backgroundColor: '#10b981' }]}
+                      onPress={confirmarFinalizar}
+                      disabled={salvando}
+                    >
+                      {salvando ? <ActivityIndicator color="#fff" /> : <Text style={s.actionBtnText}>Confirmar Finalização</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
               </View>
             </KeyboardAvoidingView>
           </View>
@@ -777,7 +777,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         {/* ── Modal Editar Item ────────────────────────────────────────── */}
         <Modal visible={modalEditItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+            <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
               <View style={s.modalCard}>
                 <View style={s.modalHeader}>
                   <Text style={s.modalTitle}>Editar Item</Text>
@@ -820,7 +820,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         {/* ── Modal Consumo de Estoque ─────────────────────────────────── */}
         <Modal visible={modalEstoque} transparent animationType="slide">
           <View style={s.modalOverlay}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+            <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
             <View style={[s.modalCard, { maxHeight: '80%' }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>📦 Consumo de Estoque</Text>
@@ -887,20 +887,20 @@ export default function OSDetalheScreen({ route, navigation }) {
                     </View>
                   )}
                 </View>
-              </ScrollView>
 
-              <View style={[s.modalFooter, { flexDirection: 'row', gap: 10 }]}>
-                <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => setModalEstoque(false)}>
-                  <Text style={s.cancelBtnText}>Não houve</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }]}
-                  onPress={confirmarConsumoEstoque}
-                  disabled={!estoqueItens.length}
-                >
-                  <Text style={s.saveBtnText}>Registrar</Text>
-                </TouchableOpacity>
-              </View>
+                <View style={[s.modalFooter, { flexDirection: 'row', gap: 10, marginBottom: 8, borderTopWidth: 0 }]}>
+                  <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => setModalEstoque(false)}>
+                    <Text style={s.cancelBtnText}>Não houve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }]}
+                    onPress={confirmarConsumoEstoque}
+                    disabled={!estoqueItens.length}
+                  >
+                    <Text style={s.saveBtnText}>Registrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
             </KeyboardAvoidingView>
           </View>

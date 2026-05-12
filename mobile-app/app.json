@@ -21,6 +21,7 @@
         "backgroundColor": "#1a1a2e"
       },
       "package": "com.chaveiro.os",
+      "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "NOTIFICATIONS",
         "RECEIVE_BOOT_COMPLETED",
