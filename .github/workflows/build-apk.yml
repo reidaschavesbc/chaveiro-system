@@ -3,7 +3,7 @@ name: Build e Publicar APK Android
 on:
   push:
     tags:
-      - 'v*'
+      - 'apk-*'
 
 jobs:
   build-apk:

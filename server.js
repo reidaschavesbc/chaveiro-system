@@ -27,8 +27,17 @@ app.get('/download', (req, res) => {
   }
 });
 
-// Download do app Android (público)
-app.get('/download-app', (req, res) => {
+// Download do app Android — busca o release mais recente com APK no GitHub
+app.get('/download-app', async (req, res) => {
+  try {
+    const r = await fetch('https://api.github.com/repos/tvsxgames/chaveiro-system/releases?per_page=20');
+    const releases = await r.json();
+    const rel = releases.find(r => !r.draft && !r.prerelease && r.assets.some(a => a.name === 'ChaveiroOS.apk'));
+    if (rel) {
+      const asset = rel.assets.find(a => a.name === 'ChaveiroOS.apk');
+      return res.redirect(302, asset.browser_download_url);
+    }
+  } catch (_) {}
   res.download(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'), 'ChaveiroOS.apk');
 });
 
