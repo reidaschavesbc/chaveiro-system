@@ -38,16 +38,16 @@ jobs:
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Criar bundle JS manualmente
+      - name: Criar bundle JS
         working-directory: mobile-app
         run: |
           mkdir -p android/app/src/main/assets
-          npx react-native bundle \
+          npx expo export:embed \
             --platform android \
-            --dev false \
             --entry-file index.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res/
+            --assets-dest android/app/src/main/res/ \
+            --dev false
 
       - name: Permissão Gradle
         working-directory: mobile-app/android
