@@ -38,9 +38,16 @@ jobs:
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
 
-      - name: Forçar bundle JS no APK
-        working-directory: mobile-app/android
-        run: echo "bundleInDebug=true" >> gradle.properties
+      - name: Criar bundle JS manualmente
+        working-directory: mobile-app
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res/
 
       - name: Permissão Gradle
         working-directory: mobile-app/android
