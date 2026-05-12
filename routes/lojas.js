@@ -73,14 +73,30 @@ router.delete('/:id', apenasAdmin, (req, res) => {
     const id = req.params.id;
     db.transaction(() => {
         const sub = 'SELECT id FROM usuarios WHERE loja_id = ?';
-        db.prepare(`UPDATE ordens_servico       SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
-        db.prepare(`UPDATE vendas               SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE ordens_servico        SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE vendas                SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
         db.prepare(`UPDATE movimentacoes_estoque SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
-        db.prepare(`UPDATE vales                SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
-        db.prepare(`UPDATE orcamentos           SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE vales                 SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE orcamentos            SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
         db.prepare(`DELETE FROM estoque_usuario  WHERE usuario_id IN (${sub})`).run(id);
-        db.prepare('DELETE FROM usuarios WHERE loja_id = ?').run(id);
-        db.prepare('DELETE FROM lojas WHERE id = ?').run(id);
+        // deletar todos os dados da loja
+        db.prepare('DELETE FROM clientes_autorizados WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM fechamentos_comissao  WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM movimentacoes_estoque WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM pedidos_estoque       WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM pedidos_compra        WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM orcamentos            WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM vales                 WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM vendas                WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM gastos                WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM lembretes             WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM vendedores            WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM tipos_servico         WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM ordens_servico        WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM clientes              WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM produtos              WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM usuarios              WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM lojas                 WHERE id = ?').run(id);
     })();
     res.json({ ok: true });
 });

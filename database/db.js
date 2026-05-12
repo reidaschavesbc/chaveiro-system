@@ -167,20 +167,6 @@ function migrate() {
     db.prepare("INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)").run('Administrador', 'admin', hash, 'admin');
   }
 
-  // Seed some default service types
-  const tiposCount = db.prepare('SELECT COUNT(*) as c FROM tipos_servico').get();
-  if (tiposCount.c === 0) {
-    const tipos = [
-      ['Cópia de Chave Simples', 'Cópia de chave residencial comum', 15.00],
-      ['Cópia de Chave Especial', 'Chaves com segredo, carros, etc.', 45.00],
-      ['Abertura de Porta', 'Abertura de porta sem danos', 120.00],
-      ['Instalação de Fechadura', 'Instalação de fechadura nova', 80.00],
-      ['Conserto de Fechadura', 'Reparo de fechaduras com defeito', 60.00],
-      ['Abertura de Cofre', 'Abertura de cofres e caixas fortes', 250.00],
-    ];
-    const stmt = db.prepare('INSERT INTO tipos_servico (nome, descricao, preco_base) VALUES (?, ?, ?)');
-    tipos.forEach(t => stmt.run(...t));
-  }
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS gastos (
