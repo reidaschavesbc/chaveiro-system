@@ -27,6 +27,7 @@ function criarCliente() {
         authStrategy: new LocalAuth({ dataPath: SESSION_PATH }),
         puppeteer: {
             headless: true,
+            protocolTimeout: 60000,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
