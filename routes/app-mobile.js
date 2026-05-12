@@ -84,10 +84,10 @@ router.get('/os/:id', authFuncionario, (req, res) => {
 
   const itens = db.prepare(`
     SELECT iv.*, p.nome as produto_nome, ts.nome as servico_nome
-    FROM itens_os iv
+    FROM itens_ordem_servico iv
     LEFT JOIN produtos p ON iv.produto_id = p.id
     LEFT JOIN tipos_servico ts ON iv.servico_id = ts.id
-    WHERE iv.os_id = ?
+    WHERE iv.ordem_id = ?
   `).all(os.id);
 
   res.json({ ...os, itens });

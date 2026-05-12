@@ -1,6 +1,6 @@
 async function vendedores(el) {
   el.innerHTML = `
-  <div class="card" style="max-width:660px;margin:0 auto">
+  <div class="card" style="max-width:960px;margin:0 auto">
     <div class="card-header">
       <span class="card-title">Cadastro de Funcionários / Técnicos</span>
     </div>
@@ -59,7 +59,7 @@ async function carregarVendedores() {
   const list = await api('GET', '/vendedores');
   const el = document.getElementById('lista-vendedores');
   if (!list.length) { el.innerHTML = '<p class="text-center text-muted">Nenhum funcionário cadastrado</p>'; return; }
-  el.innerHTML = `<table>
+  el.innerHTML = `<div style="overflow-x:auto"><table style="min-width:700px">
     <thead><tr><th>Nome</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Ações</th></tr></thead>
     <tbody>${list.map(v => `
       <tr>
@@ -94,7 +94,7 @@ async function carregarVendedores() {
         </td>
       </tr>`).join('')}
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 function escHtml(s) { return (s || '').replace(/'/g, "\\'"); }

@@ -67,8 +67,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          gh release delete "$TAG" --yes 2>/dev/null || true
-          gh release create "$TAG" ChaveiroOS.apk \
-            --title "Release $TAG" \
-            --notes "APK Android - Chaveiro OS" \
-            --repo tvsxgames/chaveiro-system
+          if gh release view "$TAG" --repo tvsxgames/chaveiro-system 2>/dev/null; then
+            gh release upload "$TAG" ChaveiroOS.apk --clobber --repo tvsxgames/chaveiro-system
+          else
+            gh release create "$TAG" ChaveiroOS.apk \
+              --title "Release $TAG" \
+              --notes "Release $TAG" \
+              --repo tvsxgames/chaveiro-system
+          fi

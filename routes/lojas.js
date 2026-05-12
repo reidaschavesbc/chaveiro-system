@@ -70,8 +70,18 @@ router.put('/:id', apenasAdmin, (req, res) => {
 router.delete('/:id', apenasAdmin, (req, res) => {
     const loja = db.prepare('SELECT id FROM lojas WHERE id = ?').get(req.params.id);
     if (!loja) return res.status(404).json({ error: 'Loja não encontrada' });
-    db.prepare('DELETE FROM usuarios WHERE loja_id = ?').run(req.params.id);
-    db.prepare('DELETE FROM lojas WHERE id = ?').run(req.params.id);
+    const id = req.params.id;
+    db.transaction(() => {
+        const sub = 'SELECT id FROM usuarios WHERE loja_id = ?';
+        db.prepare(`UPDATE ordens_servico       SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE vendas               SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE movimentacoes_estoque SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE vales                SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`UPDATE orcamentos           SET usuario_id = NULL WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare(`DELETE FROM estoque_usuario  WHERE usuario_id IN (${sub})`).run(id);
+        db.prepare('DELETE FROM usuarios WHERE loja_id = ?').run(id);
+        db.prepare('DELETE FROM lojas WHERE id = ?').run(id);
+    })();
     res.json({ ok: true });
 });
 

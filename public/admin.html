@@ -257,6 +257,16 @@
     </div>
 
     <div id="lojas-lista"></div>
+
+    <div class="section-header" style="margin-top:32px">
+      <div>
+        <div class="section-title">WhatsApp</div>
+        <div class="section-sub">Conexão global do bot de mensagens</div>
+      </div>
+    </div>
+    <div id="wa-admin-body" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px">
+      <p style="color:#94a3b8;font-size:13px">Carregando...</p>
+    </div>
   </div>
 </div>
 
@@ -336,6 +346,7 @@
     document.getElementById('p-avatar').textContent = _user.nome.charAt(0).toUpperCase();
     document.getElementById('p-nome').textContent = _user.nome;
     carregarLojas();
+    _pollWA();
   }
 
   // ── Lojas ────────────────────────────────────────────────────────────────
@@ -661,6 +672,43 @@
   }
 
   function fecharModal() { const ov = document.getElementById('modal-ativo'); if (ov) ov.remove(); }
+
+  // ── WhatsApp ─────────────────────────────────────────────────────────────
+  let _waTimer = null;
+  function _renderWA({ status, qr }) {
+    const el = document.getElementById('wa-admin-body');
+    if (!el) return;
+    const info = {
+      conectado:    { cor: '#4ade80', texto: '● Conectado',      sub: 'Bot ativo e enviando mensagens.' },
+      conectando:   { cor: '#fbbf24', texto: '◌ Conectando...', sub: 'Aguarde, inicializando.' },
+      qr_pendente:  { cor: '#818cf8', texto: '◉ QR Code pronto', sub: 'Escaneie com o WhatsApp do bot.' },
+      desconectado: { cor: '#f87171', texto: '○ Desconectado',   sub: 'Clique em Conectar para iniciar.' },
+    };
+    const s = info[status] || info.desconectado;
+    el.innerHTML = `
+      <div style="font-size:15px;font-weight:700;color:${s.cor};margin-bottom:4px">${s.texto}</div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:16px">${s.sub}</div>
+      ${status === 'qr_pendente' && qr ? `
+        <div style="text-align:center;margin-bottom:16px">
+          <p style="font-size:12px;color:#94a3b8;margin-bottom:10px">Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo</p>
+          <img src="${qr}" style="border:3px solid #334155;border-radius:10px;width:220px;height:220px">
+        </div>` : ''}
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${status === 'desconectado' || status === 'qr_pendente' ? `<button onclick="waAdminConectar()" style="padding:9px 18px;background:#818cf8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Conectar</button>` : ''}
+        ${status === 'conectado' ? `<button onclick="waAdminDesconectar()" style="padding:9px 18px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Desconectar</button>` : ''}
+        <button onclick="waAdminTrocar()" style="padding:9px 18px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">↔ Trocar Conta</button>
+      </div>`;
+  }
+  async function _pollWA() {
+    try { const d = await req('GET', '/whatsapp/status'); _renderWA(d); } catch (_) {}
+    const d = document.getElementById('wa-admin-body');
+    if (!d) return;
+    const status = d.querySelector('[style*="Conectado"]') ? 'conectado' : 'outro';
+    _waTimer = setTimeout(_pollWA, status === 'conectado' ? 10000 : 3000);
+  }
+  async function waAdminConectar() { try { await req('POST', '/whatsapp/conectar'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
+  async function waAdminDesconectar() { if (!confirm('Desconectar o WhatsApp?')) return; try { await req('POST', '/whatsapp/desconectar'); toast('Desconectado'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
+  async function waAdminTrocar() { if (!confirm('Isso apaga a sessão atual e gera novo QR. Continuar?')) return; try { await req('POST', '/whatsapp/trocar-conta'); toast('Aguarde o novo QR...'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
 
   // ── Init ─────────────────────────────────────────────────────────────────
   document.getElementById('l-senha').addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); });

@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout código
@@ -29,17 +31,24 @@ jobs:
 
       - name: Build Electron (Windows)
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
           EP_DRAFT: false
         run: npm run build
 
-      - name: Enviar .exe para o servidor
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "dist/SistemaChaveiro-Setup.exe"
-          target: "/root/chaveiro-system/public/downloads/"
-          strip_components: 1
+      - name: Publicar .exe no GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if gh release view "$TAG" --repo tvsxgames/chaveiro-system 2>/dev/null; then
+            gh release upload "$TAG" dist/SistemaChaveiro-Setup.exe --clobber --repo tvsxgames/chaveiro-system
+            gh release upload "$TAG" dist/latest.yml --clobber --repo tvsxgames/chaveiro-system || true
+            gh release upload "$TAG" dist/SistemaChaveiro-Setup.exe.blockmap --clobber --repo tvsxgames/chaveiro-system || true
+          else
+            gh release create "$TAG" dist/SistemaChaveiro-Setup.exe dist/latest.yml dist/SistemaChaveiro-Setup.exe.blockmap \
+              --title "Release $TAG" \
+              --notes "Release $TAG" \
+              --repo tvsxgames/chaveiro-system
+          fi
