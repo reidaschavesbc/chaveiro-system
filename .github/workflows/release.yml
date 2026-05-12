@@ -46,9 +46,33 @@ jobs:
             gh release upload "$TAG" dist/SistemaChaveiro-Setup.exe --clobber --repo tvsxgames/chaveiro-system
             gh release upload "$TAG" dist/latest.yml --clobber --repo tvsxgames/chaveiro-system || true
             gh release upload "$TAG" dist/SistemaChaveiro-Setup.exe.blockmap --clobber --repo tvsxgames/chaveiro-system || true
+            gh release edit "$TAG" --draft=false --repo tvsxgames/chaveiro-system
           else
             gh release create "$TAG" dist/SistemaChaveiro-Setup.exe dist/latest.yml dist/SistemaChaveiro-Setup.exe.blockmap \
               --title "Release $TAG" \
               --notes "Release $TAG" \
               --repo tvsxgames/chaveiro-system
           fi
+
+      - name: Copiar arquivos para VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          ssh "$VPS_USER@$VPS_HOST" "
+            GH_TOKEN=$GH_TOKEN gh release download $TAG \
+              --repo tvsxgames/chaveiro-system \
+              --pattern 'SistemaChaveiro-Setup.exe' \
+              --pattern 'latest.yml' \
+              --pattern 'SistemaChaveiro-Setup.exe.blockmap' \
+              --dir /root/chaveiro-system/public/downloads/ \
+              --clobber
+          "

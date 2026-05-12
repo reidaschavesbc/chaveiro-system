@@ -69,9 +69,11 @@ jobs:
           TAG=${GITHUB_REF#refs/tags/}
           if gh release view "$TAG" --repo tvsxgames/chaveiro-system 2>/dev/null; then
             gh release upload "$TAG" ChaveiroOS.apk --clobber --repo tvsxgames/chaveiro-system
+            gh release edit "$TAG" --draft=false --repo tvsxgames/chaveiro-system
           else
             gh release create "$TAG" ChaveiroOS.apk \
               --title "Release $TAG" \
               --notes "Release $TAG" \
+              --latest=false \
               --repo tvsxgames/chaveiro-system
           fi
