@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert
+  RefreshControl, ActivityIndicator, AppState
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,10 +31,23 @@ export default function OSListScreen({ navigation, onLogout }) {
   const [refreshing, setRefreshing] = useState(false);
   const [filtro, setFiltro] = useState('abertas');
   const [funcionario, setFuncionario] = useState(null);
+  const intervalRef = useRef(null);
+  const appStateRef = useRef(AppState.currentState);
 
   useFocusEffect(useCallback(() => {
     carregarFuncionario();
     carregarOS();
+
+    intervalRef.current = setInterval(() => {
+      if (appStateRef.current === 'active') carregarOS();
+    }, 30000);
+
+    const sub = AppState.addEventListener('change', state => { appStateRef.current = state; });
+
+    return () => {
+      clearInterval(intervalRef.current);
+      sub.remove();
+    };
   }, [filtro]));
 
   async function carregarFuncionario() {
