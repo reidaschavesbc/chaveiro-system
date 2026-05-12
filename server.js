@@ -29,7 +29,7 @@ app.get('/download', (req, res) => {
 
 // Download do app Android (público)
 app.get('/download-app', (req, res) => {
-  res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/ChaveiroOS.apk');
+  res.download(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'), 'ChaveiroOS.apk');
 });
 
 app.get('/api/version', (req, res) => {
