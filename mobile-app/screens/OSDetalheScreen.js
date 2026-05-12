@@ -76,8 +76,9 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [aReceber, setAReceber] = useState(false);
   const [dataVencimento, setDataVencimento] = useState('');
 
-  // Edição inline de item
-  const [editandoItemId, setEditandoItemId] = useState(null);
+  // Modal edição de item
+  const [modalEditItem, setModalEditItem] = useState(false);
+  const [editandoItem, setEditandoItem] = useState(null);
   const [editItemQtd, setEditItemQtd] = useState('');
   const [editItemPreco, setEditItemPreco] = useState('');
 
@@ -209,18 +210,19 @@ export default function OSDetalheScreen({ route, navigation }) {
   }
 
   function iniciarEdicaoItem(it) {
-    setEditandoItemId(it.id);
+    setEditandoItem(it);
     setEditItemQtd(String(it.quantidade));
     setEditItemPreco(String(it.preco_unitario));
+    setModalEditItem(true);
   }
 
-  async function salvarItemEditado(itemId) {
+  async function salvarItemEditado() {
     const qty = parseFloat(String(editItemQtd).replace(',', '.')) || 1;
     const preco = parseFloat(String(editItemPreco).replace(',', '.')) || 0;
     setSalvando(true);
     try {
-      await api.put(`/os/${osId}/item/${itemId}`, { quantidade: qty, preco_unitario: preco });
-      setEditandoItemId(null);
+      await api.put(`/os/${osId}/item/${editandoItem.id}`, { quantidade: qty, preco_unitario: preco });
+      setModalEditItem(false);
       await carregarOS();
     } catch (e) {
       Alert.alert('Erro', e.response?.data?.error || 'Falha ao editar item');
@@ -418,47 +420,21 @@ export default function OSDetalheScreen({ route, navigation }) {
               <Text style={s.emptyText}>Nenhum item adicionado</Text>
             ) : (
               os.itens.map((it, i) => (
-                <View key={it.id || i} style={[s.itemRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
-                  {editandoItemId === it.id ? (
-                    <View>
-                      <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
-                      <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.fieldLabel}>Qtd</Text>
-                          <TextInput style={s.fieldInput} value={editItemQtd} onChangeText={setEditItemQtd} keyboardType="decimal-pad" placeholderTextColor="#999" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={s.fieldLabel}>Preço (R$)</Text>
-                          <TextInput style={s.fieldInput} value={editItemPreco} onChangeText={setEditItemPreco} keyboardType="decimal-pad" placeholderTextColor="#999" />
-                        </View>
-                      </View>
-                      <View style={s.row}>
-                        <TouchableOpacity style={s.cancelBtn} onPress={() => setEditandoItemId(null)}>
-                          <Text style={s.cancelBtnText}>Cancelar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={s.saveBtn} onPress={() => salvarItemEditado(it.id)} disabled={salvando}>
-                          {salvando ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
-                        <Text style={s.itemSub}>{it.quantidade}x · {fmtVal(it.preco_unitario)}</Text>
-                      </View>
-                      <Text style={s.itemVal}>{fmtVal(it.subtotal)}</Text>
-                      {podeEditar && (
-                        <>
-                          <TouchableOpacity onPress={() => iniciarEdicaoItem(it)} style={[s.removeBtn, { backgroundColor: '#eff6ff', marginRight: 6 }]}>
-                            <Text style={[s.removeBtnText, { color: '#2563eb' }]}>✎</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={() => removerItem(it.id)} style={s.removeBtn}>
-                            <Text style={s.removeBtnText}>✕</Text>
-                          </TouchableOpacity>
-                        </>
-                      )}
-                    </View>
+                <View key={it.id || i} style={s.itemRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.itemNome}>{it.produto_nome || it.servico_nome || it.descricao}</Text>
+                    <Text style={s.itemSub}>{it.quantidade}x · {fmtVal(it.preco_unitario)}</Text>
+                  </View>
+                  <Text style={s.itemVal}>{fmtVal(it.subtotal)}</Text>
+                  {podeEditar && (
+                    <>
+                      <TouchableOpacity onPress={() => iniciarEdicaoItem(it)} style={[s.removeBtn, { backgroundColor: '#eff6ff', marginRight: 6 }]}>
+                        <Text style={[s.removeBtnText, { color: '#2563eb' }]}>✎</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => removerItem(it.id)} style={s.removeBtn}>
+                        <Text style={s.removeBtnText}>✕</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
                 </View>
               ))
@@ -796,9 +772,53 @@ export default function OSDetalheScreen({ route, navigation }) {
           </View>
         </Modal>
 
+        {/* ── Modal Editar Item ────────────────────────────────────────── */}
+        <Modal visible={modalEditItem} transparent animationType="slide">
+          <View style={s.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+              <View style={s.modalCard}>
+                <View style={s.modalHeader}>
+                  <Text style={s.modalTitle}>Editar Item</Text>
+                  <TouchableOpacity onPress={() => setModalEditItem(false)}>
+                    <Text style={s.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ padding: 20 }}>
+                  <Text style={[s.secValue, { marginBottom: 16 }]}>{editandoItem?.produto_nome || editandoItem?.servico_nome || editandoItem?.descricao}</Text>
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.fieldLabel}>Quantidade</Text>
+                      <TextInput style={s.fieldInput} value={editItemQtd} onChangeText={setEditItemQtd} keyboardType="decimal-pad" placeholder="1" placeholderTextColor="#999" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.fieldLabel}>Preço (R$)</Text>
+                      <TextInput style={s.fieldInput} value={editItemPreco} onChangeText={setEditItemPreco} keyboardType="decimal-pad" placeholder="0,00" placeholderTextColor="#999" />
+                    </View>
+                  </View>
+                  {(() => {
+                    const q = parseFloat(String(editItemQtd).replace(',', '.')) || 0;
+                    const p = parseFloat(String(editItemPreco).replace(',', '.')) || 0;
+                    if (q > 0 && p > 0) return <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Subtotal: {fmtVal(q * p)}</Text>;
+                    return <View style={{ marginBottom: 16 }} />;
+                  })()}
+                  <View style={s.row}>
+                    <TouchableOpacity style={s.cancelBtn} onPress={() => setModalEditItem(false)}>
+                      <Text style={s.cancelBtnText}>Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.saveBtn} onPress={salvarItemEditado} disabled={salvando}>
+                      {salvando ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </Modal>
+
         {/* ── Modal Consumo de Estoque ─────────────────────────────────── */}
         <Modal visible={modalEstoque} transparent animationType="slide">
           <View style={s.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
             <View style={[s.modalCard, { maxHeight: '80%' }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>📦 Consumo de Estoque</Text>
@@ -880,6 +900,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
       </View>
