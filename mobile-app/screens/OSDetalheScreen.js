@@ -570,6 +570,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         {/* ── Modal Adicionar Item ─────────────────────────────────────────── */}
         <Modal visible={modalItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
             <View style={[s.modalCard, { maxHeight: '85%' }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Adicionar Item</Text>
@@ -662,6 +663,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                 </View>
               )}
             </View>
+            </KeyboardAvoidingView>
           </View>
         </Modal>
 
