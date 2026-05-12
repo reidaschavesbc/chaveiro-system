@@ -382,6 +382,7 @@
             <button class="btn-acao loja ${l.ativo ? 'danger' : 'success'}" onclick="toggleLoja(${l.id}, ${l.ativo})">
               ${l.ativo ? 'Desativar' : 'Ativar'}
             </button>
+            <button class="btn-acao loja danger" onclick="excluirLoja(${l.id}, '${esc(l.nome)}')">Excluir</button>
           </div>
         </div>
 
@@ -506,6 +507,15 @@
       await req('PUT', `/lojas/${id}`, { nome });
       fecharModal(); toast('Loja atualizada!'); carregarLojas();
     } catch (e) { erro.textContent = e.message; }
+  }
+
+  // ── Excluir loja ─────────────────────────────────────────────────────────
+  async function excluirLoja(id, nome) {
+    if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente a loja "${nome}"?\n\nIsso apagará todos os usuários desta loja. Esta ação não pode ser desfeita.`)) return;
+    try {
+      await req('DELETE', `/lojas/${id}`);
+      toast('Loja excluída!'); carregarLojas();
+    } catch (e) { toast(e.message, 'error'); }
   }
 
   // ── Toggle loja ──────────────────────────────────────────────────────────

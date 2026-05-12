@@ -66,6 +66,15 @@ router.put('/:id', apenasAdmin, (req, res) => {
     res.json({ ok: true });
 });
 
+// DELETE /api/lojas/:id — exclui loja e seus usuários
+router.delete('/:id', apenasAdmin, (req, res) => {
+    const loja = db.prepare('SELECT id FROM lojas WHERE id = ?').get(req.params.id);
+    if (!loja) return res.status(404).json({ error: 'Loja não encontrada' });
+    db.prepare('DELETE FROM usuarios WHERE loja_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM lojas WHERE id = ?').run(req.params.id);
+    res.json({ ok: true });
+});
+
 // POST /api/lojas/:id/usuarios — cria sub-usuário dentro de uma loja
 router.post('/:id/usuarios', apenasAdmin, (req, res) => {
     const { nome, email, senha } = req.body;

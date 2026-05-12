@@ -38,12 +38,11 @@ export default function LoginScreen({ onLogin }) {
 
         <TextInput
           style={s.input}
-          placeholder="E-mail"
+          placeholder="Usuário"
           placeholderTextColor="#999"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
-          keyboardType="email-address"
         />
         <TextInput
           style={s.input}

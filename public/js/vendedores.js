@@ -60,7 +60,7 @@ async function carregarVendedores() {
   const el = document.getElementById('lista-vendedores');
   if (!list.length) { el.innerHTML = '<p class="text-center text-muted">Nenhum funcionário cadastrado</p>'; return; }
   el.innerHTML = `<table>
-    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Ações</th></tr></thead>
     <tbody>${list.map(v => `
       <tr>
         <td>${v.nome}</td>
@@ -81,9 +81,15 @@ async function carregarVendedores() {
           : `<span class="text-muted" style="font-size:12px">—</span>`}
         </td>
         <td>
+          ${v.email
+            ? `<span style="color:#16a34a;font-size:12px" title="Usuário: ${escHtml(v.email)}">✔ Configurado</span>`
+            : `<span class="text-muted" style="font-size:12px">—</span>`}
+        </td>
+        <td>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarVendedor(${v.id},'${escHtml(v.nome)}','${escHtml(v.telefone||'')}',${v.percentual_comissao||0},${v.meta||0},${v.bonus_meta||0},${v.salario_base||0})">
             <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
           </button>
+          <button class="btn btn-sm btn-secondary btn-icon" title="Acesso App" onclick="abrirAcessoApp(${v.id},'${escHtml(v.nome)}','${escHtml(v.email||'')}')">📱</button>
           <button class="btn btn-sm btn-danger btn-icon" title="Desativar" onclick="excluirVendedor(${v.id})">✕</button>
         </td>
       </tr>`).join('')}
@@ -177,4 +183,52 @@ async function excluirVendedor(id) {
     await api('DELETE', `/vendedores/${id}`);
     carregarVendedores();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+function abrirAcessoApp(id, nome, emailAtual) {
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-acesso-app';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15px;font-weight:700;color:#1e293b">📱 Acesso App — ${escHtml(nome)}</span>
+        <button onclick="document.getElementById('modal-acesso-app').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8">✕</button>
+      </div>
+      <div style="padding:16px 24px">
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px">O funcionário usará este usuário e senha para entrar no app.</p>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px">Usuário</label>
+          <input type="text" id="app-usuario" value="${escHtml(emailAtual)}" autocomplete="off"
+            style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none">
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px">Senha <span style="color:#94a3b8;font-weight:400">(deixe em branco para manter)</span></label>
+          <input type="password" id="app-senha" autocomplete="new-password"
+            style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:14px;outline:none">
+        </div>
+        <div id="app-erro" style="color:#dc2626;font-size:13px;margin-bottom:8px;display:none"></div>
+      </div>
+      <div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('modal-acesso-app').remove()"
+          style="padding:10px 18px;border:1.5px solid #e5e7eb;background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="salvarAcessoApp(${id})"
+          style="padding:10px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('app-usuario').focus();
+}
+
+async function salvarAcessoApp(id) {
+  const usuario = document.getElementById('app-usuario').value.trim();
+  const senha = document.getElementById('app-senha').value;
+  const erroEl = document.getElementById('app-erro');
+  if (!usuario) { erroEl.textContent = 'Usuário é obrigatório'; erroEl.style.display = ''; return; }
+  try {
+    await api('PUT', `/vendedores/${id}/acesso-app`, { email: usuario, senha: senha || undefined });
+    document.getElementById('modal-acesso-app').remove();
+    toast('Acesso configurado!');
+    carregarVendedores();
+  } catch (e) { erroEl.textContent = e.message; erroEl.style.display = ''; }
 }
