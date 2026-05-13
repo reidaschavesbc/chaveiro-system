@@ -1,5 +1,1 @@
-2026/05/11-23:58:30.807 258a7e Log #6: 0 ops saved to Table #7 OK
-2026/05/11-23:58:30.807 258a7e Archiving /root/chaveiro-system/whatsapp-session/session/Default/Site Characteristics Database/000006.log: OK
-2026/05/11-23:58:30.808 258a7e Table #4: 1 entries OK
-2026/05/11-23:58:30.808 258a7e Archiving /root/chaveiro-system/whatsapp-session/session/Default/Site Characteristics Database/MANIFEST-000001: OK
-2026/05/11-23:58:30.818 258a7e **** Repaired leveldb /root/chaveiro-system/whatsapp-session/session/Default/Site Characteristics Database; recovered 1 files; 130 bytes. Some data may have been lost. ****
+2026/05/12-16:19:44.127 28 Reusing MANIFEST /app/whatsapp-session/session/Default/Site Characteristics Database/MANIFEST-000001
