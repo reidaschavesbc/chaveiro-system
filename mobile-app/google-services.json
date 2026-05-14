@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "771059696656",
+    "project_id": "chaveiro-apk",
+    "storage_bucket": "chaveiro-apk.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771059696656:android:32f24d122995a2cc3ff695",
+        "android_client_info": {
+          "package_name": "com.chaveiro.os"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKis5Wsz5pqt9E0ejChLLGsRhRF0wTUAA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

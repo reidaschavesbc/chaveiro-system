@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform
+  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions
 } from 'react-native';
 import api from '../services/api';
 
@@ -571,7 +571,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-            <View style={[s.modalCard, { maxHeight: '85%' }]}>
+            <View style={[s.modalCard, { maxHeight: '85%', minHeight: Dimensions.get('window').height * 0.55 }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Adicionar Item</Text>
                 <TouchableOpacity onPress={() => setModalItem(false)}>

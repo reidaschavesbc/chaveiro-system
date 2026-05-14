@@ -278,9 +278,10 @@ async function notificarFuncionario(vendedorId, titulo, mensagem) {
     await expo.sendPushNotificationsAsync([{
       to: func.expo_push_token,
       sound: 'default',
-      channelId: 'default',
+      channelId: 'chaveiro_alerts',
       title: titulo,
       body: mensagem,
+      priority: 'high',
       data: { tipo: 'nova_os' }
     }]);
   } catch (e) {

@@ -8,11 +8,12 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
 if (Platform.OS === 'android') {
-  Notifications.setNotificationChannelAsync('default', {
-    name: 'Notificações',
-    importance: Notifications.AndroidImportance.HIGH,
+  Notifications.setNotificationChannelAsync('chaveiro_alerts', {
+    name: 'Alertas Chaveiro',
+    importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     sound: 'default',
+    enableVibrate: true,
   });
 }
 
@@ -70,7 +71,9 @@ export default function App() {
         await api.post('/push-token', { token });
         await AsyncStorage.setItem('push_token', token);
       }
-    } catch (_) {}
+    } catch (e) {
+      console.error('Erro ao obter push token:', e.message);
+    }
 
     notifListener.current = Notifications.addNotificationReceivedListener(() => {});
     responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {});
