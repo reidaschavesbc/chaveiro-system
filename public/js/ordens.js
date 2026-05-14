@@ -266,6 +266,7 @@ function renderOrdens(list) {
           <a class="btn btn-sm btn-secondary" href="/api/pdf/os/${o.id}?token=${getToken()}" target="_blank" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></a>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;font-size:11px" title="Marcar como Recebido" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
+          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;font-size:11px" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NFS-e ${o.nfse_numero}</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;font-size:11px" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 Emitir NFS-e</button>`) : ''}
           ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
           <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id},'${o.numero}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </div></td>
@@ -865,4 +866,25 @@ async function excluirOS(id, numero) {
     toast(`OS ${numero} excluída permanentemente!`);
     await carregarOrdens();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+async function emitirNfse(osId, osNumero) {
+  if (!confirm(`Emitir NFS-e para a OS ${osNumero}?\n\nEsta ação é irreversível após autorização pelo governo.`)) return;
+  try {
+    toast('Emitindo NFS-e... aguarde', 'info');
+    const r = await api('POST', `/nfse/emitir/${osId}`);
+    if (r.numeroNota) {
+      toast(`NFS-e ${r.numeroNota} emitida com sucesso!`);
+    } else {
+      toast('NFS-e enviada! Verifique o número no sistema.', 'info');
+    }
+    await carregarOrdens();
+  } catch (e) {
+    toast('Erro ao emitir NFS-e: ' + e.message, 'error');
+  }
+}
+
+function verNfse(osId, chaveAcesso) {
+  if (!chaveAcesso) { toast('Chave de acesso não disponível', 'error'); return; }
+  window.open(`/api/nfse/danfse/${chaveAcesso}?token=${getToken()}`, '_blank');
 }

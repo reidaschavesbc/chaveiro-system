@@ -439,6 +439,26 @@ function migrate() {
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('senha_gerente', '')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('whatsapp_pedidos', '')").run();
 
+  // NFS-e config
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnpj', '41370832000187')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_inscricao_municipal', '184784')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_aliquota_iss', '2.00')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_nac', '14.01')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_mun', '')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnae', '4744005')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_regime_tributario', 'simples')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_ambiente', '2')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_pfx_senha', '123456')").run();
+
+  // Colunas NFS-e na tabela ordens_servico
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_chave_acesso TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_status TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_xml_dps TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_emitida_em TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_ambiente TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero_seq INTEGER'); } catch (_) {}
+
   console.log('✅ Banco de dados inicializado com sucesso!');
 }
 
