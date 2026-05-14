@@ -3,10 +3,21 @@ const router = express.Router();
 const db = require('../database/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { Expo } = require('expo-server-sdk');
+const admin = require('firebase-admin');
 
-const expo = new Expo();
 const JWT_SECRET = process.env.JWT_SECRET || 'chaveiro_super_secret_key_2024';
+
+// Inicializa Firebase Admin com service account
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
+    if (serviceAccount.project_id) {
+      admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    }
+  } catch (e) {
+    console.error('Firebase Admin não inicializado:', e.message);
+  }
+}
 
 function authFuncionario(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -273,19 +284,19 @@ router.get('/perfil', authFuncionario, (req, res) => {
 // Função exportada para notificar funcionário quando OS é criada/atribuída
 async function notificarFuncionario(vendedorId, titulo, mensagem) {
   const func = db.prepare(`SELECT expo_push_token FROM vendedores WHERE id = ?`).get(vendedorId);
-  if (!func?.expo_push_token || !Expo.isExpoPushToken(func.expo_push_token)) return;
+  if (!func?.expo_push_token) return;
+  if (!admin.apps.length) { console.error('Firebase Admin não inicializado'); return; }
   try {
-    await expo.sendPushNotificationsAsync([{
-      to: func.expo_push_token,
-      sound: 'default',
-      channelId: 'chaveiro_alerts',
-      title: titulo,
-      body: mensagem,
-      priority: 'high',
-      data: { tipo: 'nova_os' }
-    }]);
+    await admin.messaging().send({
+      token: func.expo_push_token,
+      notification: { title: titulo, body: mensagem },
+      android: {
+        priority: 'high',
+        notification: { channelId: 'chaveiro_alerts', sound: 'default' }
+      }
+    });
   } catch (e) {
-    console.error('Erro ao enviar push notification:', e.message);
+    console.error('Erro ao enviar FCM:', e.message);
   }
 }
 

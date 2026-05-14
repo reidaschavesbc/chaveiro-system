@@ -5,7 +5,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('chaveiro_alerts', {
@@ -61,18 +60,15 @@ export default function App() {
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') return;
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    if (!projectId) return;
-
     try {
-      const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+      const { data: fcmToken } = await Notifications.getDevicePushTokenAsync();
       const savedToken = await AsyncStorage.getItem('push_token');
-      if (token !== savedToken) {
-        await api.post('/push-token', { token });
-        await AsyncStorage.setItem('push_token', token);
+      if (fcmToken !== savedToken) {
+        await api.post('/push-token', { token: fcmToken });
+        await AsyncStorage.setItem('push_token', fcmToken);
       }
     } catch (e) {
-      console.error('Erro ao obter push token:', e.message);
+      console.error('Erro ao obter FCM token:', e.message);
     }
 
     notifListener.current = Notifications.addNotificationReceivedListener(() => {});
