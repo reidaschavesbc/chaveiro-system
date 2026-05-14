@@ -213,26 +213,27 @@ function renderOrdens(list) {
   if (!list.length) { el.innerHTML = '<div class="empty-state"><h3>Nenhuma ordem encontrada</h3></div>'; return; }
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   el.innerHTML = `<table>
-    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Descrição</th><th class="os-col-data">Data</th><th>Status</th><th class="os-col-valor">Valor</th><th style="width:170px">Ações</th></tr></thead>
+    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Descrição</th><th class="os-col-data">Data</th><th class="os-col-status">Status</th><th class="os-col-valor">Valor</th><th>Ações</th></tr></thead>
     <tbody>${list.map(o => {
       const vencido = o.a_receber && !o.a_receber_pago && o.data_vencimento && new Date(o.data_vencimento) < hoje;
       const rowStyle = vencido ? 'background:#fff5f5' : '';
+      const cfg = OS_STATUS_CFG[o.status] || OS_STATUS_CFG.aberta;
       const badgeAR = o.a_receber && !o.a_receber_pago
         ? `<br><span style="font-size:10px;font-weight:700;color:${vencido ? '#dc2626':'#d97706'};background:${vencido ? '#fee2e2':'#fef3c7'};padding:1px 6px;border-radius:4px">${vencido ? '⚠ VENCIDO' : '⏳ A RECEBER'}${o.data_vencimento ? ' ' + formatDate(o.data_vencimento) : ''}</span>`
         : (o.a_receber && o.a_receber_pago ? `<br><span style="font-size:10px;color:#16a34a;background:#f0fdf4;padding:1px 6px;border-radius:4px">✔ RECEBIDO</span>` : '');
       return `
       <tr style="${rowStyle}">
-        <td><strong>${o.numero}</strong>${badgeAR}<span class="os-valor-mobile">${formatCurrency(o.valor)}</span></td>
+        <td><strong>${o.numero}</strong>${badgeAR}<span class="os-valor-mobile">${formatCurrency(o.valor)}</span><span class="os-status-mobile" style="display:none;margin-top:3px;font-size:10px;font-weight:600;color:${cfg.color};background:${cfg.bg};padding:1px 6px;border-radius:10px">${cfg.label}</span></td>
         <td>${o.cliente_nome || o.cliente_nome_avulso || '<span class="text-muted">????</span>'}${o.solicitado_por ? `<br><span style="font-size:11px;color:#64748b">por ${o.solicitado_por}</span>` : ''}</td>
         <td style="max-width:220px;word-break:break-word;white-space:normal">${o.descricao}</td>
         <td class="os-col-data">${formatDate(o.data_entrada)}</td>
-        <td>${osStatusSelect(o.id, o.status)}</td>
+        <td class="os-col-status">${osStatusSelect(o.id, o.status)}</td>
         <td class="os-col-valor currency">${formatCurrency(o.valor)}</td>
         <td><div class="actions-cell">
           <a class="btn btn-sm btn-secondary os-btn-pdf" href="/api/pdf/os/${o.id}?token=${getToken()}" target="_blank" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></a>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-          ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;font-size:11px" title="Marcar como Recebido" onclick="receberOS(${o.id}, '${o.numero}', ${o.valor})">✔ Receber</button>` : ''}
-          ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
+          ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm os-btn-receber" style="background:#16a34a;color:white;font-size:11px" title="Marcar como Recebido" onclick="receberOS(${o.id}, '${o.numero}', ${o.valor})">✔ Receber</button>` : ''}
+          ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon os-btn-cancelar" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
           <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id}, '${o.numero}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </div></td>
       </tr>`;

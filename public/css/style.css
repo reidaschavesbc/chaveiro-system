@@ -1249,13 +1249,14 @@ tbody tr:hover {
     .flex.gap-1 { gap: 8px; }
     .flex.gap-2 { gap: 10px; }
 
-    /* Tabela OS — esconde Data e Valor, mostra valor inline no Nº */
-    .os-col-data, .os-col-valor { display: none; }
+    /* Tabela OS — esconde Data, Valor e Status; mostra badges inline no Nº */
+    .os-col-data, .os-col-valor, .os-col-status { display: none; }
     .os-valor-mobile { display: block; font-size: 11px; color: #16a34a; font-weight: 600; margin-top: 2px; }
-    .os-btn-pdf { display: none; }
+    .os-status-mobile { display: block !important; }
+    .os-btn-pdf, .os-btn-cancelar, .os-btn-receber { display: none; }
 }
 
-/* Desktop — esconde o valor inline (só aparece no mobile) */
+/* Desktop — esconde os badges inline (só aparecem no mobile) */
 .os-valor-mobile { display: none; }
 
 /* === MOBILE PEQUENO (≤480px) === */
