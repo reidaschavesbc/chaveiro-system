@@ -1,13 +1,13 @@
-2026/05/12-16:20:30.885 31 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/05/12-16:20:30.886 31 Recovering log #141
-2026/05/12-16:20:30.926 31 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000141.log 
-2026/05/12-16:20:33.129 25 Level-0 table #146: started
-2026/05/12-16:20:33.135 25 Level-0 table #146: 207406 bytes OK
-2026/05/12-16:20:33.138 25 Delete type=0 #141
-2026/05/12-16:20:33.139 25 Manual compaction at level-0 from '\x009\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00:\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/05/12-16:20:33.259 25 Compacting 1@1 + 1@2 files
-2026/05/12-16:20:33.315 25 Generated table #147@1: 39812 keys, 1487506 bytes
-2026/05/12-16:20:33.315 25 Compacted 1@1 + 1@2 files => 1487506 bytes
-2026/05/12-16:20:33.322 25 compacted to: files[ 0 0 1 0 0 0 0 ]
-2026/05/12-16:20:33.323 25 Delete type=2 #146
-2026/05/12-16:20:33.323 25 Delete type=2 #143
+2026/05/13-23:32:41.615 24 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/13-23:32:41.616 24 Recovering log #154
+2026/05/13-23:32:41.620 24 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000154.log 
+2026/05/13-23:32:43.892 23 Level-0 table #159: started
+2026/05/13-23:32:43.897 23 Level-0 table #159: 107237 bytes OK
+2026/05/13-23:32:43.903 23 Delete type=0 #154
+2026/05/13-23:32:43.904 23 Manual compaction at level-0 from '\x00;\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00<\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/05/13-23:32:44.035 23 Compacting 1@1 + 1@2 files
+2026/05/13-23:32:44.093 23 Generated table #160@1: 47399 keys, 1647133 bytes
+2026/05/13-23:32:44.094 23 Compacted 1@1 + 1@2 files => 1647133 bytes
+2026/05/13-23:32:44.096 23 compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/05/13-23:32:44.096 23 Delete type=2 #159
+2026/05/13-23:32:44.096 23 Delete type=2 #156

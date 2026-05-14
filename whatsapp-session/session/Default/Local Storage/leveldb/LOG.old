@@ -1,3 +1,9 @@
-2026/05/12-16:19:44.106 25 Reusing MANIFEST /app/whatsapp-session/session/Default/Local Storage/leveldb/MANIFEST-000001
-2026/05/12-16:19:44.107 25 Recovering log #10
-2026/05/12-16:19:44.107 25 Reusing old log /app/whatsapp-session/session/Default/Local Storage/leveldb/000010.log 
+2026/05/12-16:20:30.087 24 Reusing MANIFEST /app/whatsapp-session/session/Default/Local Storage/leveldb/MANIFEST-000001
+2026/05/12-16:20:30.090 24 Recovering log #10
+2026/05/12-16:20:30.091 24 Reusing old log /app/whatsapp-session/session/Default/Local Storage/leveldb/000010.log 
+2026/05/12-19:50:51.817 25 Level-0 table #14: started
+2026/05/12-19:50:51.835 25 Level-0 table #14: 14383 bytes OK
+2026/05/12-19:50:51.839 25 Delete type=0 #10
+2026/05/13-17:36:39.534 25 Level-0 table #16: started
+2026/05/13-17:36:39.558 25 Level-0 table #16: 15578 bytes OK
+2026/05/13-17:36:39.565 25 Delete type=0 #13
