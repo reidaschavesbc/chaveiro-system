@@ -1248,7 +1248,15 @@ tbody tr:hover {
     /* Espaçamento entre botões de ação em tabelas */
     .flex.gap-1 { gap: 8px; }
     .flex.gap-2 { gap: 10px; }
+
+    /* Tabela OS — esconde Data e Valor, mostra valor inline no Nº */
+    .os-col-data, .os-col-valor { display: none; }
+    .os-valor-mobile { display: block; font-size: 11px; color: #16a34a; font-weight: 600; margin-top: 2px; }
+    .os-btn-pdf { display: none; }
 }
+
+/* Desktop — esconde o valor inline (só aparece no mobile) */
+.os-valor-mobile { display: none; }
 
 /* === MOBILE PEQUENO (≤480px) === */
 @media (max-width: 480px) {
