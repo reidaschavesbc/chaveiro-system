@@ -327,6 +327,32 @@ async function carregarVendas() {
   const vendas = await api('GET', `/vendas?data_inicio=${di}&data_fim=${df}`);
   const el = document.getElementById('tabela-vendas');
   if (!vendas.length) { el.innerHTML = '<div class="empty-state"><h3>Nenhuma venda no período</h3></div>'; return; }
+  if (window.innerWidth <= 768) {
+    el.innerHTML = vendas.map(v => `
+      <div class="os-card${v.status === 'cancelada' ? '" style="opacity:0.55' : ''}">
+        <div class="os-card-top">
+          <div class="os-card-num">
+            <strong>${v.numero}</strong>
+            <span style="margin-left:6px">${badgeStatus(v.status)}</span>
+          </div>
+          <div class="os-card-valor">${formatCurrency(v.total_final)}</div>
+        </div>
+        <div class="os-card-cliente">${v.cliente_nome || v.cliente_nome_avulso || '—'}${v.vendedor_nome ? ` <span style="color:#94a3b8;font-size:11px">Func: ${v.vendedor_nome}</span>` : ''}</div>
+        <div class="os-card-bottom">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${badgePagamento(v.forma_pagamento)}
+            <span style="font-size:11px;color:#94a3b8">${formatDate(v.data)}</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-secondary btn-icon" onclick="visualizarVenda(${v.id})" title="Ver Detalhes">👁️</button>
+            ${v.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" onclick="cancelarVenda(${v.id},'${v.numero}')" title="Cancelar">✕</button>` : ''}
+            <button class="btn btn-sm btn-danger btn-icon" onclick="excluirVenda(${v.id},'${v.numero}')" title="Excluir"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+          </div>
+        </div>
+      </div>`).join('');
+    return;
+  }
+
   el.innerHTML = `<table>
     <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Pagamento</th><th>Total</th><th>Status</th><th>Ações</th></tr></thead>
     <tbody>${vendas.map(v => `
