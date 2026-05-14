@@ -12,8 +12,9 @@ async function vendasNova(el) {
     api('GET', '/vendedores')
   ]);
   vendaItens = [];
+  const isMobile = window.innerWidth <= 768;
   el.innerHTML = `
-  <div style="display:grid;grid-template-columns:1fr 380px;gap:24px">
+  <div style="${isMobile ? 'display:flex;flex-direction:column;gap:16px' : 'display:grid;grid-template-columns:1fr 380px;gap:24px'}">
     <div>
       <div class="card" style="margin-bottom:20px">
         <div class="card-header"><span class="card-title">Adicionar Item</span></div>
@@ -72,7 +73,7 @@ async function vendasNova(el) {
       </div>
     </div>
     <div>
-      <div class="card" style="position:sticky;top:80px">
+      <div class="card" style="${isMobile ? '' : 'position:sticky;top:80px'}">
         <div class="card-header"><span class="card-title">Resumo</span></div>
         <div class="card-body">
           <div class="form-group" style="margin-bottom:14px">
