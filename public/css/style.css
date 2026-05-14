@@ -1230,6 +1230,24 @@ tbody tr:hover {
 
     /* Grid de sumário de relatório (Receitas / Deduções / Resultado) */
     .rel-summary-grid { grid-template-columns: 1fr !important; }
+
+    /* Botões maiores para toque confortável */
+    .btn { padding: 11px 20px; font-size: 14px; }
+    .btn-sm { padding: 9px 14px; font-size: 13px; }
+    .btn-icon { padding: 10px; min-width: 40px; min-height: 40px; justify-content: center; }
+    .btn svg { width: 16px; height: 16px; }
+
+    /* Inputs maiores para toque confortável */
+    .form-group input,
+    .form-group select,
+    .form-group textarea,
+    .search-input,
+    .select-custom { padding: 11px 14px; font-size: 15px; min-height: 44px; }
+    .search-box input { height: 46px; font-size: 14px; }
+
+    /* Espaçamento entre botões de ação em tabelas */
+    .flex.gap-1 { gap: 8px; }
+    .flex.gap-2 { gap: 10px; }
 }
 
 /* === MOBILE PEQUENO (≤480px) === */
@@ -1238,6 +1256,9 @@ tbody tr:hover {
     .stat-card { padding: 10px 12px; }
     .stat-value { font-size: 15px; }
     .content { padding: 10px; }
+    .topbar { height: 52px; padding: 0 10px; }
+    .page-title { font-size: 14px; }
+    .modal-footer { padding-bottom: 28px; }
 }
 
 /* === UPLOAD DE IMAGEM DE PRODUTO === */

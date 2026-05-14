@@ -59,7 +59,7 @@ async function carregarVendedores() {
   const list = await api('GET', '/vendedores');
   const el = document.getElementById('lista-vendedores');
   if (!list.length) { el.innerHTML = '<p class="text-center text-muted">Nenhum funcionário cadastrado</p>'; return; }
-  el.innerHTML = `<div style="overflow-x:auto"><table style="min-width:700px">
+  el.innerHTML = `<div class="table-scroll"><table style="min-width:600px">
     <thead><tr><th>Nome</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Ações</th></tr></thead>
     <tbody>${list.map(v => `
       <tr>
