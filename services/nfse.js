@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
+const zlib = require('zlib');
 const axios = require('axios');
 const forge = require('node-forge');
 const { SignedXml } = require('xml-crypto');
@@ -19,6 +20,24 @@ function getConfig() {
   return cfg;
 }
 
+function extractCpfFromCert(cert) {
+  // ICP-Brasil OID 2.16.76.1.3.4 = data nasc (8) + CPF (11) + NIS (11) + RG...
+  const sanExt = cert.extensions.find(e => e.name === 'subjectAltName');
+  if (!sanExt) return null;
+  const raw = Buffer.from(sanExt.value, 'binary').toString('latin1');
+  // OID 2.16.76.1.3.4 encoded as hex: 604c010304
+  const hex = Buffer.from(sanExt.value, 'binary').toString('hex');
+  const idx = hex.indexOf('604c010304');
+  if (idx === -1) return null;
+  // Após o OID: a0 LL 04 LL [data8][cpf11]...
+  const afterOid = hex.substring(idx + 10);
+  // Pular a0 LL 04 LL (4 bytes = 8 hex chars)
+  const dataStr = Buffer.from(afterOid.substring(8), 'hex').toString('latin1');
+  // Primeiros 8 chars = data nascimento, próximos 11 = CPF
+  const cpf = dataStr.substring(8, 19).replace(/\D/g, '');
+  return cpf.length === 11 ? cpf : null;
+}
+
 function loadCertificate() {
   const cfg = getConfig();
   const pfxPath = cfg.pfx_path || path.join(__dirname, '..', '41.370.832 ELAINE ESTER CORREA DA CUNHA_41370832000187.pfx');
@@ -34,29 +53,35 @@ function loadCertificate() {
 
   const privateKey = forge.pki.privateKeyToPem(keyBags[0].key);
   const certificate = forge.pki.certificateToPem(certBags[0].cert);
+  const cpf = extractCpfFromCert(certBags[0].cert);
 
-  return { privateKey, certificate, pfxBuffer, pfxSenha };
+  return { privateKey, certificate, pfxBuffer, pfxSenha, cpf };
 }
 
 function padLeft(str, len, char = '0') {
   return String(str).padStart(len, char);
 }
 
-function buildDpsId(cnpj, serie, numeroDps) {
-  return `DPS${IBGE_BC}1${padLeft(cnpj.replace(/\D/g, ''), 14)}${padLeft(serie, 5)}${padLeft(numeroDps, 15)}`;
+function buildDpsId(inscricao, tipoInscricao, serie, numeroDps) {
+  const inscPadded = padLeft(inscricao.replace(/\D/g, ''), 14);
+  return `DPS${IBGE_BC}${tipoInscricao}${inscPadded}${padLeft(serie, 5)}${padLeft(numeroDps, 15)}`;
 }
 
 function formatDecimal(val) {
   return Number(val).toFixed(2);
 }
 
-function buildDpsXml({ cnpj, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompet,
+function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompet,
   tomadorTipo, tomadorDoc, tomadorNome, tomadorEmail,
   descricaoServico, valor, aliquotaIss, codTribNac, codTribMun, cnae,
   tpAmb, regimeTributario }) {
 
   const cnpjLimpo = cnpj.replace(/\D/g, '');
-  const dpsId = buildDpsId(cnpjLimpo, serie, numeroDps);
+  // MEI usa CPF no prest (tipoInscricao=2); empresa usa CNPJ (tipoInscricao=1)
+  const usarCpf = cpf && regimeTributario === 'mei';
+  const tipoInscricao = usarCpf ? '2' : '1';
+  const inscricao = usarCpf ? cpf : cnpjLimpo;
+  const dpsId = buildDpsId(inscricao, tipoInscricao, serie, numeroDps);
   const valorFmt = formatDecimal(valor);
   const issValor = formatDecimal(valor * (parseFloat(aliquotaIss) / 100));
 
@@ -73,44 +98,51 @@ function buildDpsXml({ cnpj, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompe
   const tomadorNomeTag = tomadorNome ? `<xNome>${tomadorNome.substring(0, 150)}</xNome>` : '';
   const tomadorEmailTag = tomadorEmail ? `<email>${tomadorEmail}</email>` : '';
 
-  // Regime tributário
+  // Regime tributário — opSimpNac: 1=não optante, 2=MEI, 3=ME/EPP
+  // regEspTrib: 0=nenhum (obrigatório)
   let regTribXml = '';
-  if (regimeTributario === 'simples') {
-    regTribXml = `<regTrib><opSimpNac>1</opSimpNac><regApTribSN>3</regApTribSN><porte>ME</porte></regTrib>`;
-  } else if (regimeTributario === 'lucro_presumido') {
-    regTribXml = `<regTrib><opSimpNac>2</opSimpNac></regTrib>`;
+  if (regimeTributario === 'mei') {
+    regTribXml = `<regTrib><opSimpNac>2</opSimpNac><regEspTrib>0</regEspTrib></regTrib>`;
+  } else if (regimeTributario === 'simples') {
+    regTribXml = `<regTrib><opSimpNac>3</opSimpNac><regApTribSN>1</regApTribSN><regEspTrib>0</regEspTrib></regTrib>`;
   } else {
-    regTribXml = `<regTrib><opSimpNac>2</opSimpNac></regTrib>`;
+    regTribXml = `<regTrib><opSimpNac>1</opSimpNac><regEspTrib>0</regEspTrib></regTrib>`;
   }
+
+  const codTribNacFmt = String(codTribNac).replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
+
+  // Tomador: xNome é obrigatório em TCInfoPessoa
+  const tomaXml = (tomadorTag && tomadorNome) ? `
+    <toma>
+      ${tomadorTag}
+      <xNome>${tomadorNome.substring(0, 150)}</xNome>
+      ${tomadorEmail ? `<email>${tomadorEmail}</email>` : ''}
+    </toma>` : '';
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
   <infDPS Id="${dpsId}">
     <tpAmb>${tpAmb}</tpAmb>
-    <cLocEmi>${IBGE_BC}</cLocEmi>
-    <serie>${padLeft(serie, 5)}</serie>
-    <nDPS>${padLeft(numeroDps, 15)}</nDPS>
     <dhEmi>${dhEmi}</dhEmi>
     <verAplic>ChaveiroSystem_1.0</verAplic>
+    <serie>${String(serie)}</serie>
+    <nDPS>${String(numeroDps)}</nDPS>
     <dCompet>${dCompet}</dCompet>
+    <tpEmit>1</tpEmit>
+    <cLocEmi>${IBGE_BC}</cLocEmi>
     <prest>
-      <CNPJ>${cnpjLimpo}</CNPJ>
+      ${usarCpf ? `<CPF>${cpf}</CPF>` : `<CNPJ>${cnpjLimpo}</CNPJ>`}
       <IM>${inscricaoMunicipal}</IM>
       ${regTribXml}
     </prest>
-    <toma>
-      ${tomadorTag}
-      ${tomadorNomeTag}
-      ${tomadorEmailTag}
-    </toma>
+    ${tomaXml}
     <serv>
       <locPrest>
         <cLocPrestacao>${IBGE_BC}</cLocPrestacao>
       </locPrest>
       <cServ>
-        <cTribNac>${codTribNac}</cTribNac>
+        <cTribNac>${codTribNacFmt}</cTribNac>
         ${codTribMun ? `<cTribMun>${codTribMun}</cTribMun>` : ''}
-        ${cnae ? `<CNAE>${cnae.replace(/\D/g, '')}</CNAE>` : ''}
         <xDescServ>${descricaoServico.substring(0, 2000)}</xDescServ>
       </cServ>
     </serv>
@@ -121,9 +153,8 @@ function buildDpsXml({ cnpj, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompe
       <trib>
         <tribMun>
           <tribISSQN>1</tribISSQN>
-          <cLocIncid>${IBGE_BC}</cLocIncid>
+          <tpRetISSQN>1</tpRetISSQN>
           <pAliq>${formatDecimal(aliquotaIss)}</pAliq>
-          <vISSQN>${issValor}</vISSQN>
         </tribMun>
         <totTrib>
           <indTotTrib>0</indTotTrib>
@@ -136,30 +167,24 @@ function buildDpsXml({ cnpj, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompe
   return { xml, dpsId };
 }
 
-function signXml(xmlStr, privateKey, certificate) {
-  const sig = new SignedXml({ privateKey });
+function signXml(xmlStr, privateKey, certificate, dpsId) {
+  const sig = new SignedXml({ privateKey, publicCert: certificate });
 
   sig.addReference({
-    xpath: '//*[local-name()="infDPS"]',
-    transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315'],
+    uri: '#' + dpsId,
+    xpath: `//*[@Id="${dpsId}"]`,
+    transforms: [
+      'http://www.w3.org/2000/09/xmldsig#enveloped-signature',
+      'http://www.w3.org/TR/2001/REC-xml-c14n-20010315',
+    ],
     digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256',
   });
 
   sig.signatureAlgorithm = 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256';
   sig.canonicalizationAlgorithm = 'http://www.w3.org/TR/2001/REC-xml-c14n-20010315';
 
-  // Add KeyInfo with certificate
-  sig.keyInfoProvider = {
-    getKeyInfo: () => {
-      const certClean = certificate.replace('-----BEGIN CERTIFICATE-----', '').replace('-----END CERTIFICATE-----', '').replace(/\n/g, '').trim();
-      return `<X509Data><X509Certificate>${certClean}</X509Certificate></X509Data>`;
-    },
-    getKey: () => privateKey,
-  };
-
   sig.computeSignature(xmlStr, {
     location: { reference: '//*[local-name()="infDPS"]', action: 'after' },
-    existingPrefixes: { ds: 'http://www.w3.org/2000/09/xmldsig#' },
   });
 
   return sig.getSignedXml();
@@ -196,9 +221,9 @@ async function emitirNfse(osId) {
   const serie = '00001';
 
   const agora = new Date();
-  const offset = '-03:00';
-  const dhEmi = agora.toISOString().replace('Z', offset).substring(0, 19) + offset;
-  const dCompet = agora.toISOString().substring(0, 10);
+  const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  const dhEmi = brt.toISOString().substring(0, 19) + '-03:00';
+  const dCompet = brt.toISOString().substring(0, 10);
 
   // Determinar tipo e documento do tomador
   let tomadorTipo = 'NENHUM';
@@ -206,8 +231,10 @@ async function emitirNfse(osId) {
   if (os.cliente_cpf) { tomadorTipo = 'CPF'; tomadorDoc = os.cliente_cpf; }
   else if (os.cliente_cnpj) { tomadorTipo = 'CNPJ'; tomadorDoc = os.cliente_cnpj; }
 
+  const cert = loadCertificate();
+
   const { xml: dpsXml, dpsId } = buildDpsXml({
-    cnpj, inscricaoMunicipal, serie, numeroDps,
+    cnpj, cpf: cert.cpf, inscricaoMunicipal, serie, numeroDps,
     dhEmi, dCompet,
     tomadorTipo, tomadorDoc,
     tomadorNome: os.cliente_nome,
@@ -218,11 +245,14 @@ async function emitirNfse(osId) {
     tpAmb, regimeTributario,
   });
 
-  // Assinar XML
-  const cert = loadCertificate();
-  const xmlAssinado = signXml(dpsXml, cert.privateKey, cert.certificate);
+  const xmlAssinado = signXml(dpsXml, cert.privateKey, cert.certificate, dpsId);
 
-  // Enviar para governo via mTLS
+  // GZip + Base64 do XML assinado
+  const xmlBuffer = Buffer.from(xmlAssinado, 'utf-8');
+  const xmlGzip = zlib.gzipSync(xmlBuffer);
+  const dpsXmlGZipB64 = xmlGzip.toString('base64');
+
+  // Enviar para governo via mTLS com JSON
   const url = tpAmb === '1' ? URL_PROD : URL_HOMOLOG;
   const agent = new https.Agent({
     pfx: cert.pfxBuffer,
@@ -232,9 +262,9 @@ async function emitirNfse(osId) {
 
   let resposta;
   try {
-    const res = await axios.post(url, xmlAssinado, {
+    const res = await axios.post(url, { dpsXmlGZipB64 }, {
       httpsAgent: agent,
-      headers: { 'Content-Type': 'application/xml; charset=UTF-8' },
+      headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
     });
     resposta = res.data;

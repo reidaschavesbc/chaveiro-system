@@ -443,7 +443,7 @@ function migrate() {
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnpj', '41370832000187')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_inscricao_municipal', '184784')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_aliquota_iss', '2.00')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_nac', '14.01')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_nac', '240101')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_mun', '')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnae', '4744005')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_regime_tributario', 'simples')").run();

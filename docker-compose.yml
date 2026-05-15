@@ -15,3 +15,9 @@ services:
       - ./public/downloads:/app/public/downloads
       - ./whatsapp-session:/app/whatsapp-session
       - ./package.json:/app/package.json
+      - ./services:/app/services
+      - ./routes:/app/routes
+      - ./public/js:/app/public/js
+      - ./public/css:/app/public/css
+      - ./views:/app/views
+      - ./server.js:/app/server.js

@@ -869,7 +869,7 @@ async function excluirOS(id, numero) {
 }
 
 async function emitirNfse(osId, osNumero) {
-  if (!confirm(`Emitir NFS-e para a OS ${osNumero}?\n\nEsta ação é irreversível após autorização pelo governo.`)) return;
+  if (!confirm(`Emitir NFS-e para a OS ${osNumero}?\n\n⚠️ MODO TESTE — nenhuma nota real será gerada.`)) return;
   try {
     toast('Emitindo NFS-e... aguarde', 'info');
     const r = await api('POST', `/nfse/emitir/${osId}`);
