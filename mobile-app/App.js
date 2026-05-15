@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import * as Constants from 'expo-constants';
 
 if (Platform.OS === 'android') {
   Notifications.setNotificationChannelAsync('chaveiro_alerts', {
@@ -40,11 +41,31 @@ export default function App() {
   useEffect(() => {
     verificarLogin();
     configurarNotificacoes();
+    verificarAtualizacao();
     return () => {
       Notifications.removeNotificationSubscription(notifListener.current);
       Notifications.removeNotificationSubscription(responseListener.current);
     };
   }, []);
+
+  async function verificarAtualizacao() {
+    try {
+      const serverUrl = api.defaults.baseURL.replace('/api/app', '');
+      const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: AbortSignal.timeout(5000) });
+      const { version: versaoServidor } = await resp.json();
+      const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || '1.0.0';
+      if (versaoServidor && versaoServidor !== versaoApp) {
+        Alert.alert(
+          'Atualização disponível',
+          `Nova versão ${versaoServidor} disponível. Deseja atualizar agora?`,
+          [
+            { text: 'Agora não', style: 'cancel' },
+            { text: 'Atualizar', onPress: () => Linking.openURL(`${serverUrl}/download-app`) },
+          ]
+        );
+      }
+    } catch (_) {}
+  }
 
   async function verificarLogin() {
     const token = await AsyncStorage.getItem('token');

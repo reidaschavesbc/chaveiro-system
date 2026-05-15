@@ -37,6 +37,15 @@ app.get('/api/version', (req, res) => {
   res.json({ version });
 });
 
+app.get('/api/apk-version', (req, res) => {
+  const versionFile = path.join(__dirname, 'public/downloads/version-apk.json');
+  if (fs.existsSync(versionFile)) {
+    res.json(JSON.parse(fs.readFileSync(versionFile, 'utf8')));
+  } else {
+    res.json({ version: '1.0.0' });
+  }
+});
+
 // Public routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/app', require('./routes/app-mobile').router);

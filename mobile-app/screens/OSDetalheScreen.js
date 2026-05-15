@@ -32,6 +32,13 @@ function fmtVal(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+function maskDate(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
 function parseDateBR(s) {
   if (!s || s.length !== 10) return null;
   const [d, m, y] = s.split('/');
@@ -699,7 +706,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                       <TextInput
                         style={s.fieldInput}
                         value={dataVencimento}
-                        onChangeText={setDataVencimento}
+                        onChangeText={t => setDataVencimento(maskDate(t))}
                         placeholder="DD/MM/AAAA"
                         placeholderTextColor="#999"
                         keyboardType="numeric"

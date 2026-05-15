@@ -98,4 +98,5 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo tvsxgames/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /root/chaveiro-system/public/downloads/ --clobber"
+          VERSION=${TAG#apk-}
+          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo tvsxgames/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /root/chaveiro-system/public/downloads/ --clobber && echo '{\"version\":\"'${VERSION}'\"}' > /root/chaveiro-system/public/downloads/version-apk.json"
