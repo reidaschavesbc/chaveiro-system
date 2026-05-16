@@ -78,8 +78,8 @@ function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, d
   tpAmb, regimeTributario }) {
 
   const cnpjLimpo = cnpj.replace(/\D/g, '');
-  // tpInsc=1 roteia pelo Emissor Nacional (nfse.gov.br) — tpInsc=2 roteia pelo sistema municipal de BC
-  const tipoInscricao = '1';
+  // tpInsc: 1=CPF, 2=CNPJ (prestador sempre usa CNPJ neste sistema)
+  const tipoInscricao = '2';
   const inscricao = cnpjLimpo;
   const dpsId = buildDpsId(inscricao, tipoInscricao, serie, numeroDps);
   const valorFmt = formatDecimal(valor);
@@ -176,7 +176,7 @@ function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, d
         <tribMun>
           <tribISSQN>1</tribISSQN>
           <tpRetISSQN>1</tpRetISSQN>
-          <pAliq>${formatDecimal(aliquotaIss)}</pAliq>
+          ${regimeTributario !== 'mei' ? `<pAliq>${formatDecimal(aliquotaIss)}</pAliq>` : ''}
         </tribMun>
         <totTrib>
           <indTotTrib>0</indTotTrib>
