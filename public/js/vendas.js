@@ -266,10 +266,52 @@ function calcularCheckout() {
   }
 }
 
+function modalConfirmarVenda(total) {
+  return new Promise(resolve => {
+    let overlay = document.getElementById('modal-confirmar-venda');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'modal-confirmar-venda';
+      overlay.className = 'modal-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+    <div class="modal" style="max-width:400px;width:100%" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">✅ Finalizar Venda</span>
+        <button class="modal-close" id="btn-cv-fechar">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align:center;padding:24px">
+        <div style="font-size:14px;color:#64748b;margin-bottom:12px">Valor total da venda</div>
+        <div style="font-size:32px;font-weight:800;color:#15803d;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 20px;display:inline-block;min-width:200px">${formatCurrency(total)}</div>
+        <div style="font-size:13px;color:#94a3b8;margin-top:16px">Escolha uma opção para continuar</div>
+      </div>
+      <div class="modal-footer" style="flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="btn btn-primary" id="btn-cv-finalizar" style="flex:1;padding:12px;font-size:14px">✓ Finalizar</button>
+          <button class="btn" id="btn-cv-imprimir" style="flex:1;padding:12px;font-size:14px;background:#0f766e;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer">🖨️ Imprimir</button>
+        </div>
+        <button class="btn btn-danger" id="btn-cv-cancelar" style="width:100%;padding:11px;font-size:13px">Cancelar</button>
+      </div>
+    </div>`;
+    openModal('modal-confirmar-venda');
+    const fechar = val => { closeModal('modal-confirmar-venda'); resolve(val); };
+    overlay.onclick = () => fechar(null);
+    overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+    document.getElementById('btn-cv-fechar').onclick    = () => fechar(null);
+    document.getElementById('btn-cv-cancelar').onclick  = () => fechar(null);
+    document.getElementById('btn-cv-finalizar').onclick = () => fechar('finalizar');
+    document.getElementById('btn-cv-imprimir').onclick  = () => fechar('imprimir');
+  });
+}
+
 async function finalizarVenda() {
   if (!vendaItens.length) { toast('Adicione pelo menos um item', 'warning'); return; }
 
   const total = calcularTotal();
+  const acao = await modalConfirmarVenda(total);
+  if (!acao) return; // Cancelar — volta para o form como estava
+
   const pagamentos = [];
   const d = parseFloat(document.getElementById('pay-dinheiro').value) || 0;
   const p = parseFloat(document.getElementById('pay-pix').value) || 0;
@@ -296,10 +338,7 @@ async function finalizarVenda() {
   try {
     const r = await api('POST', '/vendas', body);
     toast(`Venda ${r.numero} finalizada! Total: ${formatCurrency(r.total)}`);
-    // Open PDF
-    if (await modalConfirmar({ titulo: 'Imprimir Recibo', mensagem: `Venda <strong>${r.numero}</strong> finalizada! Deseja imprimir o recibo?`, icone: '🖨️', textoBotao: 'Imprimir' })) {
-      window.open(`/api/pdf/venda/${r.id}?t=${getToken()}`, '_blank');
-    }
+    if (acao === 'imprimir') window.open(`/api/pdf/venda/${r.id}?t=${getToken()}`, '_blank');
     vendaItens = [];
     navigateTo('vendas-nova');
   } catch (e) { toast(e.message, 'error'); }

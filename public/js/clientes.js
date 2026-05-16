@@ -42,7 +42,8 @@ async function clientes(el) {
                   <option value="cpf">CPF</option>
                   <option value="cnpj">CNPJ</option>
                 </select>
-                <input type="text" id="cliente-doc" style="border-radius:0 6px 6px 0;flex:1">
+                <input type="text" id="cliente-doc" style="border-radius:0;flex:1">
+                <button type="button" id="btn-buscar-cnpj" onclick="consultarCNPJAuto()" style="display:none;border-radius:0 6px 6px 0;padding:0 12px;background:#1d4ed8;color:#fff;border:1.5px solid #1d4ed8;cursor:pointer;font-size:12px;white-space:nowrap">🔍 Receita</button>
               </div>
             </div>
 
@@ -161,9 +162,63 @@ function filtrarClientes() {
 
 function toggleDocTipo() {
     const tipo = document.getElementById('cliente-doc-tipo').value;
-    const inp = document.getElementById('cliente-doc');
+    const inp  = document.getElementById('cliente-doc');
+    const btn  = document.getElementById('btn-buscar-cnpj');
     inp.value = '';
     inp.placeholder = tipo === 'cpf' ? '000.000.000-00' : '00.000.000/0001-00';
+    inp.style.borderRadius = tipo === 'cnpj' ? '0' : '0 6px 6px 0';
+    if (btn) btn.style.display = tipo === 'cnpj' ? '' : 'none';
+}
+
+async function consultarCNPJAuto() {
+    const inp  = document.getElementById('cliente-doc');
+    const cnpj = inp.value.replace(/\D/g, '');
+    if (cnpj.length !== 14) { toast('Digite o CNPJ completo (14 dígitos)', 'error'); return; }
+
+    const btn = document.querySelector('#form-cliente .btn-primary');
+    const orig = inp.style.borderColor;
+    inp.style.borderColor = '#f59e0b';
+
+    try {
+        const d = await api('GET', `/cnpj/${cnpj}`);
+
+        // Nome / Razão social
+        const nome = d.razao_social || d.nome_fantasia || '';
+        if (nome && !document.getElementById('cliente-nome').value) {
+            document.getElementById('cliente-nome').value = nome;
+        }
+
+        // Endereço
+        if (d.logradouro) document.getElementById('cliente-endereco').value = d.logradouro;
+        if (d.numero)     document.getElementById('cliente-numero').value   = d.numero;
+        if (d.complemento) document.getElementById('cliente-complemento').value = d.complemento;
+        if (d.bairro)     document.getElementById('cliente-bairro').value   = d.bairro;
+        if (d.municipio)  document.getElementById('cliente-cidade').value   = d.municipio;
+
+        // CEP
+        if (d.cep) {
+            const cepLimpo = d.cep.replace(/\D/g, '');
+            document.getElementById('cliente-cep').value = cepLimpo.replace(/^(\d{5})(\d{3})$/, '$1-$2');
+        }
+
+        // Email e telefone
+        if (d.email && !document.getElementById('cliente-email').value) {
+            document.getElementById('cliente-email').value = d.email;
+        }
+        if ((d.ddd_telefone_1 || d.telefone) && !document.getElementById('cliente-telefone').value) {
+            const fone = (d.ddd_telefone_1 || d.telefone || '').replace(/\D/g, '');
+            if (fone) document.getElementById('cliente-telefone').value = aplicarMascaraTelefone(fone);
+        }
+
+        inp.style.borderColor = '#22c55e';
+        toast(`Dados preenchidos: ${nome || 'CNPJ encontrado'}`, 'success');
+    } catch (e) {
+        inp.style.borderColor = '#ef4444';
+        const msg = e.message?.includes('404') ? 'CNPJ não encontrado na Receita Federal' : 'Não foi possível consultar o CNPJ agora';
+        toast(msg, 'error');
+    } finally {
+        setTimeout(() => { inp.style.borderColor = orig; }, 3000);
+    }
 }
 
 function formatarCEP(el) {
@@ -192,6 +247,7 @@ function abrirModalCliente() {
     document.getElementById('cliente-doc-tipo').value = 'cpf';
     document.getElementById('cliente-doc').placeholder = '000.000.000-00';
     document.getElementById('modal-cliente-title').textContent = 'Novo Cliente';
+    toggleDocTipo();
     openModal('modal-cliente');
 }
 
@@ -210,6 +266,7 @@ function editarCliente(id) {
         document.getElementById('cliente-doc').value = c.cpf || '';
         document.getElementById('cliente-doc').placeholder = '000.000.000-00';
     }
+    toggleDocTipo();
 
     document.getElementById('cliente-telefone').value = aplicarMascaraTelefone(c.telefone);
     document.getElementById('cliente-email').value = c.email || '';

@@ -10,7 +10,7 @@ body {
     font-family: 'Inter', sans-serif;
     font-size: 14px;
     color: #1e293b;
-    background: #f1f5f9;
+    background: #dde1e7;
 }
 
 /* === LAYOUT === */
@@ -43,7 +43,7 @@ body {
 }
 
 .topbar {
-    background: white;
+    background: #f0f2f5;
     height: 60px;
     display: flex;
     align-items: center;
@@ -273,7 +273,7 @@ body {
 }
 
 .stat-card {
-    background: white;
+    background: #f0f2f5;
     border-radius: 16px;
     padding: 20px 22px;
     display: flex;
@@ -332,7 +332,7 @@ body {
 
 /* === TABLES === */
 .card {
-    background: white;
+    background: #f0f2f5;
     border-radius: 16px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
     margin-bottom: 24px;
@@ -457,6 +457,30 @@ tbody tr:hover {
     border-radius: 8px;
 }
 
+.btn-receber {
+    background: #16a34a;
+    color: white;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+.btn-receber:hover { background: #15803d; }
+
+.btn-nfse {
+    background: #7c3aed;
+    color: white;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+.btn-nfse:hover { background: #6d28d9; }
+
+.btn-nfse-ok {
+    background: #0ea5e9;
+    color: white;
+    padding: 5px 10px;
+    font-size: 12px;
+}
+.btn-nfse-ok:hover { background: #0284c7; }
+
 /* === FORMS === */
 .form-grid {
     display: grid;
@@ -497,7 +521,7 @@ tbody tr:hover {
     color: #1e293b;
     transition: all 0.15s;
     outline: none;
-    background: white;
+    background: #f0f2f5;
 }
 
 .form-group input:focus,
@@ -659,7 +683,7 @@ tbody tr:hover {
 }
 
 .modal {
-    background: white;
+    background: #f0f2f5;
     border-radius: 20px;
     width: 100%;
     max-height: 90vh;
@@ -814,7 +838,7 @@ tbody tr:hover {
 }
 
 .tab.active {
-    background: white;
+    background: #f0f2f5;
     color: #1a56db;
     font-weight: 700;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
@@ -883,7 +907,7 @@ tbody tr:hover {
     height: calc(100vh - 116px);
     max-width: 1100px;
     margin: 0 auto;
-    background: #fff;
+    background: #f0f2f5;
     border-radius: 16px;
     box-shadow: 0 2px 16px rgba(0,0,0,.08);
     overflow: hidden;
@@ -947,7 +971,7 @@ tbody tr:hover {
     padding: 6px 14px;
     border-radius: 20px;
     border: 1px solid #cbd5e1;
-    background: #fff;
+    background: #f0f2f5;
     font-size: 12px;
     color: #334155;
     cursor: pointer;
@@ -989,7 +1013,7 @@ tbody tr:hover {
 }
 
 .ass-msg-bot .ass-bubble {
-    background: #fff;
+    background: #f0f2f5;
     color: #1e293b;
     border-bottom-left-radius: 4px;
     box-shadow: 0 1px 4px rgba(0,0,0,.08);
@@ -1022,7 +1046,7 @@ tbody tr:hover {
     align-items: center;
     gap: 10px;
     padding: 14px 18px;
-    background: #fff;
+    background: #f0f2f5;
     border-top: 1px solid #e2e8f0;
     flex-shrink: 0;
 }
@@ -1038,7 +1062,7 @@ tbody tr:hover {
     transition: border-color .2s;
     background: #f8fafc;
 }
-.ass-input:focus { border-color: #1a56db; background: #fff; }
+.ass-input:focus { border-color: #1a56db; background: #f0f2f5; }
 
 .ass-btn-mic,
 .ass-btn-send {
@@ -1233,7 +1257,8 @@ tbody tr:hover {
 
     /* Botões maiores para toque confortável */
     .btn { padding: 11px 20px; font-size: 14px; }
-    .btn-sm { padding: 9px 14px; font-size: 13px; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-receber, .btn-nfse, .btn-nfse-ok { padding: 5px 10px; font-size: 12px; }
     .btn-icon { padding: 10px; min-width: 40px; min-height: 40px; justify-content: center; }
     .btn svg { width: 16px; height: 16px; }
 
@@ -1264,7 +1289,7 @@ tbody tr:hover {
 
 /* === CARDS DE OS (mobile) === */
 .os-card {
-    background: #fff;
+    background: #f0f2f5;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     padding: 14px;

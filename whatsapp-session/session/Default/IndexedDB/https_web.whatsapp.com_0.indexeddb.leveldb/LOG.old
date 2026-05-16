@@ -1,13 +1,15 @@
-2026/05/14-22:23:04.986 2e Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/05/14-22:23:04.987 2e Recovering log #222
-2026/05/14-22:23:04.993 2e Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000222.log 
-2026/05/14-22:23:06.957 25 Level-0 table #227: started
-2026/05/14-22:23:06.964 25 Level-0 table #227: 211318 bytes OK
-2026/05/14-22:23:06.969 25 Delete type=0 #222
-2026/05/14-22:23:06.970 25 Manual compaction at level-0 from '\x00L\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00M\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/05/14-22:23:07.095 25 Compacting 1@1 + 1@2 files
-2026/05/14-22:23:07.169 25 Generated table #228@1: 61863 keys, 2161435 bytes
-2026/05/14-22:23:07.169 25 Compacted 1@1 + 1@2 files => 2161435 bytes
-2026/05/14-22:23:07.172 25 compacted to: files[ 0 0 1 0 0 0 0 ]
-2026/05/14-22:23:07.173 25 Delete type=2 #224
-2026/05/14-22:23:07.173 25 Delete type=2 #227
+2026/05/15-23:32:35.198 24 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/15-23:32:35.199 24 Recovering log #459
+2026/05/15-23:32:35.205 24 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000459.log 
+2026/05/15-23:32:37.069 28 Level-0 table #465: started
+2026/05/15-23:32:37.077 28 Level-0 table #465: 199181 bytes OK
+2026/05/15-23:32:37.084 28 Delete type=0 #459
+2026/05/15-23:32:37.085 24 Manual compaction at level-0 from '\x00}\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00~\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/05/15-23:32:37.189 25 Compacting 1@1 + 2@2 files
+2026/05/15-23:32:37.259 25 Generated table #466@1: 82361 keys, 2242986 bytes
+2026/05/15-23:32:37.304 25 Generated table #467@1: 20271 keys, 1137452 bytes
+2026/05/15-23:32:37.305 25 Compacted 1@1 + 2@2 files => 3380438 bytes
+2026/05/15-23:32:37.318 25 compacted to: files[ 0 0 2 0 0 0 0 ]
+2026/05/15-23:32:37.319 25 Delete type=2 #462
+2026/05/15-23:32:37.319 25 Delete type=2 #465
+2026/05/15-23:32:37.320 25 Delete type=2 #461

@@ -227,6 +227,7 @@ function renderOrdens(list) {
           <div class="os-card-num">
             <strong>${o.numero}</strong>
             <span style="font-size:11px;font-weight:600;color:${cfg.color};background:${cfg.bg};padding:2px 8px;border-radius:10px;margin-left:6px">${cfg.label}</span>
+            ${o.status === 'em_andamento' && o.vendedor_nome ? `<span style="font-size:10px;color:#1e40af;background:#dbeafe;padding:2px 7px;border-radius:4px;font-weight:600;margin-left:4px">👷 ${o.vendedor_nome}</span>` : ''}
           </div>
           <div class="os-card-valor">${formatCurrency(o.valor)}</div>
         </div>
@@ -236,9 +237,9 @@ function renderOrdens(list) {
           <span style="font-size:11px;color:#94a3b8">${formatDate(o.data_entrada)}</span>
           <div style="display:flex;gap:6px;align-items:center">
             ${badgeAR}
-            ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;padding:6px 10px;font-size:12px" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
+            ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;padding:5px 10px;font-size:12px" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
             <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-            <button class="btn btn-sm btn-danger btn-icon" title="Excluir" onclick="excluirOS(${o.id},'${o.numero}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+            <button class="btn btn-sm btn-danger btn-icon" title="Excluir" onclick="excluirOS(${o.id},'${o.numero}','${o.nfse_status||''}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
           </div>
         </div>
       </div>`;
@@ -247,7 +248,7 @@ function renderOrdens(list) {
   }
 
   el.innerHTML = `<table>
-    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Descrição</th><th>Data</th><th>Status</th><th>Valor</th><th style="width:170px">Ações</th></tr></thead>
+    <thead><tr><th>Nº OS</th><th>Cliente</th><th>Descrição</th><th>Data</th><th>Status</th><th>Valor</th><th style="width:240px;min-width:240px">Ações</th></tr></thead>
     <tbody>${list.map(o => {
       const vencido = o.a_receber && !o.a_receber_pago && o.data_vencimento && new Date(o.data_vencimento) < hoje;
       const rowStyle = vencido ? 'background:#fff5f5' : '';
@@ -260,15 +261,15 @@ function renderOrdens(list) {
         <td>${o.cliente_nome || o.cliente_nome_avulso || '<span class="text-muted">????</span>'}${o.solicitado_por?`<br><span style="font-size:11px;color:#64748b">por ${o.solicitado_por}</span>`:''}</td>
         <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.descricao}">${o.descricao}</td>
         <td>${formatDate(o.data_entrada)}</td>
-        <td>${osStatusSelect(o.id, o.status)}</td>
+        <td>${osStatusSelect(o.id, o.status)}${o.status === 'em_andamento' && o.vendedor_nome ? `<br><span style="font-size:10px;color:#1e40af;background:#dbeafe;padding:1px 7px;border-radius:4px;font-weight:600">👷 ${o.vendedor_nome}</span>` : ''}</td>
         <td class="currency">${formatCurrency(o.valor)}</td>
-        <td><div class="actions-cell">
+        <td><div class="actions-cell" style="flex-wrap:nowrap;align-items:center">
           <a class="btn btn-sm btn-secondary" href="/api/pdf/os/${o.id}?token=${getToken()}" target="_blank" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></a>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-          ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;font-size:11px" title="Marcar como Recebido" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
-          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;font-size:11px" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NFS-e ${o.nfse_numero}</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;font-size:11px" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 Emitir NFS-e</button>`) : ''}
+          ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Marcar como Recebido" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
+          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NF ${o.nfse_numero}</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 NFS-e</button>`) : ''}
           ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
-          <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id},'${o.numero}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
+          <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id},'${o.numero}','${o.nfse_status||''}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </div></td>
       </tr>`;
     }).join('')}
@@ -857,8 +858,8 @@ async function receberOS(id, numero, valor) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
-async function excluirOS(id, numero) {
-  const senha = await pedirSenhaExclusao(`OS ${numero}`);
+async function excluirOS(id, numero, nfseStatus) {
+  const senha = await pedirSenhaExclusao(`OS ${numero}${nfseStatus === 'autorizada' ? ' ⚠ possui NFS-e emitida' : ''}`);
   if (senha === null) return;
   if (!senha.trim()) { toast('Senha é obrigatória!', 'error'); return; }
   try {
@@ -869,19 +870,116 @@ async function excluirOS(id, numero) {
 }
 
 async function emitirNfse(osId, osNumero) {
-  if (!confirm(`Emitir NFS-e para a OS ${osNumero}?\n\n⚠️ MODO TESTE — nenhuma nota real será gerada.`)) return;
   try {
+    toast('Carregando dados...', 'info');
+    const dados = await api('GET', `/nfse/preview/${osId}`);
+    if (!dados) return;
+    const confirmar = await modalPreviewNfse(dados, osNumero);
+    if (!confirmar) return;
     toast('Emitindo NFS-e... aguarde', 'info');
     const r = await api('POST', `/nfse/emitir/${osId}`);
-    if (r.numeroNota) {
+    if (r && r.numeroNota) {
       toast(`NFS-e ${r.numeroNota} emitida com sucesso!`);
     } else {
       toast('NFS-e enviada! Verifique o número no sistema.', 'info');
     }
     await carregarOrdens();
   } catch (e) {
-    toast('Erro ao emitir NFS-e: ' + e.message, 'error');
+    toast('Erro: ' + e.message, 'error');
   }
+}
+
+function modalPreviewNfse(dados, osNumero) {
+  return new Promise(resolve => {
+    let overlay = document.getElementById('modal-preview-nfse');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'modal-preview-nfse';
+      overlay.className = 'modal-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const { prestador, tomador, servico, itens, os, ambiente } = dados;
+    const ambienteBadge = ambiente === 'Produção'
+      ? `<span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">PRODUÇÃO</span>`
+      : `<span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">HOMOLOGAÇÃO</span>`;
+
+    const itensHtml = itens && itens.length > 0 ? `
+      <div style="margin-top:8px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="background:#f1f5f9">
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Item</th>
+            <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Qtd</th>
+            <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Unit.</th>
+            <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Total</th>
+          </tr></thead>
+          <tbody>${(itens || []).map(i => `<tr>
+            <td style="padding:4px 8px">${i.produto_nome || i.servico_nome || i.descricao || '-'}</td>
+            <td style="padding:4px 8px;text-align:center">${i.quantidade}</td>
+            <td style="padding:4px 8px;text-align:right">${formatCurrency(i.preco_unitario)}</td>
+            <td style="padding:4px 8px;text-align:right">${formatCurrency(i.subtotal)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>` : '';
+
+    const row = (label, val) => val ? `<div style="display:flex;gap:8px;margin-bottom:4px;font-size:13px"><span style="color:#64748b;min-width:130px">${label}:</span><span style="color:#1e293b;font-weight:500">${val}</span></div>` : '';
+
+    overlay.innerHTML = `
+    <div class="modal" style="max-width:580px;width:100%" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">📄 Pré-visualização NFS-e — OS ${osNumero} ${ambienteBadge}</span>
+        <button class="modal-close" id="btn-pnf-fechar">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;padding:16px 20px">
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Prestador</div>
+          ${row('CNPJ', prestador.cnpj)}
+          ${row('Insc. Municipal', prestador.inscricaoMunicipal)}
+          ${row('Regime', prestador.regime)}
+          ${row('Cód. Tributação', prestador.codTribNac)}
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tomador</div>
+          ${row('Nome', tomador.nome)}
+          ${row(tomador.tipo, tomador.doc || '<span style="color:#dc2626">Não informado</span>')}
+          ${row('Email', tomador.email)}
+          ${row('Telefone', tomador.fone)}
+          ${row('Endereço', tomador.endereco)}
+          ${row('Bairro', tomador.bairro)}
+          ${row('Cidade / CEP', [tomador.cidade, tomador.cep].filter(Boolean).join(' — '))}
+        </div>
+
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Serviço / Itens</div>
+          ${itensHtml}
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px">Descrição que será enviada:</div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;font-size:12px;color:#374151;white-space:pre-wrap;max-height:120px;overflow-y:auto">${servico.descricao}</div>
+          </div>
+        </div>
+
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:#15803d;font-weight:600">Valor Total</span>
+          <span style="font-size:22px;font-weight:800;color:#15803d">${formatCurrency(os.valor)}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-pnf-cancelar">Cancelar</button>
+        <button class="btn btn-primary" id="btn-pnf-emitir" style="background:#7c3aed;border:none">📤 Confirmar Emissão</button>
+      </div>
+    </div>`;
+
+    openModal('modal-preview-nfse');
+
+    const fechar = val => { closeModal('modal-preview-nfse'); resolve(val); };
+    overlay.onclick = () => fechar(false);
+    overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+    document.getElementById('btn-pnf-fechar').onclick   = () => fechar(false);
+    document.getElementById('btn-pnf-cancelar').onclick = () => fechar(false);
+    document.getElementById('btn-pnf-emitir').onclick   = () => fechar(true);
+  });
 }
 
 function verNfse(osId, chaveAcesso) {

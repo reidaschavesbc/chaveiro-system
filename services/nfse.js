@@ -72,27 +72,25 @@ function formatDecimal(val) {
 }
 
 function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, dCompet,
-  tomadorTipo, tomadorDoc, tomadorNome, tomadorEmail,
+  tomadorTipo, tomadorDoc, tomadorNome, tomadorEmail, tomadorFone,
+  tomadorEndereco, tomadorNumero, tomadorComplemento, tomadorBairro, tomadorCidade, tomadorCep, tomadorCMun, tomadorUF,
   descricaoServico, valor, aliquotaIss, codTribNac, codTribMun, cnae,
   tpAmb, regimeTributario }) {
 
   const cnpjLimpo = cnpj.replace(/\D/g, '');
-  // MEI usa CPF no prest (tipoInscricao=2); empresa usa CNPJ (tipoInscricao=1)
-  const usarCpf = cpf && regimeTributario === 'mei';
-  const tipoInscricao = usarCpf ? '2' : '1';
-  const inscricao = usarCpf ? cpf : cnpjLimpo;
+  // tpInsc=1 roteia pelo Emissor Nacional (nfse.gov.br) — tpInsc=2 roteia pelo sistema municipal de BC
+  const tipoInscricao = '1';
+  const inscricao = cnpjLimpo;
   const dpsId = buildDpsId(inscricao, tipoInscricao, serie, numeroDps);
   const valorFmt = formatDecimal(valor);
   const issValor = formatDecimal(valor * (parseFloat(aliquotaIss) / 100));
 
-  // Tomador: CPF ou CNPJ ou sem documento
+  // Tomador: CPF ou CNPJ — sem documento omite o bloco inteiro
   let tomadorTag = '';
   if (tomadorTipo === 'CPF' && tomadorDoc) {
     tomadorTag = `<CPF>${tomadorDoc.replace(/\D/g, '').padStart(11, '0')}</CPF>`;
   } else if (tomadorTipo === 'CNPJ' && tomadorDoc) {
     tomadorTag = `<CNPJ>${tomadorDoc.replace(/\D/g, '').padStart(14, '0')}</CNPJ>`;
-  } else {
-    tomadorTag = `<cNaoNIF>9</cNaoNIF>`; // não informado
   }
 
   const tomadorNomeTag = tomadorNome ? `<xNome>${tomadorNome.substring(0, 150)}</xNome>` : '';
@@ -111,13 +109,37 @@ function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, d
 
   const codTribNacFmt = String(codTribNac).replace(/\D/g, '').substring(0, 6).padEnd(6, '0');
 
+  // Schema DPS: <end><endNac><cMun><CEP></endNac> primeiro, depois xLgr/nro/xBairro
+  let endTomaXml = '';
+  const cepLimpoToma = tomadorCep ? tomadorCep.replace(/\D/g, '').padStart(8, '0') : null;
+  if (tomadorEndereco && tomadorNumero && tomadorBairro && tomadorCMun && cepLimpoToma) {
+    endTomaXml = `
+      <end>
+        <endNac>
+          <cMun>${tomadorCMun}</cMun>
+          <CEP>${cepLimpoToma}</CEP>
+        </endNac>
+        <xLgr>${tomadorEndereco.substring(0, 125)}</xLgr>
+        <nro>${String(tomadorNumero).substring(0, 10)}</nro>
+        ${tomadorComplemento ? `<xCpl>${tomadorComplemento.substring(0, 60)}</xCpl>` : ''}
+        <xBairro>${tomadorBairro.substring(0, 72)}</xBairro>
+      </end>`;
+  }
+
+  const foneLimpo = tomadorFone ? tomadorFone.replace(/\D/g, '').substring(0, 20) : null;
+
   // Tomador: xNome é obrigatório em TCInfoPessoa
   const tomaXml = (tomadorTag && tomadorNome) ? `
     <toma>
       ${tomadorTag}
       <xNome>${tomadorNome.substring(0, 150)}</xNome>
+      ${endTomaXml}
+      ${foneLimpo   ? `<fone>${foneLimpo}</fone>`     : ''}
       ${tomadorEmail ? `<email>${tomadorEmail}</email>` : ''}
     </toma>` : '';
+
+  const nDpsFmt = padLeft(numeroDps, 15);
+  const serieFmt = padLeft(serie, 5);
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <DPS xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.00">
@@ -125,13 +147,13 @@ function buildDpsXml({ cnpj, cpf, inscricaoMunicipal, serie, numeroDps, dhEmi, d
     <tpAmb>${tpAmb}</tpAmb>
     <dhEmi>${dhEmi}</dhEmi>
     <verAplic>ChaveiroSystem_1.0</verAplic>
-    <serie>${String(serie)}</serie>
-    <nDPS>${String(numeroDps)}</nDPS>
+    <serie>${parseInt(serie)}</serie>
+    <nDPS>${numeroDps}</nDPS>
     <dCompet>${dCompet}</dCompet>
     <tpEmit>1</tpEmit>
     <cLocEmi>${IBGE_BC}</cLocEmi>
     <prest>
-      ${usarCpf ? `<CPF>${cpf}</CPF>` : `<CNPJ>${cnpjLimpo}</CNPJ>`}
+      <CNPJ>${cnpjLimpo}</CNPJ>
       <IM>${inscricaoMunicipal}</IM>
       ${regTribXml}
     </prest>
@@ -206,19 +228,37 @@ async function emitirNfse(osId) {
     SELECT os.*,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
            c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
-           c.email as cliente_email
+           c.email as cliente_email, c.telefone as cliente_telefone,
+           c.endereco as cliente_endereco, c.numero as cliente_numero,
+           c.complemento as cliente_complemento, c.bairro as cliente_bairro,
+           c.cidade as cliente_cidade, c.cep as cliente_cep
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     WHERE os.id = ?
   `).get(osId);
 
+  // Buscar itens da OS para compor descrição detalhada
+  const itensOs = db.prepare(`
+    SELECT ios.*, p.nome as produto_nome, ts.nome as servico_nome
+    FROM itens_ordem_servico ios
+    LEFT JOIN produtos p ON ios.produto_id = p.id
+    LEFT JOIN tipos_servico ts ON ios.servico_id = ts.id
+    WHERE ios.ordem_id = ?
+  `).all(osId);
+
   if (!os) throw new Error('OS não encontrada');
   if (os.nfse_numero) throw new Error(`NFS-e já emitida para esta OS: ${os.nfse_numero}`);
 
-  // Número sequencial da DPS
-  const ultimaDps = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL`).get();
-  const numeroDps = (ultimaDps?.ultimo || 0) + 1;
+  // Número sequencial da DPS — usa o maior entre o MAX do banco e o config nfse_ultimo_seq
+  const ultimaDps  = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL`).get();
+  const cfgUltimo  = db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'nfse_ultimo_seq'`).get();
+  const ultimoSeq  = Math.max(ultimaDps?.ultimo || 0, parseInt(cfgUltimo?.valor || '0'));
+  const numeroDps  = ultimoSeq + 1;
   const serie = '00001';
+
+  // Reservar o número ANTES de enviar ao SEFIN — evita reutilização em caso de falha
+  db.prepare(`UPDATE ordens_servico SET nfse_numero_seq = ?, nfse_status = 'pendente' WHERE id = ?`).run(numeroDps, osId);
+  db.prepare(`INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES ('nfse_ultimo_seq', ?)`).run(String(numeroDps));
 
   const agora = new Date();
   const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
@@ -231,6 +271,38 @@ async function emitirNfse(osId) {
   if (os.cliente_cpf) { tomadorTipo = 'CPF'; tomadorDoc = os.cliente_cpf; }
   else if (os.cliente_cnpj) { tomadorTipo = 'CNPJ'; tomadorDoc = os.cliente_cnpj; }
 
+  // Buscar código IBGE e UF pelo CEP via ViaCEP
+  let tomadorCMun = null;
+  let tomadorUF = null;
+  const cepCliente = os.cliente_cep ? os.cliente_cep.replace(/\D/g, '') : null;
+  if (cepCliente && cepCliente.length === 8) {
+    try {
+      const viacep = await axios.get(`https://viacep.com.br/ws/${cepCliente}/json/`, { timeout: 5000 });
+      if (viacep.data && viacep.data.ibge) {
+        tomadorCMun = viacep.data.ibge;
+        tomadorUF   = viacep.data.uf;
+      }
+    } catch (_) { /* segue sem cMun via CEP */ }
+  }
+
+  // Fallback: sem CEP mas tem cidade — busca IBGE pelo nome do município
+  if (!tomadorCMun) {
+    const cidadeCliente = os.cliente_avulso_cidade || os.cliente_cidade;
+    if (cidadeCliente) {
+      try {
+        const ibgeRes = await axios.get(
+          `https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(cidadeCliente)}`,
+          { timeout: 5000 }
+        );
+        if (ibgeRes.data && ibgeRes.data.length >= 1) {
+          const match = ibgeRes.data.find(m => m.nome.toLowerCase() === cidadeCliente.toLowerCase()) || ibgeRes.data[0];
+          tomadorCMun = String(match.id);
+          tomadorUF   = match.microrregiao?.mesorregiao?.UF?.sigla || null;
+        }
+      } catch (_) { /* segue sem cMun */ }
+    }
+  }
+
   const cert = loadCertificate();
 
   const { xml: dpsXml, dpsId } = buildDpsXml({
@@ -239,13 +311,24 @@ async function emitirNfse(osId) {
     tomadorTipo, tomadorDoc,
     tomadorNome: os.cliente_nome,
     tomadorEmail: os.cliente_email,
-    descricaoServico: os.descricao,
+    tomadorFone:  os.cliente_telefone,
+    tomadorEndereco:    os.cliente_avulso_rua    || os.cliente_endereco,
+    tomadorNumero:      os.cliente_avulso_numero || os.cliente_numero,
+    tomadorComplemento: os.cliente_complemento,
+    tomadorBairro:      os.cliente_bairro,
+    tomadorCidade:      os.cliente_avulso_cidade || os.cliente_cidade,
+    tomadorCep:         os.cliente_cep,
+    tomadorCMun, tomadorUF,
+    descricaoServico: buildDescricaoDetalhada(os, itensOs),
     valor: os.valor,
     aliquotaIss, codTribNac, codTribMun, cnae,
     tpAmb, regimeTributario,
   });
 
+  console.log('[NFS-e] dpsId:', dpsId);
+  console.log('[NFS-e] cLocEmi:', IBGE_BC, '| serie:', serie, '| nDPS:', numeroDps, '| CNPJ:', cnpj.replace(/\D/g,''));
   const xmlAssinado = signXml(dpsXml, cert.privateKey, cert.certificate, dpsId);
+  console.log('[NFS-e] XML assinado (primeiros 800 chars):\n', xmlAssinado.substring(0, 800));
 
   // GZip + Base64 do XML assinado
   const xmlBuffer = Buffer.from(xmlAssinado, 'utf-8');
@@ -268,14 +351,24 @@ async function emitirNfse(osId) {
       timeout: 30000,
     });
     resposta = res.data;
+    console.log('[NFS-e] RESPOSTA SEFIN:', JSON.stringify(resposta).substring(0, 1000));
   } catch (err) {
     const msg = err.response?.data || err.message;
     throw new Error(`Erro na comunicação com SEFIN: ${typeof msg === 'string' ? msg.substring(0, 500) : JSON.stringify(msg).substring(0, 500)}`);
   }
 
-  // Processar resposta
-  const chaveAcesso = extrairChaveAcesso(resposta);
-  const numeroNota = extrairNumeroNota(resposta);
+  // Processar resposta — SEFIN retorna JSON
+  // O número da nota (nNFSe) fica dentro do nfseXmlGZipB64, não no nível raiz do JSON
+  let nfseXmlDecoded = null;
+  if (resposta?.nfseXmlGZipB64) {
+    try {
+      nfseXmlDecoded = zlib.gunzipSync(Buffer.from(resposta.nfseXmlGZipB64, 'base64')).toString('utf-8');
+    } catch (_) {}
+  }
+  const chaveAcesso = resposta?.chNFSe || resposta?.chaveAcesso || extrairChaveAcesso(JSON.stringify(resposta));
+  const numeroNota  = resposta?.nNFSe  || resposta?.numero
+    || (nfseXmlDecoded ? extrairNumeroNota(nfseXmlDecoded) : null)
+    || extrairNumeroNota(JSON.stringify(resposta));
 
   // Salvar no banco
   db.prepare(`
@@ -317,14 +410,107 @@ async function consultarDanfse(chaveAcesso) {
 
   const baseUrl = tpAmb === '1' ? URL_DANFSE_PROD : URL_DANFSE_HOMOLOG;
   const url = `${baseUrl}/nfse/${chaveAcesso}`;
+  const ambiente = tpAmb === '1' ? 'produção' : 'homologação';
 
-  const res = await axios.get(url, {
-    httpsAgent: agent,
-    responseType: 'arraybuffer',
-    timeout: 30000,
-  });
-
-  return res.data; // PDF buffer
+  try {
+    const res = await axios.get(url, {
+      httpsAgent: agent,
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+    return res.data;
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 502 || status === 503) {
+      throw new Error(`Servidor do governo indisponível (${status}) no ambiente de ${ambiente}. Tente novamente em alguns minutos.`);
+    }
+    if (status === 404) {
+      throw new Error(`Nota não encontrada no servidor do governo (ambiente: ${ambiente}). Verifique se a emissão foi concluída.`);
+    }
+    if (status === 401 || status === 403) {
+      throw new Error(`Sem autorização para acessar esta nota (${status}). Verifique o certificado digital.`);
+    }
+    const detalhe = err.response?.data
+      ? Buffer.from(err.response.data).toString('utf-8').substring(0, 300)
+      : err.message;
+    throw new Error(`Erro ao buscar DANFSE (${status || 'sem resposta'}): ${detalhe}`);
+  }
 }
 
-module.exports = { emitirNfse, consultarDanfse, loadCertificate };
+
+function buildDescricaoDetalhada(os, itens) {
+  const partes = [];
+
+  if (os.descricao) partes.push(os.descricao);
+
+  if (itens && itens.length > 0) {
+    if (partes.length) partes.push('');
+    partes.push('Itens:');
+    for (const item of itens) {
+      const nome = item.produto_nome || item.servico_nome || item.descricao || 'Item';
+      const linha = `- ${nome}: ${item.quantidade}x R$ ${formatDecimal(item.preco_unitario)} = R$ ${formatDecimal(item.subtotal)}`;
+      partes.push(linha);
+    }
+  }
+
+  return partes.join('\n').substring(0, 2000);
+}
+
+function previewNfse(osId) {
+  const cfg = getConfig();
+  const cnpj = cfg.cnpj || '41370832000187';
+  const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
+  const aliquotaIss = cfg.aliquota_iss || '2.00';
+  const codTribNac = cfg.cod_trib_nac || '14.01';
+  const regimeTributario = cfg.regime_tributario || 'simples';
+  const tpAmb = cfg.ambiente || '2';
+
+  const os = db.prepare(`
+    SELECT os.*,
+           COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+           c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
+           c.email as cliente_email, c.telefone as cliente_telefone,
+           c.endereco as cliente_endereco, c.numero as cliente_numero,
+           c.complemento as cliente_complemento, c.bairro as cliente_bairro,
+           c.cidade as cliente_cidade, c.cep as cliente_cep
+    FROM ordens_servico os
+    LEFT JOIN clientes c ON os.cliente_id = c.id
+    WHERE os.id = ?
+  `).get(osId);
+
+  if (!os) throw new Error('OS não encontrada');
+  if (os.nfse_status === 'autorizada') throw new Error('NFS-e já emitida para esta OS');
+
+  const itens = db.prepare(`
+    SELECT ios.*, p.nome as produto_nome, ts.nome as servico_nome
+    FROM itens_ordem_servico ios
+    LEFT JOIN produtos p ON ios.produto_id = p.id
+    LEFT JOIN tipos_servico ts ON ios.servico_id = ts.id
+    WHERE ios.ordem_id = ?
+  `).all(osId);
+
+  const descricao = buildDescricaoDetalhada(os, itens);
+
+  let tomadorTipo = 'Não informado';
+  let tomadorDoc = null;
+  if (os.cliente_cpf) { tomadorTipo = 'CPF'; tomadorDoc = os.cliente_cpf; }
+  else if (os.cliente_cnpj) { tomadorTipo = 'CNPJ'; tomadorDoc = os.cliente_cnpj; }
+
+  const regimes = { mei: 'MEI', simples: 'Simples Nacional', normal: 'Regime Normal' };
+
+  return {
+    os: { numero: os.numero, valor: os.valor },
+    prestador: { cnpj, inscricaoMunicipal, regime: regimes[regimeTributario] || regimeTributario, aliquotaIss, codTribNac },
+    tomador: {
+      nome: os.cliente_nome, tipo: tomadorTipo, doc: tomadorDoc,
+      email: os.cliente_email, fone: os.cliente_telefone,
+      endereco: [os.cliente_endereco, os.cliente_numero, os.cliente_complemento].filter(Boolean).join(', '),
+      bairro: os.cliente_bairro, cidade: os.cliente_cidade, cep: os.cliente_cep,
+    },
+    servico: { descricao },
+    itens,
+    ambiente: tpAmb === '1' ? 'Produção' : 'Homologação',
+  };
+}
+
+module.exports = { emitirNfse, consultarDanfse, loadCertificate, previewNfse };

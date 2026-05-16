@@ -73,10 +73,11 @@ function gerarNumeroOS() {
 router.get('/', (req, res) => {
     const { status, cliente_id, q, a_receber } = req.query;
     const { loja_id: lojaId, id: userId, principal } = req.user;
-    let query = `SELECT os.*, c.nome as cliente_nome, ts.nome as servico_nome
+    let query = `SELECT os.*, c.nome as cliente_nome, ts.nome as servico_nome, ven.nome as vendedor_nome
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN tipos_servico ts ON os.tipo_servico_id = ts.id
+    LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
     WHERE os.loja_id = ?`;
     const params = [lojaId];
     query += ' AND os.usuario_id = ?'; params.push(userId);

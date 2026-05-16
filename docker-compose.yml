@@ -19,5 +19,8 @@ services:
       - ./routes:/app/routes
       - ./public/js:/app/public/js
       - ./public/css:/app/public/css
+      - ./public/app.html:/app/public/app.html
+      - ./public/logo.png:/app/public/logo.png
+      - ./public/index.html:/app/public/index.html
       - ./views:/app/views
       - ./server.js:/app/server.js

@@ -12,7 +12,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(js|css|html)$/.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  }
+}));
 
 const auth = require('./middleware/auth');
 
@@ -405,6 +411,20 @@ cron.schedule('* * * * *', () => {
 });
 
 // CEP lookup via ViaCEP
+app.get('/api/cnpj/:cnpj', async (req, res) => {
+    const cnpj = req.params.cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14) return res.status(400).json({ error: 'CNPJ deve ter 14 dígitos' });
+    try {
+        const axios = require('axios');
+        const r = await axios.get(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, { timeout: 8000 });
+        res.json(r.data);
+    } catch (e) {
+        const status = e.response?.status;
+        if (status === 404) return res.status(404).json({ error: 'CNPJ não encontrado na Receita Federal' });
+        res.status(502).json({ error: 'Serviço da Receita Federal indisponível. Tente novamente.' });
+    }
+});
+
 app.get('/api/cep/:cep', (req, res) => {
     const cep = req.params.cep.replace(/\D/g, '');
     if (cep.length !== 8) return res.status(400).json({ error: 'CEP inválido' });

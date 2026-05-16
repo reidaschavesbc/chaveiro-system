@@ -1,13 +1,15 @@
-2026/05/14-23:06:40.801 29 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/05/14-23:06:40.802 29 Recovering log #226
-2026/05/14-23:06:40.829 29 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000226.log 
-2026/05/14-23:06:43.512 27 Level-0 table #231: started
-2026/05/14-23:06:43.527 27 Level-0 table #231: 207593 bytes OK
-2026/05/14-23:06:43.529 27 Delete type=0 #226
-2026/05/14-23:06:43.531 29 Manual compaction at level-0 from '\x00M\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00N\x00\x00\x00' @ 0 : 0; will stop at (end)
-2026/05/14-23:06:43.657 27 Compacting 1@1 + 1@2 files
-2026/05/14-23:06:43.747 27 Generated table #232@1: 62711 keys, 2186370 bytes
-2026/05/14-23:06:43.747 27 Compacted 1@1 + 1@2 files => 2186370 bytes
-2026/05/14-23:06:43.754 27 compacted to: files[ 0 0 1 0 0 0 0 ]
-2026/05/14-23:06:43.755 27 Delete type=2 #231
-2026/05/14-23:06:43.755 27 Delete type=2 #228
+2026/05/15-23:35:56.572 24 Reusing MANIFEST /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/05/15-23:35:56.573 24 Recovering log #464
+2026/05/15-23:35:56.583 24 Reusing old log /app/whatsapp-session/session/Default/IndexedDB/https_web.whatsapp.com_0.indexeddb.leveldb/000464.log 
+2026/05/15-23:35:58.554 27 Level-0 table #470: started
+2026/05/15-23:35:58.569 27 Level-0 table #470: 196438 bytes OK
+2026/05/15-23:35:58.574 27 Delete type=0 #464
+2026/05/15-23:35:58.575 27 Manual compaction at level-0 from '\x00~\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x7f\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/05/15-23:35:58.724 24 Compacting 1@1 + 2@2 files
+2026/05/15-23:35:58.801 24 Generated table #471@1: 83118 keys, 2231650 bytes
+2026/05/15-23:35:58.834 24 Generated table #472@1: 20309 keys, 1173180 bytes
+2026/05/15-23:35:58.834 24 Compacted 1@1 + 2@2 files => 3404830 bytes
+2026/05/15-23:35:58.838 24 compacted to: files[ 0 0 2 0 0 0 0 ]
+2026/05/15-23:35:58.838 24 Delete type=2 #467
+2026/05/15-23:35:58.838 24 Delete type=2 #470
+2026/05/15-23:35:58.839 24 Delete type=2 #466

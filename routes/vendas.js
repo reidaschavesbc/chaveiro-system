@@ -8,9 +8,10 @@ function gerarNumeroVenda() {
     const now = new Date();
     const ano = now.getFullYear().toString().slice(2);
     const mes = String(now.getMonth() + 1).padStart(2, '0');
-    const count = db.prepare("SELECT COUNT(*) as c FROM vendas WHERE strftime('%Y-%m', data) = ?").get(`${now.getFullYear()}-${mes}`);
-    const seq = String(count.c + 1).padStart(4, '0');
-    return `V${ano}${mes}${seq}`;
+    const prefix = `V${ano}${mes}`;
+    const last = db.prepare("SELECT numero FROM vendas WHERE numero LIKE ? ORDER BY numero DESC LIMIT 1").get(prefix + '%');
+    const seq = last ? (parseInt(last.numero.slice(prefix.length)) || 0) + 1 : 1;
+    return `${prefix}${String(seq).padStart(4, '0')}`;
 }
 
 // GET /api/vendas
@@ -120,8 +121,12 @@ router.post('/', (req, res) => {
         return vendaId;
     });
 
-    const vendaId = insertVenda();
-    res.status(201).json({ id: vendaId, numero, total: totalFinal });
+    try {
+        const vendaId = insertVenda();
+        res.status(201).json({ id: vendaId, numero, total: totalFinal });
+    } catch (e) {
+        res.status(500).json({ error: e.message || 'Erro ao salvar venda' });
+    }
 });
 
 // DELETE /api/vendas/:id/excluir (exclusão física com senha)

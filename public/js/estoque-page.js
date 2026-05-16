@@ -183,7 +183,7 @@ async function carregarPrincipalPedidos() {
 }
 
 async function estoquePrincipalAprovar(pedidoId) {
-    const ok = await modalConfirmar('Aprovar pedido', 'Confirma a aprovação deste pedido de estoque?', 'Aprovar', '#10b981');
+    const ok = await _confirmarEstoque('Aprovar pedido', 'Confirma a aprovação deste pedido de estoque?', 'Aprovar', '#10b981');
     if (!ok) return;
     try {
         await api('PUT', `/estoque/pedidos/${pedidoId}/aprovar`);
@@ -208,7 +208,7 @@ async function estoquePrincipalRejeitar(pedidoId) {
     }
 }
 
-function modalConfirmar(titulo, mensagem, btnLabel, btnColor) {
+function _confirmarEstoque(titulo, mensagem, btnLabel, btnColor) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';

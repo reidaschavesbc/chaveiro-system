@@ -38,7 +38,10 @@ async function api(method, path, body, timeoutMs = 10000) {
     if (res.status === 401) { logout(); return null; }
     if (res.status === 403) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Acesso negado'); }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Erro na requisição');
+    if (!res.ok) {
+        const msg = data.error;
+        throw new Error(typeof msg === 'string' ? msg : (msg ? JSON.stringify(msg) : 'Erro na requisição'));
+    }
     return data;
 }
 
