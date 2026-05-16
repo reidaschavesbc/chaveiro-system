@@ -23,7 +23,7 @@ function log(msg) {
   } catch (_) {}
 }
 
-autoUpdater.autoDownload = true;
+autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.setFeedURL({ provider: 'generic', url: SERVER_URL + '/downloads' });
 
@@ -146,7 +146,16 @@ autoUpdater.on('update-not-available', () => {
 autoUpdater.on('update-available', (info) => {
   log('Atualização disponível: v' + info.version);
   checkUpdateManual = false;
-  if (mainWindow) mainWindow.webContents.send('update-status', 'Baixando v' + info.version + '...');
+  if (!mainWindow) return;
+  dialog.showMessageBox(mainWindow, {
+    type: 'info',
+    title: 'Atualização Disponível',
+    message: `Nova versão v${info.version} disponível!\nDeseja baixar e instalar agora?`,
+    buttons: ['Baixar Agora', 'Depois'],
+    defaultId: 0,
+  }).then(({ response }) => {
+    if (response === 0) autoUpdater.downloadUpdate();
+  });
 });
 
 autoUpdater.on('update-downloaded', (info) => {
@@ -154,14 +163,26 @@ autoUpdater.on('update-downloaded', (info) => {
   dialog.showMessageBox(mainWindow, {
     type: 'info',
     title: 'Atualização Pronta',
-    message: `Versão ${info.version} pronta.\nO sistema será reiniciado para instalar.`,
+    message: `Versão ${info.version} baixada.\nO sistema será reiniciado para instalar.`,
     buttons: ['Reiniciar Agora', 'Depois'],
+    defaultId: 0,
   }).then(({ response }) => {
     if (response === 0) autoUpdater.quitAndInstall();
   });
 });
 
-autoUpdater.on('error', (err) => log('Auto-updater erro: ' + err.message));
+autoUpdater.on('error', (err) => {
+  log('Auto-updater erro: ' + err.message);
+  if (checkUpdateManual && mainWindow) {
+    dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: 'Erro na Atualização',
+      message: 'Não foi possível verificar atualizações.\n' + err.message,
+      buttons: ['OK'],
+    });
+  }
+  checkUpdateManual = false;
+});
 
 ipcMain.on('check-update', () => { checkUpdateManual = true; autoUpdater.checkForUpdates(); });
 ipcMain.on('retry-load', () => {
