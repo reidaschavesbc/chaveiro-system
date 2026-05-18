@@ -75,15 +75,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=${GITHUB_REF#refs/tags/}
-          if gh release view "$TAG" --repo tvsxgames/chaveiro-system 2>/dev/null; then
-            gh release upload "$TAG" ChaveiroOS.apk --clobber --repo tvsxgames/chaveiro-system
-            gh release edit "$TAG" --draft=false --repo tvsxgames/chaveiro-system
+          if gh release view "$TAG" --repo reidaschavesbc/chaveiro-system 2>/dev/null; then
+            gh release upload "$TAG" ChaveiroOS.apk --clobber --repo reidaschavesbc/chaveiro-system
+            gh release edit "$TAG" --draft=false --repo reidaschavesbc/chaveiro-system
           else
             gh release create "$TAG" ChaveiroOS.apk \
               --title "Release $TAG" \
               --notes "Release $TAG" \
               --latest=false \
-              --repo tvsxgames/chaveiro-system
+              --repo reidaschavesbc/chaveiro-system
           fi
 
       - name: Copiar APK para VPS
@@ -99,4 +99,4 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           VERSION=${TAG#apk-}
-          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo tvsxgames/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /root/chaveiro-system/public/downloads/ --clobber && echo '{\"version\":\"'${VERSION}'\"}' > /root/chaveiro-system/public/downloads/version-apk.json"
+          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo reidaschavesbc/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /home/chaveiro/chaveiro-system/public/downloads/ --clobber && echo '{\"version\":\"'${VERSION}'\"}' > /root/chaveiro-system/public/downloads/version-apk.json"

@@ -29,7 +29,7 @@ app.get('/download', (req, res) => {
   if (fs.existsSync(localFile)) {
     res.download(localFile, 'SistemaChaveiro-Setup.exe');
   } else {
-    res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
+    res.redirect(302, 'https://github.com/reidaschavesbc/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
   }
 });
 
