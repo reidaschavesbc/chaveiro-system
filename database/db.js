@@ -459,6 +459,27 @@ function migrate() {
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_ambiente TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero_seq INTEGER'); } catch (_) {}
 
+  // NFS-e config por loja
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nfse_config (
+      loja_id INTEGER NOT NULL REFERENCES lojas(id),
+      chave   TEXT    NOT NULL,
+      valor   TEXT,
+      PRIMARY KEY (loja_id, chave)
+    );
+  `);
+  // Migrar configs globais da tabela configuracoes para REI DAS CHAVES (loja_id = 3)
+  {
+    const jaExiste = db.prepare('SELECT COUNT(*) as c FROM nfse_config WHERE loja_id = 3').get();
+    if (jaExiste.c === 0) {
+      const configs = db.prepare("SELECT chave, valor FROM configuracoes WHERE chave LIKE 'nfse_%'").all();
+      const ins = db.prepare('INSERT OR IGNORE INTO nfse_config (loja_id, chave, valor) VALUES (3, ?, ?)');
+      for (const c of configs) {
+        ins.run(c.chave.replace('nfse_', ''), c.valor);
+      }
+    }
+  }
+
   console.log('✅ Banco de dados inicializado com sucesso!');
 }
 

@@ -13,10 +13,10 @@ const URL_HOMOLOG = 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nf
 const URL_DANFSE_PROD = 'https://adn.nfse.gov.br/danfse';
 const URL_DANFSE_HOMOLOG = 'https://adn.producaorestrita.nfse.gov.br/danfse';
 
-function getConfig() {
-  const rows = db.prepare(`SELECT chave, valor FROM configuracoes WHERE chave LIKE 'nfse_%'`).all();
+function getConfig(lojaId) {
+  const rows = db.prepare(`SELECT chave, valor FROM nfse_config WHERE loja_id = ?`).all(lojaId);
   const cfg = {};
-  for (const r of rows) cfg[r.chave.replace('nfse_', '')] = r.valor;
+  for (const r of rows) cfg[r.chave] = r.valor;
   return cfg;
 }
 
@@ -38,8 +38,8 @@ function extractCpfFromCert(cert) {
   return cpf.length === 11 ? cpf : null;
 }
 
-function loadCertificate() {
-  const cfg = getConfig();
+function loadCertificate(lojaId) {
+  const cfg = getConfig(lojaId);
   const pfxPath = cfg.pfx_path || path.join(__dirname, '..', '41.370.832 ELAINE ESTER CORREA DA CUNHA_41370832000187.pfx');
   const pfxSenha = cfg.pfx_senha || '123456';
 
@@ -213,7 +213,13 @@ function signXml(xmlStr, privateKey, certificate, dpsId) {
 }
 
 async function emitirNfse(osId) {
-  const cfg = getConfig();
+  // Buscar loja_id da OS antes de qualquer coisa
+  const osBase = db.prepare(`SELECT loja_id FROM ordens_servico WHERE id = ?`).get(osId);
+  if (!osBase) throw new Error('OS não encontrada');
+  if (!osBase.loja_id) throw new Error('OS sem loja associada — não é possível emitir NFS-e');
+  const lojaId = osBase.loja_id;
+
+  const cfg = getConfig(lojaId);
   const cnpj = cfg.cnpj || '41370832000187';
   const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
   const aliquotaIss = cfg.aliquota_iss || '2.00';
@@ -249,16 +255,16 @@ async function emitirNfse(osId) {
   if (!os) throw new Error('OS não encontrada');
   if (os.nfse_numero) throw new Error(`NFS-e já emitida para esta OS: ${os.nfse_numero}`);
 
-  // Número sequencial da DPS — usa o maior entre o MAX do banco e o config nfse_ultimo_seq
-  const ultimaDps  = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL`).get();
-  const cfgUltimo  = db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'nfse_ultimo_seq'`).get();
+  // Número sequencial da DPS por loja — usa o maior entre o MAX do banco e o config ultimo_seq
+  const ultimaDps  = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL AND loja_id = ?`).get(lojaId);
+  const cfgUltimo  = db.prepare(`SELECT valor FROM nfse_config WHERE loja_id = ? AND chave = 'ultimo_seq'`).get(lojaId);
   const ultimoSeq  = Math.max(ultimaDps?.ultimo || 0, parseInt(cfgUltimo?.valor || '0'));
   const numeroDps  = ultimoSeq + 1;
   const serie = '00001';
 
   // Reservar o número ANTES de enviar ao SEFIN — evita reutilização em caso de falha
   db.prepare(`UPDATE ordens_servico SET nfse_numero_seq = ?, nfse_status = 'pendente' WHERE id = ?`).run(numeroDps, osId);
-  db.prepare(`INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES ('nfse_ultimo_seq', ?)`).run(String(numeroDps));
+  db.prepare(`INSERT OR REPLACE INTO nfse_config (loja_id, chave, valor) VALUES (?, 'ultimo_seq', ?)`).run(lojaId, String(numeroDps));
 
   const agora = new Date();
   const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
@@ -303,7 +309,7 @@ async function emitirNfse(osId) {
     }
   }
 
-  const cert = loadCertificate();
+  const cert = loadCertificate(lojaId);
 
   const { xml: dpsXml, dpsId } = buildDpsXml({
     cnpj, cpf: cert.cpf, inscricaoMunicipal, serie, numeroDps,
@@ -398,10 +404,10 @@ function extrairNumeroNota(xmlResp) {
   return match ? match[1] : null;
 }
 
-async function consultarDanfse(chaveAcesso) {
-  const cfg = getConfig();
+async function consultarDanfse(chaveAcesso, lojaId) {
+  const cfg = getConfig(lojaId);
   const tpAmb = cfg.ambiente || '2';
-  const cert = loadCertificate();
+  const cert = loadCertificate(lojaId);
   const agent = new https.Agent({
     pfx: cert.pfxBuffer,
     passphrase: cert.pfxSenha,
@@ -457,7 +463,11 @@ function buildDescricaoDetalhada(os, itens) {
 }
 
 function previewNfse(osId) {
-  const cfg = getConfig();
+  const osBase = db.prepare(`SELECT loja_id FROM ordens_servico WHERE id = ?`).get(osId);
+  if (!osBase) throw new Error('OS não encontrada');
+  const lojaId = osBase.loja_id;
+
+  const cfg = getConfig(lojaId || 0);
   const cnpj = cfg.cnpj || '41370832000187';
   const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
   const aliquotaIss = cfg.aliquota_iss || '2.00';

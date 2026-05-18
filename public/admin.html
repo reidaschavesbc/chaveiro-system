@@ -152,13 +152,14 @@
     .modal {
       background: #1e293b; border: 1px solid #334155; border-radius: 18px;
       width: 100%; max-width: 460px; box-shadow: 0 24px 64px rgba(0,0,0,.6); animation: fadeUp .25s ease;
+      display: flex; flex-direction: column; max-height: calc(100vh - 32px);
     }
-    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #334155; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 16px; border-bottom: 1px solid #334155; flex-shrink: 0; }
     .modal-title  { font-size: 16px; font-weight: 700; color: #f1f5f9; }
     .modal-close  { background: none; border: none; color: #64748b; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; transition: color .15s; }
     .modal-close:hover { color: #f1f5f9; }
-    .modal-body   { padding: 20px 24px; }
-    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px 20px; border-top: 1px solid #334155; }
+    .modal-body   { padding: 20px 24px; overflow-y: auto; flex: 1; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 24px 20px; border-top: 1px solid #334155; flex-shrink: 0; }
     .modal-divider { border: none; border-top: 1px dashed #334155; margin: 16px 0; }
     .modal-section { font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
 
@@ -413,6 +414,7 @@
           <div class="loja-acoes">
             <span class="badge badge-${l.ativo ? 'ativo' : 'inativo'}">${l.ativo ? 'Ativa' : 'Inativa'}</span>
             <button class="btn-acao loja" onclick="abrirModalEditarLoja(${l.id}, '${esc(l.nome)}')">Editar</button>
+            <button class="btn-acao loja" onclick="abrirModalNfse(${l.id}, '${esc(l.nome)}')">NFS-e</button>
             <button class="btn-acao loja ${l.ativo ? 'danger' : 'success'}" onclick="toggleLoja(${l.id}, ${l.ativo})">
               ${l.ativo ? 'Desativar' : 'Ativar'}
             </button>
@@ -554,6 +556,129 @@
     } catch (e) { toast(e.message, 'error'); }
   }
 
+  // ── Modal NFS-e por loja ─────────────────────────────────────────────────
+  async function abrirModalNfse(lojaId, lojaNome) {
+    let cfg = {};
+    try { cfg = await req('GET', `/nfse/admin-config/${lojaId}`); } catch (_) {}
+    const v = k => esc(cfg[k] || '');
+    const sel = (k, val) => cfg[k] === val ? 'selected' : '';
+
+    const ov = criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">NFS-e — ${esc(lojaNome)}</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">Prestador</div>
+        <div class="m-field">
+          <label>CNPJ</label>
+          <input type="text" id="nf-cnpj" value="${v('nfse_cnpj')}" placeholder="00000000000000" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Inscrição Municipal</label>
+          <input type="text" id="nf-im" value="${v('nfse_inscricao_municipal')}" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Regime Tributário</label>
+          <select id="nf-regime">
+            <option value="mei" ${sel('nfse_regime_tributario','mei')}>MEI</option>
+            <option value="simples" ${sel('nfse_regime_tributario','simples')}>Simples Nacional</option>
+            <option value="normal" ${sel('nfse_regime_tributario','normal')}>Regime Normal</option>
+          </select>
+        </div>
+        <hr class="modal-divider">
+        <div class="modal-section">Tributação</div>
+        <div class="m-field">
+          <label>Alíquota ISS (%)</label>
+          <input type="text" id="nf-aliq" value="${v('nfse_aliquota_iss') || '2.00'}" placeholder="2.00" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Código Tributação Nacional</label>
+          <input type="text" id="nf-cod-nac" value="${v('nfse_cod_trib_nac')}" placeholder="240101" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>Código Tributação Municipal (opcional)</label>
+          <input type="text" id="nf-cod-mun" value="${v('nfse_cod_trib_mun')}" autocomplete="off">
+        </div>
+        <div class="m-field">
+          <label>CNAE (opcional)</label>
+          <input type="text" id="nf-cnae" value="${v('nfse_cnae')}" autocomplete="off">
+        </div>
+        <hr class="modal-divider">
+        <div class="modal-section">Certificado Digital</div>
+        <div class="m-field">
+          <label>Arquivo .pfx</label>
+          <div id="nf-pfx-status" style="font-size:12px;color:#94a3b8;margin-bottom:6px">
+            ${cfg.nfse_pfx_path ? `<span style="color:#4ade80">&#10003; Certificado enviado</span>` : '<span style="color:#f87171">Nenhum certificado</span>'}
+          </div>
+          <input type="file" id="nf-pfx-file" accept=".pfx" style="display:none">
+          <button type="button" onclick="document.getElementById('nf-pfx-file').click()" style="padding:7px 14px;background:#334155;color:#cbd5e1;border:1px solid #475569;border-radius:7px;font-size:13px;cursor:pointer">
+            Selecionar arquivo .pfx
+          </button>
+          <span id="nf-pfx-nome" style="font-size:12px;color:#94a3b8;margin-left:8px"></span>
+        </div>
+        <div class="m-field">
+          <label>Senha do certificado</label>
+          <input type="password" id="nf-pfx-senha" value="${v('nfse_pfx_senha')}" autocomplete="new-password">
+        </div>
+        <hr class="modal-divider">
+        <div class="modal-section">Ambiente</div>
+        <div class="m-field">
+          <label>Ambiente de emissão</label>
+          <select id="nf-amb">
+            <option value="2" ${sel('nfse_ambiente','2')}>Homologação (testes)</option>
+            <option value="1" ${sel('nfse_ambiente','1')}>Produção</option>
+          </select>
+        </div>
+        <div class="m-erro" id="nf-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarNfseConfig(${lojaId})">Salvar</button>
+      </div>`, { fecharAoClicarFora: false });
+
+    ov.querySelector('#nf-pfx-file').addEventListener('change', function() {
+      const nome = this.files[0] ? this.files[0].name : '';
+      document.getElementById('nf-pfx-nome').textContent = nome;
+    });
+  }
+
+  async function salvarNfseConfig(lojaId) {
+    const erro = document.getElementById('nf-erro');
+    erro.textContent = '';
+    try {
+      // Upload do .pfx se um arquivo foi selecionado
+      const pfxFile = document.getElementById('nf-pfx-file').files[0];
+      if (pfxFile) {
+        const fd = new FormData();
+        fd.append('pfx', pfxFile);
+        const r = await fetch(API + `/nfse/admin-config/${lojaId}/pfx`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + _token },
+          body: fd,
+        });
+        if (!r.ok) { const d = await r.json(); throw new Error(d.error || 'Erro no upload do certificado'); }
+      }
+
+      // Salvar demais configurações
+      await req('POST', `/nfse/admin-config/${lojaId}`, {
+        nfse_cnpj:                document.getElementById('nf-cnpj').value.trim(),
+        nfse_inscricao_municipal: document.getElementById('nf-im').value.trim(),
+        nfse_regime_tributario:   document.getElementById('nf-regime').value,
+        nfse_aliquota_iss:        document.getElementById('nf-aliq').value.trim(),
+        nfse_cod_trib_nac:        document.getElementById('nf-cod-nac').value.trim(),
+        nfse_cod_trib_mun:        document.getElementById('nf-cod-mun').value.trim(),
+        nfse_cnae:                document.getElementById('nf-cnae').value.trim(),
+        nfse_pfx_senha:           document.getElementById('nf-pfx-senha').value,
+        nfse_ambiente:            document.getElementById('nf-amb').value,
+      });
+      fecharModal();
+      toast('Configurações de NFS-e salvas!');
+    } catch (e) {
+      erro.textContent = e.message;
+    }
+  }
+
   // ── Toggle loja ──────────────────────────────────────────────────────────
   async function toggleLoja(id, ativoAtual) {
     if (!confirm(`Deseja ${ativoAtual ? 'desativar' : 'ativar'} esta loja?`)) return;
@@ -684,14 +809,16 @@
   }
 
   // ── Overlay ──────────────────────────────────────────────────────────────
-  function criarOverlay(conteudo) {
+  function criarOverlay(conteudo, { fecharAoClicarFora = true } = {}) {
     fecharModal();
     const ov = document.createElement('div');
     ov.className = 'modal-overlay'; ov.id = 'modal-ativo';
     ov.innerHTML = `<div class="modal" onclick="event.stopPropagation()">${conteudo}</div>`;
-    let _mdTarget = null;
-    ov.addEventListener('mousedown', e => { _mdTarget = e.target; });
-    ov.addEventListener('mouseup',   e => { if (_mdTarget === ov && e.target === ov) fecharModal(); _mdTarget = null; });
+    if (fecharAoClicarFora) {
+      let _mdTarget = null;
+      ov.addEventListener('mousedown', e => { _mdTarget = e.target; });
+      ov.addEventListener('mouseup',   e => { if (_mdTarget === ov && e.target === ov) fecharModal(); _mdTarget = null; });
+    }
     document.body.appendChild(ov);
     return ov;
   }
