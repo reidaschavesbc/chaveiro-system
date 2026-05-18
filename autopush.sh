@@ -1,8 +1,8 @@
 #!/bin/bash
 
-APP_DIR="/root/chaveiro-system"
-TOKEN="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"
-REMOTE="https://tvsxgames:${TOKEN}@github.com/tvsxgames/chaveiro-system.git"
+APP_DIR="/home/chaveiro/chaveiro-system"
+TOKEN=$(cat /home/chaveiro/.backup_token)
+REMOTE="https://reidaschavesbc:${TOKEN}@github.com/reidaschavesbc/chaveiro-system.git"
 DATA=$(date +"%Y-%m-%d %H:%M")
 
 cd "$APP_DIR"
