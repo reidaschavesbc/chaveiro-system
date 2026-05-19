@@ -28,16 +28,16 @@ router.get('/dashboard', (req, res) => {
 
     const vendasHoje = db.prepare(`SELECT
         (SELECT COUNT(*) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COUNT(*) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as qtd,
+        (SELECT COUNT(*) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_os}) as qtd,
         (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as total
+        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_os}) as total
     `).get(hoje, lojaId, hoje, lojaId, hoje, lojaId, hoje, lojaId);
 
     const vendasMes = db.prepare(`SELECT
         (SELECT COUNT(*) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as qtd,
+        (SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_os}) as qtd,
         (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as total
+        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_os}) as total
     `).get(mesAtual, lojaId, mesAtual, lojaId, mesAtual, lojaId, mesAtual, lojaId);
 
     const osAbertas = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status IN ('aberta', 'em_andamento') AND loja_id = ?${fU_os}`).get(lojaId);
@@ -148,7 +148,7 @@ router.get('/geral', (req, res) => {
         FROM ordens_servico os
         LEFT JOIN clientes c ON os.cliente_id = c.id
         LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
-        WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}`).all(di, df, lojaId);
+        WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}`).all(di, df, lojaId);
 
     const list = [...vendas, ...os].sort((a, b) => new Date(b.data) - new Date(a.data));
 
@@ -161,10 +161,10 @@ router.get('/geral', (req, res) => {
         SELECT COALESCE(metodo, 'outros') as forma_pagamento, SUM(valor) as total FROM (
             SELECT po.metodo, po.valor FROM pagamentos_os po
             JOIN ordens_servico os ON po.ordem_id = os.id
-            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}
+            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
             UNION ALL
             SELECT os.forma_pagamento, os.valor FROM ordens_servico os
-            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}
+            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
             AND os.id NOT IN (SELECT DISTINCT ordem_id FROM pagamentos_os)
         ) GROUP BY COALESCE(metodo, 'outros')
     `).all(di, df, lojaId, di, df, lojaId);
@@ -176,7 +176,7 @@ router.get('/geral', (req, res) => {
     });
     const totais = Object.keys(map).map(met => ({ forma_pagamento: met, total: map[met] }));
 
-    const _sumOS = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(COALESCE(data_conclusao,data_entrada)) BETWEEN ? AND ? AND status='concluida' AND loja_id = ?${filtroId ? ` AND usuario_id = ${filtroId}` : ''}`).get(di, df, lojaId);
+    const _sumOS = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(COALESCE(data_conclusao,data_entrada)) BETWEEN ? AND ? AND status='concluida' AND COALESCE(is_plantao,0) = 0 AND loja_id = ?${filtroId ? ` AND usuario_id = ${filtroId}` : ''}`).get(di, df, lojaId);
     const _sumVendas = db.prepare(`SELECT COALESCE(SUM(total_final),0) as t FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada' AND loja_id = ?${filtroId ? ` AND usuario_id = ${filtroId}` : ''}`).get(di, df, lojaId);
     const faturamentoBruto = _sumOS.t + _sumVendas.t;
 

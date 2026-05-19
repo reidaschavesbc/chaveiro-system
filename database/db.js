@@ -258,6 +258,7 @@ function migrate() {
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN produto_quantidade REAL NOT NULL DEFAULT 1'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN orcamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN is_plantao INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE produtos ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_vales REAL NOT NULL DEFAULT 0'); } catch (_) {}
@@ -439,16 +440,7 @@ function migrate() {
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('senha_gerente', '')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('whatsapp_pedidos', '')").run();
 
-  // NFS-e config
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnpj', '41370832000187')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_inscricao_municipal', '184784')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_aliquota_iss', '2.00')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_nac', '240101')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_mun', '')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnae', '4744005')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_regime_tributario', 'simples')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_ambiente', '2')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_pfx_senha', '123456')").run();
+  // NFS-e config — removido da tabela global (agora em nfse_config por loja)
 
   // Colunas NFS-e na tabela ordens_servico
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero TEXT'); } catch (_) {}

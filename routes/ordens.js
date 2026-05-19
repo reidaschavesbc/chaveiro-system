@@ -4,6 +4,7 @@ const db = require('../database/db');
 const wa = require('../services/whatsapp');
 const { ajustarEstoqueUsuario, getQtdUsuario } = require('./estoque');
 const { notificarFuncionario } = require('./app-mobile');
+const { fmtVal, fmtDH, fmtAddr } = require('../utils/formatters');
 
 // Deduz estoque de produtos diretos e produtos vinculados a serviços
 function deduzirEstoqueOS(osId, osNumero, user) {
@@ -71,8 +72,8 @@ function gerarNumeroOS() {
 
 // GET /api/ordens
 router.get('/', (req, res) => {
-    const { status, cliente_id, q, a_receber } = req.query;
-    const { loja_id: lojaId, id: userId, principal } = req.user;
+    const { status, cliente_id, q, a_receber, data_inicio, data_fim, is_plantao } = req.query;
+    const { loja_id: lojaId, id: userId, principal, perfil } = req.user;
     let query = `SELECT os.*, c.nome as cliente_nome, ts.nome as servico_nome, ven.nome as vendedor_nome
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
@@ -80,11 +81,19 @@ router.get('/', (req, res) => {
     LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
     WHERE os.loja_id = ?`;
     const params = [lojaId];
-    query += ' AND os.usuario_id = ?'; params.push(userId);
+    if (!principal && perfil !== 'admin') {
+        query += ' AND os.usuario_id = ?'; params.push(userId);
+    } else if (req.query.usuario_id && req.query.usuario_id !== 'all') {
+        query += ' AND os.usuario_id = ?'; params.push(parseInt(req.query.usuario_id));
+    }
     if (status) { query += ' AND os.status = ?'; params.push(status); }
     if (cliente_id) { query += ' AND os.cliente_id = ?'; params.push(cliente_id); }
     if (q) { query += ' AND (os.numero LIKE ? OR c.nome LIKE ? OR os.descricao LIKE ?)'; params.push(`%${q}%`, `%${q}%`, `%${q}%`); }
     if (a_receber === '1') { query += ' AND os.a_receber = 1 AND os.a_receber_pago = 0'; }
+    if (is_plantao === '1') { query += ' AND os.is_plantao = 1'; }
+    else if (is_plantao === '0') { query += ' AND COALESCE(os.is_plantao, 0) = 0'; }
+    if (data_inicio) { query += ' AND date(os.data_entrada) >= ?'; params.push(data_inicio); }
+    if (data_fim) { query += ' AND date(os.data_entrada) <= ?'; params.push(data_fim); }
     query += ' ORDER BY os.data_entrada DESC';
     res.json(db.prepare(query).all(...params));
 });
@@ -116,15 +125,18 @@ router.get('/:id', (req, res) => {
 
 // POST /api/ordens
 router.post('/', (req, res) => {
-    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento } = req.body;
+    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, status, is_plantao } = req.body;
     const numero = gerarNumeroOS();
     const lojaId = req.user.loja_id;
+    const STATUSES = ['aberta', 'em_andamento', 'concluida', 'cancelada'];
+    const statusFinal = STATUSES.includes(status) ? status : 'aberta';
+    const dc = statusFinal === 'concluida' ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
 
     const insertOS = db.transaction(() => {
         const result = db.prepare(`
-            INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, usuario_id, loja_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, valor || 0, data_prevista || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, req.user?.id || null, lojaId);
+            INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao, usuario_id, loja_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, statusFinal, valor || 0, data_prevista || null, dc, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, req.user?.id || null, lojaId);
 
         const osId = result.lastInsertRowid;
 
@@ -147,21 +159,11 @@ router.post('/', (req, res) => {
             if (vendedor?.telefone) {
                 const cli = cliente_id ? db.prepare('SELECT nome, endereco, numero, complemento, bairro, cidade, referencia FROM clientes WHERE id = ?').get(cliente_id) : null;
                 const nomeCliente = cli?.nome || cliente_nome_avulso || '????';
-                const fmtAddr = (rua, num, comp, bairro, cidade, ref) => {
-                    if (!rua && !cidade) return '';
-                    let linha = rua || '';
-                    if (num) linha += `, ${num}`;
-                    if (comp) linha += ` - ${comp}`;
-                    if (bairro) linha += (linha ? ', ' : '') + bairro;
-                    if (cidade) linha += (linha ? ' - ' : '') + cidade;
-                    return `\n📍 *Endereço:* ${linha}${ref ? '\n🗺️ *Ref:* ' + ref : ''}`;
-                };
                 const enderecoWA = cli
                     ? fmtAddr(cli.endereco, cli.numero, cli.complemento, cli.bairro, cli.cidade, cli.referencia)
                     : fmtAddr(cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, null, cliente_avulso_cidade, cliente_avulso_referencia);
 
                 const pgLabels = { dinheiro: 'Dinheiro 💵', pix: 'PIX 📱', debito: 'Cartão Débito 💳', credito: 'Cartão Crédito 💳' };
-                const fmtVal = v => 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ',');
 
                 const itensOS = db.prepare(`
                     SELECT ios.descricao, ios.quantidade, ios.preco_unitario, ios.subtotal,
@@ -177,12 +179,6 @@ router.post('/', (req, res) => {
                     }).join('\n')
                     : '  (sem itens)';
 
-                const fmtDH = dp => {
-                    const s = String(dp).replace('T', ' ').slice(0, 16);
-                    const [dt, hr] = s.split(' ');
-                    const [y, m, d] = dt.split('-');
-                    return `${d}/${m}/${y}${hr ? ' ' + hr : ''}`;
-                };
                 const previsto = data_prevista
                     ? `\n📅 *Previsto:* ${fmtDH(data_prevista)}`
                     : '';
@@ -224,7 +220,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!os) return res.status(404).json({ error: 'OS não encontrada' });
-    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento } = req.body;
+    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao } = req.body;
 
     // Preserva data_conclusao existente; só define se está concluindo pela primeira vez;
     // limpa se estiver saindo do status concluida
@@ -237,8 +233,8 @@ router.put('/:id', (req, res) => {
     }
 
     const updateOS = db.transaction(() => {
-        db.prepare(`UPDATE ordens_servico SET cliente_id=?, cliente_nome_avulso=?, cliente_avulso_rua=?, cliente_avulso_numero=?, cliente_avulso_complemento=?, cliente_avulso_cidade=?, cliente_avulso_referencia=?, tipo_servico_id=?, vendedor_id=?, descricao=?, status=?, valor=?, data_prevista=?, data_conclusao=?, observacoes=?, forma_pagamento=?, a_receber=?, data_vencimento=?, solicitado_por=?, chave_auto=?, orcamento=? WHERE id=? AND loja_id=?`)
-            .run(cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, status || 'aberta', valor || 0, data_prevista || null, dc || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, req.params.id, req.user.loja_id);
+        db.prepare(`UPDATE ordens_servico SET cliente_id=?, cliente_nome_avulso=?, cliente_avulso_rua=?, cliente_avulso_numero=?, cliente_avulso_complemento=?, cliente_avulso_cidade=?, cliente_avulso_referencia=?, tipo_servico_id=?, vendedor_id=?, descricao=?, status=?, valor=?, data_prevista=?, data_conclusao=?, observacoes=?, forma_pagamento=?, a_receber=?, data_vencimento=?, solicitado_por=?, chave_auto=?, orcamento=?, is_plantao=? WHERE id=? AND loja_id=?`)
+            .run(cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, status || 'aberta', valor || 0, data_prevista || null, dc || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, req.params.id, req.user.loja_id);
 
         if (itens) {
             db.prepare('DELETE FROM itens_ordem_servico WHERE ordem_id = ?').run(req.params.id);

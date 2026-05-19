@@ -10,7 +10,7 @@ async function ordens(el) {
     api('GET', '/clientes'),
     api('GET', '/servicos'),
     api('GET', '/produtos'),
-    api('GET', '/vendedores')
+    api('GET', '/vendedores?tecnico=1')
   ]);
 
   const clienteOptions = clientesForOS.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
@@ -27,7 +27,7 @@ async function ordens(el) {
           <option value="em_andamento">Em Andamento</option>
           <option value="concluida">Concluída</option>
           <option value="cancelada">Cancelada</option>
-          <option value="a_receber">A Receber (pendente)</option>
+          <option value="a_receber">Cobranças (pendente)</option>
         </select>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -120,7 +120,7 @@ async function ordens(el) {
           <div class="form-group form-full">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
               <input type="checkbox" id="os-a-receber" onchange="toggleVencimento()">
-              <span style="font-weight:600;color:#dc2626">A Receber</span>
+              <span style="font-weight:600;color:#dc2626">Cobrança</span>
             </label>
             <div id="os-vencimento-wrap" style="display:none;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
               <label style="font-size:12px;font-weight:600;color:#991b1b;margin-bottom:6px;display:block">Data de Vencimento</label>
@@ -133,6 +133,10 @@ async function ordens(el) {
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
               <input type="checkbox" id="os-chave-auto" onchange="toggleChaveAuto()">
               <span style="font-weight:600">Chave Auto</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+              <input type="checkbox" id="os-plantao" onchange="togglePlantao()">
+              <span style="font-weight:600;color:#7c3aed">🌙 Plantão</span>
             </label>
           </div>
 
@@ -219,7 +223,7 @@ function renderOrdens(list) {
       const vencido = o.a_receber && !o.a_receber_pago && o.data_vencimento && new Date(o.data_vencimento) < hoje;
       const cfg = OS_STATUS_CFG[o.status] || OS_STATUS_CFG.aberta;
       const badgeAR = o.a_receber && !o.a_receber_pago
-        ? `<span style="font-size:10px;font-weight:700;color:${vencido?'#dc2626':'#d97706'};background:${vencido?'#fee2e2':'#fef3c7'};padding:2px 7px;border-radius:4px">${vencido?'⚠ VENCIDO':'⏳ A RECEBER'}${o.data_vencimento?' '+formatDate(o.data_vencimento):''}</span>`
+        ? `<span style="font-size:10px;font-weight:700;color:${vencido?'#dc2626':'#d97706'};background:${vencido?'#fee2e2':'#fef3c7'};padding:2px 7px;border-radius:4px">${vencido?'⚠ VENCIDO':'⏳ COBRANÇA'}${o.data_vencimento?' '+formatDate(o.data_vencimento):''}</span>`
         : (o.a_receber && o.a_receber_pago ? `<span style="font-size:10px;color:#16a34a;background:#f0fdf4;padding:2px 7px;border-radius:4px">✔ RECEBIDO</span>` : '');
       return `
       <div class="os-card${vencido?' os-card-vencido':''}">
@@ -253,7 +257,7 @@ function renderOrdens(list) {
       const vencido = o.a_receber && !o.a_receber_pago && o.data_vencimento && new Date(o.data_vencimento) < hoje;
       const rowStyle = vencido ? 'background:#fff5f5' : '';
       const badgeAR = o.a_receber && !o.a_receber_pago
-        ? `<br><span style="font-size:10px;font-weight:700;color:${vencido?'#dc2626':'#d97706'};background:${vencido?'#fee2e2':'#fef3c7'};padding:1px 6px;border-radius:4px">${vencido?'⚠ VENCIDO':'⏳ A RECEBER'}${o.data_vencimento?' '+formatDate(o.data_vencimento):''}</span>`
+        ? `<br><span style="font-size:10px;font-weight:700;color:${vencido?'#dc2626':'#d97706'};background:${vencido?'#fee2e2':'#fef3c7'};padding:1px 6px;border-radius:4px">${vencido?'⚠ VENCIDO':'⏳ COBRANÇA'}${o.data_vencimento?' '+formatDate(o.data_vencimento):''}</span>`
         : (o.a_receber && o.a_receber_pago ? `<br><span style="font-size:10px;color:#16a34a;background:#f0fdf4;padding:1px 6px;border-radius:4px">✔ RECEBIDO</span>` : '');
       return `
       <tr style="${rowStyle}">
@@ -591,6 +595,12 @@ function toggleVencimento() {
 
 function toggleChaveAuto() {}
 
+function togglePlantao() {
+  const checked = document.getElementById('os-plantao').checked;
+  const label = document.querySelector('#os-secao-itens label span[style*="dc2626"]');
+  if (label) label.textContent = checked ? '(opcional no plantão)' : '(pelo menos 1 serviço obrigatório)';
+}
+
 function abrirModalOS() {
   document.getElementById('os-id').value = '';
   document.getElementById('os-cliente').value = '';
@@ -612,6 +622,8 @@ function abrirModalOS() {
   document.getElementById('os-data-vencimento').value = '';
   document.getElementById('os-vencimento-wrap').style.display = 'none';
   document.getElementById('os-chave-auto').checked = false;
+  document.getElementById('os-plantao').checked = false;
+  togglePlantao();
   document.getElementById('modal-os-title').textContent = 'Nova Ordem de Serviço';
 
   osItens = [];
@@ -718,6 +730,8 @@ async function editarOS(id) {
   document.getElementById('os-data-vencimento').value = (o.data_vencimento || '').slice(0, 10);
   document.getElementById('os-vencimento-wrap').style.display = o.a_receber ? 'block' : 'none';
   document.getElementById('os-chave-auto').checked = !!o.chave_auto;
+  document.getElementById('os-plantao').checked = !!o.is_plantao;
+  togglePlantao();
   document.getElementById('modal-os-title').textContent = 'Editar OS ' + o.numero;
 
   osItens = o.itens || [];
@@ -748,12 +762,13 @@ async function salvarOS() {
     data_vencimento: document.getElementById('os-data-vencimento').value || null,
     solicitado_por: document.getElementById('os-solicitado-por')?.value || null,
     chave_auto: document.getElementById('os-chave-auto').checked ? 1 : 0,
+    is_plantao: document.getElementById('os-plantao').checked ? 1 : 0,
     orcamento: 0,
     itens: osItens
   };
   if (!body.cliente_id && body.cliente_nome_avulso && !avulsoRua) { toast('Informe a rua do endereço do cliente', 'error'); return; }
-  if (!body.chave_auto && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
-  if (!body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
+  if (!body.is_plantao && !body.chave_auto && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
+  if (!body.is_plantao && !body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
   try {
     if (id) {
       const resp = await api('PUT', `/ordens/${id}`, body);

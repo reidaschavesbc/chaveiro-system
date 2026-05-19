@@ -191,6 +191,97 @@
     @keyframes fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 
+    /* ─── FINANCEIRO ─── */
+    #view-financeiro { display: none; min-height: 100vh; flex-direction: column; }
+    .fin-topbar {
+      background: #1e293b; border-bottom: 1px solid #334155; padding: 0 24px;
+      height: 56px; display: flex; align-items: center; gap: 16px;
+      position: sticky; top: 0; z-index: 100; flex-shrink: 0;
+    }
+    .fin-back {
+      display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+      background: transparent; border: 1px solid #334155; border-radius: 8px;
+      color: #94a3b8; font-size: 13px; font-family: inherit; cursor: pointer; transition: all .2s;
+      white-space: nowrap;
+    }
+    .fin-back:hover { background: #334155; color: #f1f5f9; }
+    .fin-loja-nome { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+    .fin-loja-sub  { font-size: 11px; color: #64748b; }
+
+    .fin-tabs {
+      background: #0f172a; border-bottom: 1px solid #1e293b;
+      display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;
+      scrollbar-width: none; padding: 10px 16px;
+    }
+    .fin-tabs::-webkit-scrollbar { display: none; }
+    .fin-tab {
+      padding: 7px 16px; font-size: 13px; font-weight: 600; color: #94a3b8;
+      cursor: pointer; border: none; background: #1e293b; font-family: inherit;
+      border-radius: 8px; white-space: nowrap; transition: all .2s;
+    }
+    .fin-tab:hover { background: #273549; color: #e2e8f0; }
+    .fin-tab.ativa { background: #2563eb; color: #fff; }
+
+    .fin-body { flex: 1; padding: 28px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+    /* Cards de stat */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+      padding: 18px 20px;
+    }
+    .stat-label { font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+    .stat-val   { font-size: 22px; font-weight: 700; color: #f1f5f9; }
+    .stat-sub   { font-size: 11px; color: #64748b; margin-top: 3px; }
+    .stat-card.destaque { border-color: rgba(99,102,241,.4); background: rgba(99,102,241,.08); }
+    .stat-card.alerta   { border-color: rgba(239,68,68,.3); }
+    .stat-card.ok       { border-color: rgba(34,197,94,.3); }
+
+    /* Tabelas financeiras */
+    .fin-section-title { font-size: 14px; font-weight: 700; color: #f1f5f9; margin: 24px 0 12px; }
+    .fin-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #334155; }
+    .fin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .fin-table th {
+      background: #0f172a; padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    .fin-table td { padding: 11px 14px; color: #cbd5e1; border-top: 1px solid #1e293b; vertical-align: middle; }
+    .fin-table tr:hover td { background: rgba(99,102,241,.04); }
+    .fin-table .n { color: #f1f5f9; font-weight: 600; }
+    .fin-table .sub { font-size: 11px; color: #64748b; }
+
+    .st-badge { display: inline-flex; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .st-aberta      { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .st-em_andamento{ background: rgba(99,102,241,.15); color: #818cf8; }
+    .st-concluida   { background: rgba(34,197,94,.15);  color: #4ade80; }
+    .st-cancelada   { background: rgba(239,68,68,.15);  color: #f87171; }
+    .st-pendente    { background: rgba(251,191,36,.15); color: #fbbf24; }
+    .st-comprado    { background: rgba(34,197,94,.15);  color: #4ade80; }
+
+    .fin-filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .fin-filtros input, .fin-filtros select {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 7px 12px; font-size: 13px; font-family: inherit; color: #f1f5f9; outline: none;
+    }
+    .fin-filtros input:focus, .fin-filtros select:focus { border-color: #6366f1; }
+    .fin-btn {
+      padding: 7px 16px; background: #6366f1; color: white; border: none;
+      border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer;
+    }
+    .fin-btn:hover { background: #4f46e5; }
+    .fin-btn.sec { background: #334155; }
+    .fin-btn.sec:hover { background: #475569; }
+
+    .fin-empty { text-align: center; padding: 40px; color: #475569; font-size: 13px; }
+    .fin-loading { text-align: center; padding: 40px; color: #475569; font-size: 13px; }
+
+    @media (max-width: 640px) {
+      .fin-body { padding: 14px; }
+      .fin-topbar { padding: 0 12px; }
+      .fin-loja-sub { display: none; }
+    }
+
     @media (max-width: 640px) {
       .topbar { padding: 0 14px; }
       .topbar-nome { display: none; }
@@ -291,6 +382,35 @@
     <div id="wa-admin-body" style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:20px">
       <p style="color:#94a3b8;font-size:13px">Carregando...</p>
     </div>
+  </div>
+</div>
+
+<!-- ── FINANCEIRO ──────────────────────────────────────────────────────────── -->
+<div id="view-financeiro" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="fin-topbar">
+    <button class="fin-back" onclick="voltarAdmin()">← Lojas</button>
+    <div style="flex:1;min-width:0">
+      <div class="fin-loja-nome" id="fin-loja-nome">—</div>
+      <div class="fin-loja-sub">Painel Financeiro — Admin</div>
+    </div>
+    <div id="fin-ponto-wrap" style="display:none;align-items:center;gap:8px">
+      <label style="font-size:12px;color:#94a3b8;white-space:nowrap">Ponto:</label>
+      <select id="fin-ponto-sel" onchange="finFiltrarPonto(this.value)" style="background:#1e293b;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer"></select>
+    </div>
+  </div>
+  <div class="fin-tabs" id="fin-tabs">
+    <button class="fin-tab ativa" onclick="finNavegar('geral')">Geral</button>
+    <button class="fin-tab" onclick="finNavegar('os')">OS</button>
+    <button class="fin-tab" onclick="finNavegar('plantao')">🌙 Plantão</button>
+    <button class="fin-tab" onclick="finNavegar('vendas')">Vendas</button>
+    <button class="fin-tab" onclick="finNavegar('areceber')">Cobranças</button>
+    <button class="fin-tab" onclick="finNavegar('comissoes')">Comissões</button>
+    <button class="fin-tab" onclick="finNavegar('gastos')">Gastos</button>
+    <button class="fin-tab" onclick="finNavegar('vales')">Vales</button>
+    <button class="fin-tab" onclick="finNavegar('estoque')">Estoque</button>
+  </div>
+  <div class="fin-body" id="fin-content">
+    <div class="fin-loading">Carregando...</div>
   </div>
 </div>
 
@@ -415,6 +535,7 @@
             <span class="badge badge-${l.ativo ? 'ativo' : 'inativo'}">${l.ativo ? 'Ativa' : 'Inativa'}</span>
             <button class="btn-acao loja" onclick="abrirModalEditarLoja(${l.id}, '${esc(l.nome)}')">Editar</button>
             <button class="btn-acao loja" onclick="abrirModalNfse(${l.id}, '${esc(l.nome)}')">NFS-e</button>
+            <button class="btn-acao loja" onclick="abrirFinanceiro(${l.id}, '${esc(l.nome)}')">Financeiro</button>
             <button class="btn-acao loja ${l.ativo ? 'danger' : 'success'}" onclick="toggleLoja(${l.id}, ${l.ativo})">
               ${l.ativo ? 'Desativar' : 'Ativar'}
             </button>
@@ -861,6 +982,645 @@
   async function waAdminConectar() { try { await req('POST', '/whatsapp/conectar'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
   async function waAdminDesconectar() { if (!confirm('Desconectar o WhatsApp?')) return; try { await req('POST', '/whatsapp/desconectar'); toast('Desconectado'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
   async function waAdminTrocar() { if (!confirm('Isso apaga a sessão atual e gera novo QR. Continuar?')) return; try { await req('POST', '/whatsapp/trocar-conta'); toast('Aguarde o novo QR...'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
+
+  // ── Financeiro ───────────────────────────────────────────────────────────
+  let _lojaToken = null;
+  let _finTabAtiva = 'dashboard';
+  let _filtroUsuario = null; // null = todos, número = sub-usuário específico
+
+  function reqLoja(method, path, body) {
+    let fullPath = path;
+    if (method === 'GET' && _filtroUsuario) {
+      fullPath += (path.includes('?') ? '&' : '?') + 'usuario_id=' + _filtroUsuario;
+    }
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _lojaToken } };
+    if (body) opts.body = JSON.stringify(body);
+    return fetch(API + fullPath, opts).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || 'Erro'); return d; }));
+  }
+
+  function fmtV(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ','); }
+  function fmtDT(s) { if (!s) return '—'; return String(s).slice(0,10).split('-').reverse().join('/'); }
+  function fmtDH(s) { if (!s) return '—'; const p = String(s).slice(0,16).replace('T',' '); const [d,h]=p.split(' '); return d.split('-').reverse().join('/')+(h?' '+h:''); }
+
+  async function abrirFinanceiro(lojaId, lojaNome) {
+    try {
+      const { token } = await req('POST', '/auth/acesso-loja', { loja_id: lojaId });
+      _lojaToken = token;
+      _filtroUsuario = null;
+      document.getElementById('fin-loja-nome').textContent = lojaNome;
+      document.getElementById('view-painel').style.display = 'none';
+      const vf = document.getElementById('view-financeiro');
+      vf.style.display = 'flex';
+
+      // Carrega sub-usuários da loja para o seletor de ponto
+      const wrap = document.getElementById('fin-ponto-wrap');
+      const sel = document.getElementById('fin-ponto-sel');
+      try {
+        const pontos = await reqLoja('GET', '/usuarios/pontos');
+        if (pontos.length > 1) {
+          sel.innerHTML = '<option value="">Todos os pontos</option>' +
+            pontos.map(p => `<option value="${p.id}">${p.nome}${p.principal ? ' (principal)' : ''}</option>`).join('');
+          wrap.style.display = 'flex';
+        } else {
+          wrap.style.display = 'none';
+        }
+      } catch (_) { wrap.style.display = 'none'; }
+
+      finNavegar('geral');
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function finFiltrarPonto(val) {
+    _filtroUsuario = val ? parseInt(val) : null;
+    finNavegar(_finTabAtiva);
+  }
+
+  function voltarAdmin() {
+    _lojaToken = null;
+    _filtroUsuario = null;
+    document.getElementById('fin-ponto-wrap').style.display = 'none';
+    document.getElementById('view-financeiro').style.display = 'none';
+    document.getElementById('view-painel').style.display = 'block';
+  }
+
+  function finNavegar(tab) {
+    _finTabAtiva = tab;
+    document.querySelectorAll('.fin-tab').forEach((el, i) => {
+      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque'];
+      el.classList.toggle('ativa', tabs[i] === tab);
+    });
+    const content = document.getElementById('fin-content');
+    content.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque };
+    if (fns[tab]) fns[tab](content);
+  }
+
+  function traduzStatus(s) {
+    return { aberta:'Aberta', em_andamento:'Em andamento', concluida:'Concluída', cancelada:'Cancelada', pendente:'Pendente', comprado:'Comprado' }[s] || s;
+  }
+
+  // ── Tab: OS ──────────────────────────────────────────────────────────────
+  async function finOS(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7)+'-01';
+    const prevDi = document.getElementById('fin-os-di')?.value || inicioMes;
+    const prevDf = document.getElementById('fin-os-df')?.value || hoje;
+    const prevStatus = document.getElementById('fin-os-status')?.value || '';
+    const prevQ = document.getElementById('fin-os-q')?.value || '';
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <input type="date" id="fin-os-di" value="${prevDi}">
+        <input type="date" id="fin-os-df" value="${prevDf}">
+        <select id="fin-os-status">
+          <option value="">Todos os status</option>
+          <option value="aberta" ${prevStatus==='aberta'?'selected':''}>Abertas</option>
+          <option value="em_andamento" ${prevStatus==='em_andamento'?'selected':''}>Em andamento</option>
+          <option value="concluida" ${prevStatus==='concluida'?'selected':''}>Concluídas</option>
+          <option value="cancelada" ${prevStatus==='cancelada'?'selected':''}>Canceladas</option>
+        </select>
+        <input type="text" id="fin-os-q" placeholder="Buscar..." value="${esc(prevQ)}" onkeydown="if(event.key==='Enter')finOSCarregar()">
+        <button class="fin-btn" onclick="finOSCarregar()">Buscar</button>
+      </div>
+      <div id="fin-os-result"><div class="fin-loading">Carregando...</div></div>`;
+    finOSCarregar();
+  }
+
+  async function finOSCarregar() {
+    const el = document.getElementById('fin-os-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    const di = document.getElementById('fin-os-di')?.value;
+    const df = document.getElementById('fin-os-df')?.value;
+    const status = document.getElementById('fin-os-status')?.value || '';
+    const q = document.getElementById('fin-os-q')?.value || '';
+    try {
+      let url = '/ordens?is_plantao=0&';
+      if (di) url += 'data_inicio='+di+'&';
+      if (df) url += 'data_fim='+df+'&';
+      if (status) url += 'status='+status+'&';
+      if (q) url += 'q='+encodeURIComponent(q);
+      const rows = await reqLoja('GET', url);
+      const hoje = new Date().toLocaleDateString('en-CA');
+      const totalPeriodo = rows.reduce((s,o) => s + (o.valor||0), 0);
+      const rowsHoje = rows.filter(o => o.data_entrada && o.data_entrada.startsWith(hoje));
+      const totalHoje = rowsHoje.reduce((s,o) => s + (o.valor||0), 0);
+      const concluidas = rows.filter(o => o.status === 'concluida');
+      const abertas = rows.filter(o => o.status === 'aberta' || o.status === 'em_andamento');
+      el.innerHTML = `
+        <div class="stat-grid" style="margin-bottom:16px">
+          <div class="stat-card destaque"><div class="stat-label">Total no período</div><div class="stat-val">${fmtV(totalPeriodo)}</div><div class="stat-sub">${rows.length} OS</div></div>
+          <div class="stat-card"><div class="stat-label">Total hoje</div><div class="stat-val">${fmtV(totalHoje)}</div><div class="stat-sub">${rowsHoje.length} OS</div></div>
+          <div class="stat-card ok"><div class="stat-label">Concluídas</div><div class="stat-val">${concluidas.length}</div><div class="stat-sub">${fmtV(concluidas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
+          <div class="stat-card alerta"><div class="stat-label">Em aberto</div><div class="stat-val">${abertas.length}</div><div class="stat-sub">${fmtV(abertas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
+        </div>
+        ${rows.length ? `
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Número</th><th>Cliente</th><th>Descrição</th><th>Status</th><th>Valor</th><th>Pagamento</th><th>Data</th></tr></thead>
+            <tbody>${rows.map(o => `
+              <tr>
+                <td class="n">${o.numero}</td>
+                <td>${esc(o.cliente_nome||o.cliente_nome_avulso||'—')}</td>
+                <td>${esc(o.descricao||'')}</td>
+                <td><span class="st-badge st-${o.status}">${traduzStatus(o.status)}</span></td>
+                <td>${fmtV(o.valor)}</td>
+                <td>${esc(o.forma_pagamento||'—')}</td>
+                <td>${fmtDH(o.data_entrada)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhuma OS encontrada</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Vendas ──────────────────────────────────────────────────────────
+  async function finPlantao(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7)+'-01';
+    const prevDi = document.getElementById('fin-plantao-di')?.value || inicioMes;
+    const prevDf = document.getElementById('fin-plantao-df')?.value || hoje;
+    const prevQ  = document.getElementById('fin-plantao-q')?.value  || '';
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <input type="date" id="fin-plantao-di" value="${prevDi}">
+        <input type="date" id="fin-plantao-df" value="${prevDf}">
+        <input type="text" id="fin-plantao-q" placeholder="Buscar..." value="${esc(prevQ)}" onkeydown="if(event.key==='Enter')finPlantaoCarregar()">
+        <button class="fin-btn" onclick="finPlantaoCarregar()">Buscar</button>
+      </div>
+      <div id="fin-plantao-result"><div class="fin-loading">Carregando...</div></div>`;
+    finPlantaoCarregar();
+  }
+
+  async function finPlantaoCarregar() {
+    const el = document.getElementById('fin-plantao-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    const di = document.getElementById('fin-plantao-di')?.value;
+    const df = document.getElementById('fin-plantao-df')?.value;
+    const q  = document.getElementById('fin-plantao-q')?.value  || '';
+    try {
+      let url = '/ordens?is_plantao=1&';
+      if (di) url += 'data_inicio='+di+'&';
+      if (df) url += 'data_fim='+df+'&';
+      if (q)  url += 'q='+encodeURIComponent(q);
+      const rows = await reqLoja('GET', url);
+      const totalPeriodo = rows.reduce((s,o) => s+(o.valor||0), 0);
+      const concluidas   = rows.filter(o => o.status === 'concluida');
+      const abertas      = rows.filter(o => o.status === 'aberta' || o.status === 'em_andamento');
+      el.innerHTML = `
+        <div style="background:#3b0764;border:1px solid #6d28d9;border-radius:12px;padding:12px 16px;margin-bottom:16px;color:#e9d5ff;font-size:13px">
+          🌙 <strong>Plantões</strong> são contabilizados separadamente e <strong>não entram no fechamento geral</strong>.
+        </div>
+        <div class="stat-grid" style="margin-bottom:16px">
+          <div class="stat-card destaque"><div class="stat-label">Total no período</div><div class="stat-val">${fmtV(totalPeriodo)}</div><div class="stat-sub">${rows.length} OS</div></div>
+          <div class="stat-card ok"><div class="stat-label">Concluídas</div><div class="stat-val">${concluidas.length}</div><div class="stat-sub">${fmtV(concluidas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
+          <div class="stat-card alerta"><div class="stat-label">Em aberto</div><div class="stat-val">${abertas.length}</div><div class="stat-sub">${fmtV(abertas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
+        </div>
+        ${rows.length ? `
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Número</th><th>Cliente</th><th>Endereço</th><th>Funcionário</th><th>Status</th><th>Valor</th><th>Pagamento</th><th>Data</th></tr></thead>
+            <tbody>${rows.map(o => `
+              <tr>
+                <td class="n">${o.numero} <span style="font-size:10px;background:#6d28d9;color:#e9d5ff;padding:1px 5px;border-radius:4px">🌙</span></td>
+                <td>${esc(o.cliente_nome||o.cliente_nome_avulso||'—')}</td>
+                <td style="font-size:12px;color:#94a3b8">${esc([o.cliente_avulso_rua,o.cliente_avulso_numero,o.cliente_avulso_cidade].filter(Boolean).join(', '))||'—'}</td>
+                <td>${esc(o.vendedor_nome||'—')}</td>
+                <td><span class="st-badge st-${o.status}">${traduzStatus(o.status)}</span></td>
+                <td>${fmtV(o.valor)}</td>
+                <td>${esc(o.forma_pagamento||'—')}</td>
+                <td>${fmtDH(o.data_entrada)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhum plantão encontrado neste período</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finVendas(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7)+'-01';
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <input type="date" id="fin-v-di" value="${inicioMes}">
+        <input type="date" id="fin-v-df" value="${hoje}">
+        <button class="fin-btn" onclick="finVendasCarregar()">Buscar</button>
+      </div>
+      <div id="fin-v-result"><div class="fin-loading">Carregando...</div></div>`;
+    finVendasCarregar();
+  }
+
+  async function finVendasCarregar() {
+    const di = document.getElementById('fin-v-di')?.value;
+    const df = document.getElementById('fin-v-df')?.value;
+    const el = document.getElementById('fin-v-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const { vendas, totais } = await reqLoja('GET', `/relatorios/vendas?data_inicio=${di}&data_fim=${df}`);
+      const totalGeral = (totais||[]).reduce((s,t)=>s+t.total,0);
+      el.innerHTML = `
+        <div class="stat-grid" style="margin-bottom:16px">
+          <div class="stat-card destaque"><div class="stat-label">Total no período</div><div class="stat-val">${fmtV(totalGeral)}</div><div class="stat-sub">${vendas.length} vendas</div></div>
+          ${(totais||[]).map(t=>`<div class="stat-card"><div class="stat-label">${esc(t.forma_pagamento||'—')}</div><div class="stat-val">${fmtV(t.total)}</div></div>`).join('')}
+        </div>
+        ${vendas.length ? `
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Número</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Vendedor</th><th>Data</th></tr></thead>
+            <tbody>${vendas.map(v=>`
+              <tr>
+                <td class="n">${v.numero}</td>
+                <td>${esc(v.cliente_nome||v.cliente_nome_avulso||'Avulso')}</td>
+                <td>${fmtV(v.total_final)}</td>
+                <td>${esc(v.forma_pagamento||'—')}</td>
+                <td>${esc(v.vendedor_nome||'—')}</td>
+                <td>${fmtDH(v.data)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhuma venda no período</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Cobranças ───────────────────────────────────────────────────────
+  async function finAReceber(el) {
+    try {
+      const rows = await reqLoja('GET', '/ordens?a_receber=1');
+      const pendentes = rows.filter(o => !o.a_receber_pago);
+      const totalPendente = pendentes.reduce((s,o) => s + (o.valor - (o.valor_pago||0)), 0);
+      const hoje = new Date().toLocaleDateString('en-CA');
+      el.innerHTML = `
+        <div class="stat-grid" style="margin-bottom:20px">
+          <div class="stat-card destaque"><div class="stat-label">Total Pendente</div><div class="stat-val">${fmtV(totalPendente)}</div><div class="stat-sub">${pendentes.length} OS</div></div>
+          <div class="stat-card alerta"><div class="stat-label">Vencidas</div><div class="stat-val">${pendentes.filter(o=>o.data_vencimento&&o.data_vencimento<hoje).length}</div></div>
+          <div class="stat-card ok"><div class="stat-label">Recebidas</div><div class="stat-val">${rows.filter(o=>o.a_receber_pago).length}</div></div>
+        </div>
+        ${pendentes.length ? `
+        <div class="fin-section-title">Pendentes</div>
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>OS</th><th>Cliente</th><th>Valor</th><th>Pago</th><th>Restante</th><th>Vencimento</th></tr></thead>
+            <tbody>${pendentes.map(o=>{
+              const restante = o.valor-(o.valor_pago||0);
+              const vencida = o.data_vencimento && o.data_vencimento < hoje;
+              return `<tr>
+                <td class="n">${o.numero}</td>
+                <td>${esc(o.cliente_nome||o.cliente_nome_avulso||'—')}</td>
+                <td>${fmtV(o.valor)}</td>
+                <td>${fmtV(o.valor_pago)}</td>
+                <td style="color:${vencida?'#f87171':'#cbd5e1'};font-weight:600">${fmtV(restante)}</td>
+                <td style="color:${vencida?'#f87171':'#cbd5e1'}">${fmtDT(o.data_vencimento)||'Sem data'}</td>
+              </tr>`;
+            }).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhuma cobrança pendente</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Comissões ───────────────────────────────────────────────────────
+  async function finComissoes(el) {
+    const hoje = new Date();
+    const mes = hoje.getMonth()+1;
+    const ano = hoje.getFullYear();
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <select id="fin-c-mes">
+          ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${m===mes?'selected':''}>${['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][m-1]}</option>`).join('')}
+        </select>
+        <input type="number" id="fin-c-ano" value="${ano}" min="2020" max="2099" style="width:90px">
+        <button class="fin-btn" onclick="finComissoesCarregar()">Ver</button>
+      </div>
+      <div id="fin-c-result"><div class="fin-loading">Carregando...</div></div>`;
+    finComissoesCarregar();
+  }
+
+  async function finComissoesCarregar() {
+    const mes = document.getElementById('fin-c-mes')?.value;
+    const ano = document.getElementById('fin-c-ano')?.value;
+    const el = document.getElementById('fin-c-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const d = await reqLoja('GET', `/comissoes/parcial?mes=${mes}&ano=${ano}`);
+      const vendedores = d.vendedores || [];
+      el.innerHTML = `
+        <div class="stat-grid" style="margin-bottom:20px">
+          <div class="stat-card destaque"><div class="stat-label">Total Comissões</div><div class="stat-val">${fmtV(d.total_geral)}</div></div>
+          <div class="stat-card"><div class="stat-label">Salários</div><div class="stat-val">${fmtV(d.total_salarios)}</div></div>
+          <div class="stat-card"><div class="stat-label">Vales</div><div class="stat-val">${fmtV(d.total_vales)}</div></div>
+          <div class="stat-card ${d.ja_fechado?'ok':''}"><div class="stat-label">Status</div><div class="stat-val" style="font-size:14px">${d.ja_fechado?'Fechado':'Em aberto'}</div></div>
+        </div>
+        ${vendedores.length ? `
+        <div style="margin-bottom:14px;display:flex;justify-content:flex-end">
+          <button class="fin-btn" style="background:#25d366;color:#fff;border-color:#25d366;display:flex;align-items:center;gap:6px" onclick="finComissoesEnviarGeral(${mes},${ano})">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5.003L2 22l5.103-1.338A9.954 9.954 0 0011.999 22C17.522 22 22 17.523 22 12S17.522 2 11.999 2zm0 18.17a8.17 8.17 0 01-4.169-1.14l-.299-.178-3.029.795.809-2.965-.196-.305A8.17 8.17 0 013.83 12c0-4.511 3.67-8.17 8.17-8.17 4.5 0 8.169 3.659 8.169 8.17s-3.669 8.17-8.17 8.17z"/></svg>
+            Enviar para número configurado
+          </button>
+        </div>
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Funcionário</th><th>OS</th><th>Total OS</th><th>Comissão</th><th>Salário</th><th>Vales</th><th>A Pagar</th><th></th></tr></thead>
+            <tbody>${vendedores.map(v=>`
+              <tr>
+                <td class="n">${esc(v.vendedor_nome)}</td>
+                <td>${v.ordens?.length||0}</td>
+                <td>${fmtV(v.total_os)}</td>
+                <td>${fmtV(v.total_comissao)}</td>
+                <td>${fmtV(v.salario_base)}</td>
+                <td>${fmtV(v.total_vales)}</td>
+                <td style="font-weight:700;color:#4ade80">${fmtV(v.total_a_pagar)}</td>
+                <td>${v.telefone ? `<button onclick="finComissoesEnviarFuncionario(${mes},${ano},${v.vendedor_id},'${esc(v.vendedor_nome)}')" style="background:#25d366;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">📱 Enviar</button>` : `<span style="font-size:11px;color:#94a3b8">Sem telefone</span>`}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhuma comissão no período</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finComissoesEnviarGeral(mes, ano) {
+    try {
+      await reqLoja('POST', '/comissoes/enviar-whatsapp', { mes, ano });
+      toast('Resumo enviado para o número configurado!', 'success');
+    } catch (e) { toast(e.message || 'Erro ao enviar', 'error'); }
+  }
+
+  async function finComissoesEnviarFuncionario(mes, ano, vendedor_id, nome) {
+    try {
+      await reqLoja('POST', '/comissoes/enviar-whatsapp', { mes, ano, vendedor_id });
+      toast(`Comissão enviada para ${nome}!`, 'success');
+    } catch (e) { toast(e.message || 'Erro ao enviar', 'error'); }
+  }
+
+  // ── Tab: Gastos ──────────────────────────────────────────────────────────
+  async function finGastos(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7)+'-01';
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <input type="date" id="fin-g-di" value="${inicioMes}">
+        <input type="date" id="fin-g-df" value="${hoje}">
+        <button class="fin-btn" onclick="finGastosCarregar()">Buscar</button>
+      </div>
+      <div id="fin-g-result"><div class="fin-loading">Carregando...</div></div>`;
+    finGastosCarregar();
+  }
+
+  async function finGastosCarregar() {
+    const di = document.getElementById('fin-g-di')?.value;
+    const df = document.getElementById('fin-g-df')?.value;
+    const el = document.getElementById('fin-g-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const { gastos, total } = await reqLoja('GET', `/gastos?data_inicio=${di}&data_fim=${df}`);
+      const cats = {};
+      (gastos||[]).forEach(g => { cats[g.categoria] = (cats[g.categoria]||0) + g.valor; });
+      el.innerHTML = `
+        <div class="stat-grid" style="margin-bottom:16px">
+          <div class="stat-card destaque"><div class="stat-label">Total no período</div><div class="stat-val">${fmtV(total||0)}</div><div class="stat-sub">${(gastos||[]).length} lançamentos</div></div>
+          ${Object.entries(cats).slice(0,4).map(([cat,val])=>`<div class="stat-card"><div class="stat-label">${esc(cat)}</div><div class="stat-val">${fmtV(val)}</div></div>`).join('')}
+        </div>
+        ${(gastos||[]).length ? `
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody>${gastos.map(g=>`
+              <tr>
+                <td class="n">${esc(g.descricao)}</td>
+                <td>${esc(g.categoria||'—')}</td>
+                <td>${fmtV(g.valor)}</td>
+                <td>${fmtDT(g.data)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhum gasto no período</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Helpers de badge e data ──────────────────────────────────────────────
+  function _finBadgeStatus(s) {
+    const cfg = { aberta:'#fef3c7|#92400e|Aberta', em_andamento:'#dbeafe|#1e40af|Em Andamento', concluida:'#d1fae5|#065f46|Concluída', cancelada:'#fee2e2|#991b1b|Cancelada' }[s] || '#f1f5f9|#475569|'+s;
+    const [bg,color,label] = cfg.split('|');
+    return `<span style="background:${bg};color:${color};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">${label}</span>`;
+  }
+  function _finBadgePag(p) {
+    const m = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', credito:'💳 Crédito', debito:'💳 Débito' };
+    return `<span style="font-size:12px">${m[p]||p||'—'}</span>`;
+  }
+  function _finMesAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
+  function _finHoje() { return new Date().toLocaleDateString('en-CA'); }
+  function _finFiltroBar(pfx, fn) {
+    return `<div class="fin-filtros">
+      <input type="date" id="${pfx}-ini" value="${_finMesAtual()}" style="background:#1e293b;color:#f1f5f9;border:1.5px solid #334155;border-radius:8px;padding:6px 12px;font-size:13px">
+      <input type="date" id="${pfx}-fim" value="${_finHoje()}" style="background:#1e293b;color:#f1f5f9;border:1.5px solid #334155;border-radius:8px;padding:6px 12px;font-size:13px">
+      <button class="fin-btn" onclick="${fn}">Gerar</button>
+      <button class="fin-btn" style="margin-left:auto" onclick="window.open('/api/pdf/caixa?data_inicio='+document.getElementById('${pfx}-ini').value+'&data_fim='+document.getElementById('${pfx}-fim').value+'&tipo=${pfx.replace('fin-','')}&token='+_lojaToken,'_blank')">🖨 Imprimir</button>
+    </div>`;
+  }
+
+  // ── Tab: Geral ───────────────────────────────────────────────────────────
+  async function finGeral(el) {
+    // Cards do dashboard + bloco financeiro com filtro de período
+    try {
+      const d = await reqLoja('GET', '/relatorios/dashboard');
+      el.innerHTML = `
+        <div class="stat-grid">
+          <div class="stat-card destaque">
+            <div class="stat-label">Vendas Hoje</div>
+            <div class="stat-val">${fmtV(d.vendas_hoje?.total)}</div>
+            <div class="stat-sub">${d.vendas_hoje?.qtd||0} transações</div>
+          </div>
+          <div class="stat-card destaque">
+            <div class="stat-label">Vendas no Mês</div>
+            <div class="stat-val">${fmtV(d.vendas_mes?.total)}</div>
+            <div class="stat-sub">${d.vendas_mes?.qtd||0} transações</div>
+          </div>
+          <div class="stat-card ${d.a_receber?.vencidos > 0 ? 'alerta' : ''}">
+            <div class="stat-label">Cobranças</div>
+            <div class="stat-val">${fmtV(d.a_receber?.total)}</div>
+            <div class="stat-sub">${d.a_receber?.qtd||0} OS · ${d.a_receber?.vencidos||0} vencidas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">OS Abertas</div>
+            <div class="stat-val">${d.os_abertas||0}</div>
+            <div class="stat-sub">${d.os_concluidas_mes||0} concluídas no mês</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Gastos no Mês</div>
+            <div class="stat-val">${fmtV(d.gastos_mes?.total)}</div>
+            <div class="stat-sub">${d.gastos_mes?.qtd||0} lançamentos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Clientes</div>
+            <div class="stat-val">${d.total_clientes||0}</div>
+            <div class="stat-sub">${d.produtos_baixo_estoque||0} produto(s) com estoque baixo</div>
+          </div>
+        </div>
+        <div class="fin-section-title" style="margin-top:8px">Resultado Financeiro por Período</div>
+        ${_finFiltroBar('fin-geral','finGeralCarregar()')}
+        <div id="fin-geral-res"><div class="fin-loading">Carregando...</div></div>`;
+      finGeralCarregar();
+    } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finGeralCarregar() {
+    const di = document.getElementById('fin-geral-ini')?.value;
+    const df = document.getElementById('fin-geral-fim')?.value;
+    const res = document.getElementById('fin-geral-res');
+    if (!res||!di||!df) return;
+    res.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const data = await reqLoja('GET', `/relatorios/geral?data_inicio=${di}&data_fim=${df}`);
+      const r = data.resultado;
+      const pg  = { dinheiro:'Dinheiro', pix:'PIX', credito:'Crédito', debito:'Débito' };
+      const cat = { material:'Material', combustivel:'Combustível', alimentacao:'Alimentação', manutencao:'Manutenção', servicos:'Serviços', outros:'Outros' };
+      const cor = r.resultado_liquido >= 0 ? '#16a34a' : '#dc2626';
+      const bgR = r.resultado_liquido >= 0 ? '#f0fdf4' : '#fff5f5';
+      const bdR = r.resultado_liquido >= 0 ? '#bbf7d0' : '#fecaca';
+      const totalFuncs = (r.total_salarios||0)+(r.total_comissoes||0)+(r.total_bonus||0);
+      res.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:20px">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#818cf8;text-transform:uppercase;margin-bottom:10px">💰 Receitas</div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px"><span style="color:#94a3b8">OS Concluídas</span><strong>${fmtV(data.list.filter(x=>x.tipo==='os').reduce((s,x)=>s+x.valor,0))}</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px"><span style="color:#94a3b8">Vendas</span><strong>${fmtV(data.list.filter(x=>x.tipo==='venda').reduce((s,x)=>s+x.valor,0))}</strong></div>
+            <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>Total Bruto</span><span>${fmtV(r.faturamento_bruto)}</span></div>
+          </div>
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
+            <div style="font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;margin-bottom:10px">➖ Deduções</div>
+            ${(r.gastos||[]).map(g=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">${cat[g.categoria]||g.categoria}</span><span style="color:#f87171">-${fmtV(g.total)}</span></div>`).join('')}
+            ${(r.funcionarios||[]).length ? `<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:8px 0 4px">Funcionários</div>`+(r.funcionarios).map(f=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">👤 ${f.nome}</span><span style="color:#f87171">-${fmtV((f.salario_base||0)+(f.comissao||0)+(f.bonus||0))}</span></div>`).join('') : ''}
+            ${!r.gastos?.length&&!r.funcionarios?.length?'<div style="color:#64748b;font-size:12px">Nenhuma dedução</div>':''}
+            <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#f87171"><span>Total Deduções</span><span>-${fmtV((r.total_gastos||0)+totalFuncs)}</span></div>
+          </div>
+          <div style="background:${bgR};border:2px solid ${bdR};border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+            <div style="font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;margin-bottom:8px">${r.resultado_liquido>=0?'✅ Lucro Líquido':'⚠️ Prejuízo'}</div>
+            <div style="font-size:28px;font-weight:800;color:${cor};line-height:1">${fmtV(r.resultado_liquido)}</div>
+            <div style="font-size:12px;color:${cor};margin-top:6px;opacity:.8">Margem: ${r.margem}%</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          ${(data.totais||[]).map(t=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 16px"><div style="font-size:11px;color:#94a3b8;font-weight:600">${pg[t.forma_pagamento]||t.forma_pagamento||'Outros'}</div><div style="font-size:15px;font-weight:700">${fmtV(t.total)}</div></div>`).join('')}
+        </div>
+        ${(r.funcionarios||[]).length ? `
+        <div class="fin-section-title" style="margin-top:8px">Fechamento de Funcionários</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px">
+          ${r.funcionarios.map(f => {
+            const bruto = (f.salario_base||0)+(f.comissao||0)+(f.bonus||0);
+            const liquido = f.total_a_pagar||0;
+            const temVale = (f.vales||0) > 0;
+            const atingiuMeta = f.meta > 0 && f.total_os >= f.meta;
+            return `<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
+              <div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #334155">👤 ${esc(f.nome)}</div>
+              ${f.salario_base > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">💼 Salário base</span><span>${fmtV(f.salario_base)}</span></div>` : ''}
+              ${f.comissao > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">📊 Comissão (${f.percentual_comissao}% · ${f.qtd_os} OS)</span><span style="color:#34d399">+${fmtV(f.comissao)}</span></div>` : ''}
+              ${f.meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🎯 Meta ${fmtV(f.meta)}</span><span style="color:${atingiuMeta?'#34d399':'#64748b'}">${atingiuMeta?'✔ Atingida':'Não atingida'}</span></div>` : ''}
+              ${atingiuMeta && f.bonus_meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🏆 Bônus meta</span><span style="color:#34d399">+${fmtV(f.bonus_meta)}</span></div>` : ''}
+              ${bruto > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;padding-top:5px;border-top:1px solid #334155"><span style="color:#94a3b8">Bruto</span><span style="font-weight:600">${fmtV(bruto)}</span></div>` : ''}
+              ${temVale ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#f87171">➖ Vales descontados</span><span style="color:#f87171">-${fmtV(f.vales)}</span></div>` : ''}
+              <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding-top:8px;border-top:1px solid #334155;margin-top:4px">
+                <span style="color:#94a3b8">${f.devendo?'⚠️ Devendo':'✅ Pagamento'}</span>
+                <span style="color:${f.devendo?'#f87171':'#34d399'}">${fmtV(liquido)}</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        ${data.list?.length ? `
+        <div class="fin-section-title">Movimentações do Período</div>
+        <div class="fin-table-wrap"><table class="fin-table">
+          <thead><tr><th>Tipo</th><th>Nº</th><th>Data</th><th>Cliente</th><th>Técnico</th><th>Pagamento</th><th>Total</th></tr></thead>
+          <tbody>${data.list.map(v=>`<tr>
+            <td><span style="background:${v.tipo==='venda'?'#dbeafe':'#d1fae5'};color:${v.tipo==='venda'?'#1e40af':'#065f46'};padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">${v.tipo.toUpperCase()}</span></td>
+            <td class="n">${v.numero}</td><td>${fmtDT(v.data)}</td>
+            <td>${esc(v.cliente_nome||v.cliente_nome_avulso||'—')}</td>
+            <td>${esc(v.vendedor_nome||'—')}</td>
+            <td>${_finBadgePag(v.forma_pagamento)}</td>
+            <td>${fmtV(v.valor)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : '<div class="fin-empty">Nenhuma movimentação no período</div>'}`;
+    } catch(e) { res.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Vales ───────────────────────────────────────────────────────────
+  async function finVales(el) {
+    const now = new Date();
+    const mes = String(now.getMonth()+1).padStart(2,'0');
+    const ano = now.getFullYear();
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <select id="fin-vales-mes" style="background:#1e293b;color:#f1f5f9;border:1.5px solid #334155;border-radius:8px;padding:6px 12px;font-size:13px">
+          ${['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+            .map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}" ${String(i+1).padStart(2,'0')===mes?'selected':''}>${m}</option>`).join('')}
+        </select>
+        <input type="number" id="fin-vales-ano" value="${ano}" min="2020" max="2099" style="background:#1e293b;color:#f1f5f9;border:1.5px solid #334155;border-radius:8px;padding:6px 12px;font-size:13px;width:90px">
+        <button class="fin-btn" onclick="finValesCarregar()">Buscar</button>
+      </div>
+      <div id="fin-vales-res"><div class="fin-loading">Carregando...</div></div>`;
+    finValesCarregar();
+  }
+
+  async function finValesCarregar() {
+    const mes = document.getElementById('fin-vales-mes')?.value;
+    const ano = document.getElementById('fin-vales-ano')?.value;
+    const res = document.getElementById('fin-vales-res');
+    if (!res||!mes||!ano) return;
+    res.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const [vales, resumo] = await Promise.all([
+        reqLoja('GET', `/vales?mes=${mes}&ano=${ano}`),
+        reqLoja('GET', `/vales/resumo?mes=${mes}&ano=${ano}`)
+      ]);
+      const total = resumo.reduce((s,r)=>s+r.total_vales,0);
+      res.innerHTML = `
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#94a3b8;font-size:13px">Total de Vales no Período</span>
+          <strong style="font-size:20px;color:#f87171">${fmtV(total)}</strong>
+        </div>
+        ${resumo.length ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+          ${resumo.map(r=>`<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 16px">
+            <div style="font-size:11px;color:#94a3b8;font-weight:600">👤 ${esc(r.vendedor_nome)}</div>
+            <div style="font-size:15px;font-weight:700;color:#f87171">${fmtV(r.total_vales)}</div>
+          </div>`).join('')}
+        </div>` : ''}
+        ${vales.length ? `<div class="fin-table-wrap"><table class="fin-table">
+          <thead><tr><th>Funcionário</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
+          <tbody>${vales.map(v=>`<tr>
+            <td>${esc(v.vendedor_nome)}</td>
+            <td>${esc(v.descricao||'—')}</td>
+            <td style="color:#f87171;font-weight:600">${fmtV(v.valor)}</td>
+            <td>${fmtDT(v.data)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>` : '<div class="fin-empty">Nenhum vale no período</div>'}`;
+    } catch(e) { res.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Estoque ─────────────────────────────────────────────────────────
+  async function finEstoque(el) {
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const data = await reqLoja('GET', '/relatorios/estoque');
+      el.innerHTML = `
+        <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#94a3b8;font-size:13px">Valor Total em Estoque</span>
+          <strong style="font-size:20px;color:#34d399">${fmtV(data.valor_total)}</strong>
+        </div>
+        <div class="fin-table-wrap"><table class="fin-table">
+          <thead><tr><th>Produto</th><th>Estoque</th><th>Est. Mínimo</th><th>Preço Venda</th><th>Valor Total</th><th>Status</th></tr></thead>
+          <tbody>${(data.produtos||[]).map(p=>`<tr>
+            <td>${esc(p.nome)}</td>
+            <td style="${p.estoque<=p.estoque_minimo?'color:#f87171;font-weight:700':''}">${p.estoque} ${p.unidade||''}</td>
+            <td>${p.estoque_minimo}</td>
+            <td>${fmtV(p.preco_venda)}</td>
+            <td>${fmtV(p.valor_total)}</td>
+            <td>${p.estoque<=p.estoque_minimo?'<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">⚠ Baixo</span>':'<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">OK</span>'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+    } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
 
   // ── Init ─────────────────────────────────────────────────────────────────
   document.getElementById('l-senha').addEventListener('keydown', e => { if (e.key === 'Enter') fazerLogin(); });
