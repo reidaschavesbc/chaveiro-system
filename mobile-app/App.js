@@ -20,6 +20,8 @@ if (Platform.OS === 'android') {
 import LoginScreen from './screens/LoginScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSDetalheScreen from './screens/OSDetalheScreen';
+import OSNovaScreen from './screens/OSNovaScreen';
+import BuscaScreen from './screens/BuscaScreen';
 import api from './services/api';
 
 Notifications.setNotificationHandler({
@@ -119,6 +121,16 @@ export default function App() {
             name="OSDetalhe"
             component={OSDetalheScreen}
             options={{ title: 'Detalhes da OS', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
+          />
+          <Stack.Screen
+            name="OSNova"
+            component={OSNovaScreen}
+            options={{ title: 'Nova OS', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
+          />
+          <Stack.Screen
+            name="Busca"
+            component={BuscaScreen}
+            options={{ title: '🔍 Consulta de Preços', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
           />
         </Stack.Navigator>
       ) : (

@@ -89,7 +89,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [editItemQtd, setEditItemQtd] = useState('');
   const [editItemPreco, setEditItemPreco] = useState('');
 
-  // Modal consumo de estoque
+  // Modal consumo de estoque (normal e plantão)
   const [modalEstoque, setModalEstoque] = useState(false);
   const [estoqueItens, setEstoqueItens] = useState([]);
   const [estoqueProdutos, setEstoqueProdutos] = useState([]);
@@ -97,6 +97,8 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [estoqueProdSel, setEstoqueProdSel] = useState(null);
   const [estoqueQtd, setEstoqueQtd] = useState('1');
   const [osIdParaEstoque, setOsIdParaEstoque] = useState(null);
+  const [estoqueModo, setEstoqueModo] = useState('normal'); // 'normal' | 'custo' | 'estoque'
+  const estoqueResolveRef = React.useRef(null);
 
   useEffect(() => { carregarOS(); }, []);
 
@@ -286,7 +288,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         setModalFinalizar(false);
         await carregarOS();
         Alert.alert('✅ OS finalizada!', 'Marcada como A Receber.');
-        await verificarEAbrirEstoque(osId);
+        await verificarEAbrirEstoque(osId, os?.is_plantao);
       } catch (e) {
         Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
       } finally { setSalvando(false); }
@@ -312,7 +314,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setModalFinalizar(false);
       await carregarOS();
       Alert.alert('✅ OS finalizada!', 'Pagamento registrado.');
-      await verificarEAbrirEstoque(osId);
+      await verificarEAbrirEstoque(osId, os?.is_plantao);
     } catch (e) {
       Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
     } finally { setSalvando(false); }
@@ -320,17 +322,45 @@ export default function OSDetalheScreen({ route, navigation }) {
 
   // ── Modal consumo de estoque ────────────────────────────────────────────────
 
-  async function verificarEAbrirEstoque(osIdLocal) {
+  function abrirModalEstoque(osIdLocal, modo) {
+    return new Promise(resolve => {
+      estoqueResolveRef.current = resolve;
+      setEstoqueModo(modo || 'normal');
+      setEstoqueItens([]);
+      setEstoqueBusca('');
+      setEstoqueProdSel(null);
+      setEstoqueQtd('1');
+      setOsIdParaEstoque(osIdLocal);
+      setModalEstoque(true);
+    });
+  }
+
+  async function verificarEAbrirEstoque(osIdLocal, isPlantao) {
     try {
       const { data } = await api.get('/produtos');
       setEstoqueProdutos(data);
     } catch { setEstoqueProdutos([]); }
-    setEstoqueItens([]);
-    setEstoqueBusca('');
-    setEstoqueProdSel(null);
-    setEstoqueQtd('1');
-    setOsIdParaEstoque(osIdLocal);
-    setModalEstoque(true);
+
+    if (isPlantao) {
+      // 1º modal: material com custo
+      const itensCusto = await abrirModalEstoque(osIdLocal, 'custo');
+      if (itensCusto && itensCusto.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensCusto, registrar_custo: true }); }
+        catch { Alert.alert('Erro', 'Falha ao registrar material com custo'); }
+      }
+      // 2º modal: retirada de estoque sem custo
+      const itensEst = await abrirModalEstoque(osIdLocal, 'estoque');
+      if (itensEst && itensEst.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensEst, registrar_custo: false }); }
+        catch { Alert.alert('Erro', 'Falha ao registrar retirada de estoque'); }
+      }
+    } else {
+      const itens = await abrirModalEstoque(osIdLocal, 'normal');
+      if (itens && itens.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens }); }
+        catch { Alert.alert('Erro', 'Não foi possível registrar consumo'); }
+      }
+    }
   }
 
   function adicionarItemEstoque() {
@@ -350,15 +380,16 @@ export default function OSDetalheScreen({ route, navigation }) {
     setEstoqueQtd('1');
   }
 
-  async function confirmarConsumoEstoque() {
-    if (!estoqueItens.length) { setModalEstoque(false); return; }
-    try {
-      await api.post(`/os/${osIdParaEstoque}/consumo-estoque`, { itens: estoqueItens });
-      setModalEstoque(false);
-      Alert.alert('✅ Registrado!', 'Consumo de estoque registrado.');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível registrar consumo');
+  function fecharModalEstoque(confirmar) {
+    setModalEstoque(false);
+    if (estoqueResolveRef.current) {
+      estoqueResolveRef.current(confirmar ? estoqueItens : []);
+      estoqueResolveRef.current = null;
     }
+  }
+
+  async function confirmarConsumoEstoque() {
+    fecharModalEstoque(true);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -377,9 +408,12 @@ export default function OSDetalheScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={{ padding: 16 }}>
 
           {/* Header */}
-          <View style={s.card}>
+          <View style={[s.card, os.is_plantao ? { borderLeftWidth: 3, borderLeftColor: '#7c3aed' } : null]}>
             <View style={s.row}>
-              <Text style={s.numero}>{os.numero}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={s.numero}>{os.numero}</Text>
+                {os.is_plantao ? <Text style={{ fontSize: 11, color: '#7c3aed', backgroundColor: '#f3e8ff', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, fontWeight: '700' }}>🌙 Plantão</Text> : null}
+              </View>
               <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
                 <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
               </View>
@@ -830,14 +864,20 @@ export default function OSDetalheScreen({ route, navigation }) {
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
             <View style={[s.modalCard, { maxHeight: '80%' }]}>
               <View style={s.modalHeader}>
-                <Text style={s.modalTitle}>📦 Consumo de Estoque</Text>
-                <TouchableOpacity onPress={() => setModalEstoque(false)}>
+                <Text style={[s.modalTitle, estoqueModo === 'custo' ? { color: '#7c3aed' } : estoqueModo === 'estoque' ? { color: '#475569' } : {}]}>
+                  {estoqueModo === 'custo' ? '💰 Material com custo' : estoqueModo === 'estoque' ? '📦 Retirada de estoque' : '📦 Consumo de Estoque'}
+                </Text>
+                <TouchableOpacity onPress={() => fecharModalEstoque(false)}>
                   <Text style={s.modalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
               <ScrollView keyboardShouldPersistTaps="handled" style={{ padding: 16 }}>
                 <Text style={[s.secSub, { marginBottom: 12 }]}>
-                  Houve uso de materiais do estoque nesta OS? Adicione os produtos consumidos.
+                  {estoqueModo === 'custo'
+                    ? 'Material usado no plantão — abate do estoque e do lucro.'
+                    : estoqueModo === 'estoque'
+                    ? 'Material retirado do estoque — sem impacto financeiro.'
+                    : 'Houve uso de materiais do estoque nesta OS?'}
                 </Text>
 
                 {estoqueItens.map((it, i) => (
@@ -884,7 +924,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                           placeholder="1"
                           placeholderTextColor="#999"
                         />
-                        <TouchableOpacity style={[s.saveBtn, { flex: 0, paddingHorizontal: 20 }]} onPress={adicionarItemEstoque}>
+                        <TouchableOpacity style={[s.saveBtn, { flex: 0, paddingHorizontal: 20 }, estoqueModo === 'custo' ? { backgroundColor: '#7c3aed' } : {}]} onPress={adicionarItemEstoque}>
                           <Text style={s.saveBtnText}>+ Add</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[s.cancelBtn, { flex: 0, paddingHorizontal: 12, marginRight: 0 }]} onPress={() => setEstoqueProdSel(null)}>
@@ -896,15 +936,15 @@ export default function OSDetalheScreen({ route, navigation }) {
                 </View>
 
                 <View style={[s.modalFooter, { flexDirection: 'row', gap: 10, marginBottom: 8, borderTopWidth: 0 }]}>
-                  <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => setModalEstoque(false)}>
+                  <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => fecharModalEstoque(false)}>
                     <Text style={s.cancelBtnText}>Não houve</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }]}
+                    style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }, estoqueModo === 'custo' ? { backgroundColor: '#7c3aed' } : {}]}
                     onPress={confirmarConsumoEstoque}
                     disabled={!estoqueItens.length}
                   >
-                    <Text style={s.saveBtnText}>Registrar</Text>
+                    <Text style={s.saveBtnText}>{estoqueModo === 'custo' ? 'Registrar custo' : estoqueModo === 'estoque' ? 'Registrar retirada' : 'Registrar'}</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>

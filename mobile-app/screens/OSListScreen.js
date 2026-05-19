@@ -71,9 +71,12 @@ export default function OSListScreen({ navigation, onLogout }) {
   function renderOS({ item }) {
     const st = STATUS_LABEL[item.status] || { label: item.status, color: '#666' };
     return (
-      <TouchableOpacity style={s.card} onPress={() => navigation.navigate('OSDetalhe', { osId: item.id })}>
+      <TouchableOpacity style={[s.card, item.is_plantao ? s.cardPlantao : null]} onPress={() => navigation.navigate('OSDetalhe', { osId: item.id })}>
         <View style={s.cardTop}>
-          <Text style={s.numero}>{item.numero}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={s.numero}>{item.numero}</Text>
+            {item.is_plantao ? <Text style={s.plantaoBadge}>🌙 Plantão</Text> : null}
+          </View>
           <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
             <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
           </View>
@@ -95,9 +98,14 @@ export default function OSListScreen({ navigation, onLogout }) {
           <Text style={s.headerTitle}>Minhas OS</Text>
           {funcionario && <Text style={s.headerSub}>Olá, {funcionario.nome.split(' ')[0]}!</Text>}
         </View>
-        <TouchableOpacity onPress={onLogout} style={s.logoutBtn}>
-          <Text style={s.logoutText}>Sair</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('Busca')} style={s.buscaBtn}>
+            <Text style={s.buscaBtnText}>🔍</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onLogout} style={s.logoutBtn}>
+            <Text style={s.logoutText}>Sair</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={s.filtros}>
@@ -123,9 +131,13 @@ export default function OSListScreen({ navigation, onLogout }) {
           renderItem={renderOS}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarOS(); }} />}
           ListEmptyComponent={<Text style={s.vazio}>Nenhuma OS encontrada</Text>}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
         />
       )}
+
+      <TouchableOpacity style={s.fab} onPress={() => navigation.navigate('OSNova')}>
+        <Text style={s.fabText}>+ Nova OS</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -140,6 +152,8 @@ const s = StyleSheet.create({
   headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
   logoutBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 },
   logoutText: { color: '#fff', fontSize: 13 },
+  buscaBtn: { paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#ffffff22', borderRadius: 8 },
+  buscaBtnText: { fontSize: 18 },
   filtros: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filtroBtn: {
     flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center',
@@ -162,4 +176,13 @@ const s = StyleSheet.create({
   valor: { fontSize: 16, fontWeight: 'bold', color: '#2563eb' },
   data: { fontSize: 12, color: '#94a3b8' },
   vazio: { textAlign: 'center', marginTop: 60, color: '#94a3b8', fontSize: 15 },
+  plantaoBadge: { fontSize: 11, color: '#7c3aed', backgroundColor: '#f3e8ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: '700' },
+  cardPlantao: { borderLeftWidth: 3, borderLeftColor: '#7c3aed' },
+  fab: {
+    position: 'absolute', bottom: 24, right: 20,
+    backgroundColor: '#2563eb', borderRadius: 28,
+    paddingVertical: 14, paddingHorizontal: 22,
+    elevation: 6, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
+  },
+  fabText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
 });
