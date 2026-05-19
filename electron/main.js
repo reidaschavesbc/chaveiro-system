@@ -11,7 +11,10 @@ if (!gotLock) { app.quit(); process.exit(0); }
 
 let mainWindow = null;
 let tray = null;
-const SERVER_URL = 'http://187.127.3.139:3002';
+const SERVER_URL = 'http://104.251.216.253:3002';
+
+let failRetryCount = 0;
+let showingOffline = false;
 
 let logPath = null;
 function log(msg) {
@@ -47,6 +50,7 @@ const offlinePage = `<!DOCTYPE html>
     .icon { font-size: 64px; margin-bottom: 24px; }
     h1 { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
     p { color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin-bottom: 28px; }
+    .hint { color: rgba(255,255,255,0.45); font-size: 12px; margin-bottom: 28px; }
     button {
       background: white; color: #1a56db; border: none; border-radius: 10px;
       padding: 13px 32px; font-size: 15px; font-weight: 700; cursor: pointer;
@@ -60,8 +64,28 @@ const offlinePage = `<!DOCTYPE html>
     <div class="icon">📡</div>
     <h1>Sem conexão com o servidor</h1>
     <p>Verifique sua conexão com a internet e tente novamente.</p>
-    <button onclick="window.electron.retry()">Tentar novamente</button>
+    <p class="hint" id="countdown">Tentando reconectar automaticamente em 30s...</p>
+    <button onclick="manualRetry()">Tentar novamente</button>
   </div>
+  <script>
+    var secs = 30;
+    var el = document.getElementById('countdown');
+    var timer = setInterval(function() {
+      secs--;
+      if (secs <= 0) {
+        clearInterval(timer);
+        el.textContent = 'Reconectando...';
+        window.electron.retry();
+      } else {
+        el.textContent = 'Tentando reconectar automaticamente em ' + secs + 's...';
+      }
+    }, 1000);
+    function manualRetry() {
+      clearInterval(timer);
+      el.textContent = 'Reconectando...';
+      window.electron.retry();
+    }
+  </script>
 </body>
 </html>`;
 
@@ -84,14 +108,39 @@ function createWindow() {
 
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
-  mainWindow.loadURL(SERVER_URL);
+  failRetryCount = 0;
+  showingOffline = false;
 
-  mainWindow.webContents.on('did-fail-load', (event, errorCode) => {
-    if (errorCode === -3) return; // ERR_ABORTED — ignorar redirecionamentos
-    log('Falha ao carregar: ' + errorCode + ' — exibindo tela offline');
+  function showOfflinePage() {
+    showingOffline = true;
+    failRetryCount = 0;
     mainWindow.webContents.loadURL(
       'data:text/html;charset=utf-8,' + encodeURIComponent(offlinePage)
     );
+  }
+
+  mainWindow.loadURL(SERVER_URL);
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, _desc, validatedURL) => {
+    if (errorCode === -3) return; // ERR_ABORTED — ignorar redirecionamentos
+    if (validatedURL && validatedURL.startsWith('data:')) return; // ignorar erros na própria página offline
+    if (showingOffline) return; // já exibindo página offline, não sobrescrever
+
+    failRetryCount++;
+    if (failRetryCount <= 3) {
+      log(`Falha ao carregar (tentativa ${failRetryCount}/3): errorCode=${errorCode} — aguardando para retry`);
+      setTimeout(() => {
+        if (mainWindow && !showingOffline) mainWindow.loadURL(SERVER_URL);
+      }, 3000 * failRetryCount);
+    } else {
+      log(`Falha ao carregar após 3 tentativas: errorCode=${errorCode} — exibindo tela offline`);
+      showOfflinePage();
+    }
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    showingOffline = false;
+    failRetryCount = 0;
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -186,7 +235,11 @@ autoUpdater.on('error', (err) => {
 
 ipcMain.on('check-update', () => { checkUpdateManual = true; autoUpdater.checkForUpdates(); });
 ipcMain.on('retry-load', () => {
-  if (mainWindow) mainWindow.loadURL(SERVER_URL);
+  if (mainWindow) {
+    showingOffline = false;
+    failRetryCount = 0;
+    mainWindow.loadURL(SERVER_URL);
+  }
 });
 
 app.whenReady().then(() => {
