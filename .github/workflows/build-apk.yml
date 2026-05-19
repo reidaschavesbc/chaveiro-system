@@ -30,10 +30,6 @@ jobs:
         working-directory: mobile-app
         run: npm ci
 
-      - name: Substituir URL do servidor
-        working-directory: mobile-app
-        run: sed -i "s|SERVER_URL_PLACEHOLDER|${{ secrets.SERVER_URL }}|g" services/api.js
-
       - name: Gerar projeto Android nativo
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
