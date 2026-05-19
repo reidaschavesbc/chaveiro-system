@@ -1,6 +1,6 @@
 {
   "name": "chaveiro-system",
-  "version": "1.0.34",
+  "version": "1.0.35",
   "description": "Sistema de Gestao para Chaveiro",
   "main": "server.js",
   "type": "commonjs",
@@ -99,7 +99,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "tvsxgames",
+      "owner": "reidaschavesbc",
       "repo": "chaveiro-system",
       "private": true
     }
