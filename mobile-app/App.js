@@ -17,6 +17,7 @@ if (Platform.OS === 'android') {
   });
 }
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoginScreen from './screens/LoginScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSDetalheScreen from './screens/OSDetalheScreen';
@@ -114,6 +115,7 @@ export default function App() {
   if (loading) return null;
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       {funcionario ? (
         <Stack.Navigator>
@@ -140,5 +142,6 @@ export default function App() {
         <LoginScreen onLogin={handleLogin} />
       )}
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

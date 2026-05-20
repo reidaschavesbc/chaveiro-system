@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 
 const STATUS_LABEL = {
@@ -47,6 +48,8 @@ function parseDateBR(s) {
 }
 
 export default function OSDetalheScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
+  const safeBottom = (insets.bottom || 0) + 8;
   const { osId } = route.params;
   const [os, setOs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -612,7 +615,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-            <View style={[s.modalCard, { maxHeight: '85%', minHeight: Dimensions.get('window').height * 0.55 }]}>
+            <View style={[s.modalCard, { maxHeight: '85%', minHeight: Dimensions.get('window').height * 0.55, paddingBottom: safeBottom }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Adicionar Item</Text>
                 <TouchableOpacity onPress={() => setModalItem(false)}>
@@ -712,7 +715,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalFinalizar} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-              <View style={[s.modalCard, { maxHeight: '90%' }]}>
+              <View style={[s.modalCard, { maxHeight: '90%', paddingBottom: safeBottom }]}>
                 <View style={s.modalHeader}>
                   <Text style={s.modalTitle}>Finalizar OS</Text>
                   <TouchableOpacity onPress={() => setModalFinalizar(false)}>
@@ -819,7 +822,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalEditItem} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-              <View style={s.modalCard}>
+              <View style={[s.modalCard, { paddingBottom: safeBottom }]}>
                 <View style={s.modalHeader}>
                   <Text style={s.modalTitle}>Editar Item</Text>
                   <TouchableOpacity onPress={() => setModalEditItem(false)}>
@@ -862,7 +865,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalEstoque} transparent animationType="slide">
           <View style={s.modalOverlay}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-            <View style={[s.modalCard, { maxHeight: '80%' }]}>
+            <View style={[s.modalCard, { maxHeight: '80%', paddingBottom: safeBottom }]}>
               <View style={s.modalHeader}>
                 <Text style={[s.modalTitle, estoqueModo === 'custo' ? { color: '#7c3aed' } : estoqueModo === 'estoque' ? { color: '#475569' } : {}]}>
                   {estoqueModo === 'custo' ? '💰 Material com custo' : estoqueModo === 'estoque' ? '📦 Retirada de estoque' : '📦 Consumo de Estoque'}

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 
 const STATUS_LABEL = {
@@ -26,6 +27,7 @@ function fmtVal(v) {
 }
 
 export default function OSListScreen({ navigation, onLogout }) {
+  const insets = useSafeAreaInsets();
   const [os, setOs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,7 +137,7 @@ export default function OSListScreen({ navigation, onLogout }) {
         />
       )}
 
-      <TouchableOpacity style={s.fab} onPress={() => navigation.navigate('OSNova')}>
+      <TouchableOpacity style={[s.fab, { bottom: (insets.bottom || 0) + 20 }]} onPress={() => navigation.navigate('OSNova')}>
         <Text style={s.fabText}>+ Nova OS</Text>
       </TouchableOpacity>
     </View>
