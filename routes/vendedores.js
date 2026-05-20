@@ -4,37 +4,44 @@ const db = require('../database/db');
 const bcrypt = require('bcryptjs');
 
 router.get('/', (req, res) => {
-    const list = db.prepare('SELECT * FROM vendedores WHERE ativo = 1 AND loja_id = ? ORDER BY nome').all(req.user.loja_id);
-    res.json(list);
+    const soTecnico = req.query.tecnico === '1';
+    const sql = `SELECT * FROM vendedores WHERE ativo = 1 AND loja_id = ?${soTecnico ? ' AND tecnico = 1' : ''} ORDER BY nome`;
+    res.json(db.prepare(sql).all(req.user.loja_id));
 });
 
 router.post('/', (req, res) => {
-    const { nome, telefone, percentual_comissao, salario_base, meta, bonus_meta } = req.body;
+    const { nome, telefone, percentual_comissao, percentual_plantao, salario_base, meta, bonus_meta, tecnico } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     const perc = parseFloat(percentual_comissao) || 0;
+    const percP = parseFloat(percentual_plantao) || 0;
     const sal  = parseFloat(salario_base) || 0;
     const m    = parseFloat(meta) || 0;
     const bm   = parseFloat(bonus_meta) || 0;
+    const tec  = tecnico ? 1 : 0;
     const result = db.prepare(
-        'INSERT INTO vendedores (nome, telefone, percentual_comissao, salario_base, meta, bonus_meta, loja_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).run(nome, telefone||null, perc, sal, m, bm, req.user.loja_id);
-    res.status(201).json({ id: result.lastInsertRowid, nome, telefone: telefone||null, percentual_comissao: perc, meta: m, bonus_meta: bm });
+        'INSERT INTO vendedores (nome, telefone, percentual_comissao, percentual_plantao, salario_base, meta, bonus_meta, tecnico, loja_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run(nome, telefone||null, perc, percP, sal, m, bm, tec, req.user.loja_id);
+    res.status(201).json({ id: result.lastInsertRowid, nome, telefone: telefone||null, percentual_comissao: perc, percentual_plantao: percP, meta: m, bonus_meta: bm, tecnico: tec });
 });
 
 router.put('/:id', (req, res) => {
-    const { nome, telefone, percentual_comissao, salario_base, meta, bonus_meta } = req.body;
+    const { nome, telefone, percentual_comissao, percentual_plantao, salario_base, meta, bonus_meta, tecnico, is_admin, pode_trabalhar } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
-    const perc = parseFloat(percentual_comissao) || 0;
-    const m    = parseFloat(meta) || 0;
-    const bm   = parseFloat(bonus_meta) || 0;
+    const perc  = parseFloat(percentual_comissao) || 0;
+    const percP = parseFloat(percentual_plantao) || 0;
+    const m     = parseFloat(meta) || 0;
+    const bm    = parseFloat(bonus_meta) || 0;
+    const tec   = tecnico ? 1 : 0;
+    const adm   = is_admin ? 1 : 0;
+    const trab  = pode_trabalhar !== undefined ? (pode_trabalhar ? 1 : 0) : 1;
 
     if (salario_base !== undefined) {
         const sal = parseFloat(salario_base) || 0;
-        db.prepare('UPDATE vendedores SET nome=?,telefone=?,percentual_comissao=?,salario_base=?,meta=?,bonus_meta=? WHERE id=? AND loja_id=?')
-            .run(nome, telefone||null, perc, sal, m, bm, req.params.id, req.user.loja_id);
+        db.prepare('UPDATE vendedores SET nome=?,telefone=?,percentual_comissao=?,percentual_plantao=?,salario_base=?,meta=?,bonus_meta=?,tecnico=?,is_admin=?,pode_trabalhar=? WHERE id=? AND loja_id=?')
+            .run(nome, telefone||null, perc, percP, sal, m, bm, tec, adm, trab, req.params.id, req.user.loja_id);
     } else {
-        db.prepare('UPDATE vendedores SET nome=?,telefone=?,percentual_comissao=?,meta=?,bonus_meta=? WHERE id=? AND loja_id=?')
-            .run(nome, telefone||null, perc, m, bm, req.params.id, req.user.loja_id);
+        db.prepare('UPDATE vendedores SET nome=?,telefone=?,percentual_comissao=?,percentual_plantao=?,meta=?,bonus_meta=?,tecnico=?,is_admin=?,pode_trabalhar=? WHERE id=? AND loja_id=?')
+            .run(nome, telefone||null, perc, percP, m, bm, tec, adm, trab, req.params.id, req.user.loja_id);
     }
     res.json({ ok: true });
 });

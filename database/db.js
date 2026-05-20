@@ -259,6 +259,8 @@ function migrate() {
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN orcamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN is_plantao INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN custo_materiais REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendedores ADD COLUMN percentual_plantao REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE produtos ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_vales REAL NOT NULL DEFAULT 0'); } catch (_) {}
@@ -404,6 +406,8 @@ function migrate() {
   addCol('vendedores', 'email',           'TEXT');
   addCol('vendedores', 'senha',           'TEXT');
   addCol('vendedores', 'expo_push_token', 'TEXT');
+  addCol('vendedores', 'is_admin',        'INTEGER NOT NULL DEFAULT 0');
+  addCol('vendedores', 'pode_trabalhar',  'INTEGER NOT NULL DEFAULT 1');
 
   // Estoque por sub-usuário
   db.exec(`

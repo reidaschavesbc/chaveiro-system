@@ -101,6 +101,11 @@ export default function OSListScreen({ navigation, onLogout }) {
           {funcionario && <Text style={s.headerSub}>Olá, {funcionario.nome.split(' ')[0]}!</Text>}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {funcionario?.is_admin && (
+            <TouchableOpacity onPress={() => navigation.navigate('Admin')} style={[s.buscaBtn, { backgroundColor: '#7c3aed22' }]}>
+              <Text style={s.buscaBtnText}>👑</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity onPress={() => navigation.navigate('Busca')} style={s.buscaBtn}>
             <Text style={s.buscaBtnText}>🔍</Text>
           </TouchableOpacity>

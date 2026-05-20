@@ -14,31 +14,54 @@ async function vendedores(el) {
           <label>WhatsApp <span style="color:#64748b;font-weight:400;font-size:12px">(para notificações de OS)</span></label>
           <input type="text" id="vendedor-telefone" oninput="mascaraTelefone(this)">
         </div>
-        <div class="form-group">
-          <label>Comissão (%) <span style="color:#64748b;font-weight:400;font-size:12px">(sobre OS)</span></label>
-          <input type="number" id="vendedor-comissao" min="0" max="100" step="0.1">
+        <div class="form-group form-full" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="checkbox" id="vendedor-tecnico" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer">
+          <label for="vendedor-tecnico" style="margin:0;cursor:pointer;font-weight:500">É técnico <span style="color:#64748b;font-weight:400;font-size:12px">(aparece na lista de técnicos ao criar OS)</span></label>
         </div>
-        <div class="form-group">
-          <label>Meta Mensal (R$) <span style="color:#64748b;font-weight:400;font-size:12px">(opcional)</span></label>
-          <input type="number" id="vendedor-meta" min="0" step="0.01">
+        <div class="form-group form-full" style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <input type="checkbox" id="vendedor-admin" style="width:18px;height:18px;accent-color:#7c3aed;cursor:pointer" onchange="toggleAdminOpts()">
+          <label for="vendedor-admin" style="margin:0;cursor:pointer;font-weight:500">👑 Admin App <span style="color:#64748b;font-weight:400;font-size:12px">(acesso ao painel administrativo no app)</span></label>
         </div>
-        <div class="form-group">
-          <label>Bônus por Meta (R$) <span style="color:#64748b;font-weight:400;font-size:12px">(ao atingir meta)</span></label>
-          <input type="number" id="vendedor-bonus" min="0" step="0.01">
+        <div class="form-group form-full" id="vendedor-trabalhar-wrap" style="display:none;align-items:center;gap:10px;margin-top:4px;padding-left:28px">
+          <input type="checkbox" id="vendedor-pode-trabalhar" style="width:18px;height:18px;accent-color:#10b981;cursor:pointer" checked>
+          <label for="vendedor-pode-trabalhar" style="margin:0;cursor:pointer;font-weight:500">Pode receber OS <span style="color:#64748b;font-weight:400;font-size:12px">(desmarque para admin somente visualização)</span></label>
         </div>
       </div>
 
-      <!-- Salário: só aparece na edição e requer senha do gerente -->
-      <div id="vendedor-salario-area" style="display:none;background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;padding:14px 16px;margin-top:4px;margin-bottom:8px">
-        <div style="font-size:12px;font-weight:600;color:#6366f1;margin-bottom:10px">🔒 CAMPO RESTRITO — SALÁRIO BASE</div>
-        <div id="vendedor-salario-locked" style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:22px;letter-spacing:3px;color:#94a3b8">●●●●●●</span>
-          <button type="button" onclick="revelarSalario()" style="font-size:12px;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;cursor:pointer">🔓 Revelar / Editar</button>
+      <!-- Campos restritos: Comissão, Meta, Bônus, % Plantão, Salário -->
+      <div id="vendedor-restrito-area" style="display:none;background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;padding:14px 16px;margin-top:4px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;color:#6366f1">🔒 CAMPOS RESTRITOS — FINANCEIRO</div>
+          <div id="vendedor-restrito-locked-btn">
+            <button type="button" onclick="revelarRestrito()" style="font-size:12px;color:#2563eb;background:none;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;cursor:pointer">🔓 Revelar / Editar</button>
+          </div>
         </div>
-        <div id="vendedor-salario-edit" style="display:none">
-          <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Salário Base (R$)</label>
-          <input type="number" id="vendedor-salario" min="0" step="0.01"
-                 style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:200px;font-size:14px;outline:none">
+        <div id="vendedor-restrito-locked" style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          <span style="font-size:22px;letter-spacing:3px;color:#94a3b8">●●●●●●</span>
+        </div>
+        <div id="vendedor-restrito-edit" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Comissão OS (%) <span style="color:#64748b;font-size:11px">(sobre OS normais)</span></label>
+              <input type="number" id="vendedor-comissao" min="0" max="100" step="0.1" style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:100%;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">🌙 Comissão Plantão (%) <span style="color:#64748b;font-size:11px">(sobre OS de plantão)</span></label>
+              <input type="number" id="vendedor-plantao" min="0" max="100" step="0.1" style="border:1.5px solid #7c3aed;border-radius:8px;padding:8px 12px;width:100%;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Meta Mensal (R$)</label>
+              <input type="number" id="vendedor-meta" min="0" step="0.01" style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:100%;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Bônus por Meta (R$)</label>
+              <input type="number" id="vendedor-bonus" min="0" step="0.01" style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:100%;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+            <div>
+              <label style="font-size:12px;color:#475569;margin-bottom:4px;display:block">Salário Base (R$)</label>
+              <input type="number" id="vendedor-salario" min="0" step="0.01" style="border:1.5px solid #6366f1;border-radius:8px;padding:8px 12px;width:100%;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+          </div>
         </div>
       </div>
 
@@ -60,10 +83,11 @@ async function carregarVendedores() {
   const el = document.getElementById('lista-vendedores');
   if (!list.length) { el.innerHTML = '<p class="text-center text-muted">Nenhum funcionário cadastrado</p>'; return; }
   el.innerHTML = `<div class="table-scroll"><table style="min-width:600px">
-    <thead><tr><th>Nome</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Nome</th><th>Técnico</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Admin</th><th>Ações</th></tr></thead>
     <tbody>${list.map(v => `
       <tr>
         <td>${v.nome}</td>
+        <td>${v.tecnico ? `<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">✔ Técnico</span>` : `<span class="text-muted" style="font-size:12px">—</span>`}</td>
         <td>${v.telefone
           ? `<span style="color:#16a34a;font-size:12px">✔ ${v.telefone}</span>`
           : `<span class="text-muted" style="font-size:12px">—</span>`}
@@ -86,7 +110,12 @@ async function carregarVendedores() {
             : `<span class="text-muted" style="font-size:12px">—</span>`}
         </td>
         <td>
-          <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarVendedor(${v.id},'${escHtml(v.nome)}','${escHtml(v.telefone||'')}',${v.percentual_comissao||0},${v.meta||0},${v.bonus_meta||0},${v.salario_base||0})">
+          ${v.is_admin
+            ? `<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">👑 ${v.pode_trabalhar !== 0 ? 'Admin' : 'Admin s/ OS'}</span>`
+            : `<span class="text-muted" style="font-size:12px">—</span>`}
+        </td>
+        <td>
+          <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarVendedor(${v.id},'${escHtml(v.nome)}','${escHtml(v.telefone||'')}',${v.percentual_comissao||0},${v.percentual_plantao||0},${v.meta||0},${v.bonus_meta||0},${v.salario_base||0},${v.tecnico||0},${v.is_admin||0},${v.pode_trabalhar!==0?1:0})">
             <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
           </button>
           <button class="btn btn-sm btn-secondary btn-icon" title="Acesso App" onclick="abrirAcessoApp(${v.id},'${escHtml(v.nome)}','${escHtml(v.email||'')}')">📱</button>
@@ -99,37 +128,46 @@ async function carregarVendedores() {
 
 function escHtml(s) { return (s || '').replace(/'/g, "\\'"); }
 
-function editarVendedor(id, nome, telefone, percentual, meta, bonus_meta, salario_base) {
+function toggleAdminOpts() {
+  const isAdmin = document.getElementById('vendedor-admin').checked;
+  document.getElementById('vendedor-trabalhar-wrap').style.display = isAdmin ? 'flex' : 'none';
+}
+
+function editarVendedor(id, nome, telefone, percentual, percentual_plantao, meta, bonus_meta, salario_base, tecnico, is_admin, pode_trabalhar) {
   document.getElementById('vendedor-id').value = id;
   document.getElementById('vendedor-nome').value = nome;
   document.getElementById('vendedor-telefone').value = aplicarMascaraTelefone(telefone);
-  document.getElementById('vendedor-comissao').value = percentual || '';
-  document.getElementById('vendedor-meta').value = meta || '';
-  document.getElementById('vendedor-bonus').value = bonus_meta || '';
+  document.getElementById('vendedor-tecnico').checked = !!tecnico;
+  document.getElementById('vendedor-admin').checked = !!is_admin;
+  document.getElementById('vendedor-pode-trabalhar').checked = pode_trabalhar !== 0;
+  toggleAdminOpts();
   document.getElementById('btn-cancelar-vendedor').style.display = 'inline-flex';
 
-  // Guarda salário sem expor
-  window._vendedorSalarioBase = salario_base || 0;
+  // Guarda valores restritos sem expor
+  window._vendedorRestrito = { percentual, percentual_plantao, meta, bonus_meta, salario_base: salario_base || 0 };
   document.getElementById('vendedor-salario-revelado').value = '0';
 
-  // Mostra área de salário (restrita)
-  const areaEl = document.getElementById('vendedor-salario-area');
-  areaEl.style.display = '';
-  document.getElementById('vendedor-salario-locked').style.display = 'flex';
-  document.getElementById('vendedor-salario-edit').style.display = 'none';
-  document.getElementById('vendedor-salario').value = '';
+  // Mostra área restrita bloqueada
+  const area = document.getElementById('vendedor-restrito-area');
+  area.style.display = '';
+  document.getElementById('vendedor-restrito-locked').style.display = 'flex';
+  document.getElementById('vendedor-restrito-edit').style.display = 'none';
 
   document.getElementById('vendedor-nome').focus();
 }
 
-async function revelarSalario() {
-  const ok = await modalSenhaGerente('Salário Restrito', 'O campo de salário é confidencial. Digite a senha do gerente para revelar.');
+async function revelarRestrito() {
+  const ok = await modalSenhaGerente('Campos Restritos', 'Esses campos são confidenciais. Digite a senha do gerente para revelar.');
   if (!ok) return;
-  document.getElementById('vendedor-salario').value = window._vendedorSalarioBase || 0;
-  document.getElementById('vendedor-salario-locked').style.display = 'none';
-  document.getElementById('vendedor-salario-edit').style.display = '';
+  const r = window._vendedorRestrito || {};
+  document.getElementById('vendedor-comissao').value = r.percentual || '';
+  document.getElementById('vendedor-plantao').value  = r.percentual_plantao || '';
+  document.getElementById('vendedor-meta').value     = r.meta || '';
+  document.getElementById('vendedor-bonus').value    = r.bonus_meta || '';
+  document.getElementById('vendedor-salario').value  = r.salario_base || '';
+  document.getElementById('vendedor-restrito-locked').style.display = 'none';
+  document.getElementById('vendedor-restrito-edit').style.display = '';
   document.getElementById('vendedor-salario-revelado').value = '1';
-  document.getElementById('vendedor-salario').focus();
 }
 
 function cancelarEdicaoVendedor() {
@@ -137,28 +175,38 @@ function cancelarEdicaoVendedor() {
   document.getElementById('vendedor-nome').value = '';
   document.getElementById('vendedor-telefone').value = '';
   document.getElementById('vendedor-comissao').value = '';
+  document.getElementById('vendedor-plantao').value = '';
   document.getElementById('vendedor-meta').value = '';
   document.getElementById('vendedor-bonus').value = '';
+  document.getElementById('vendedor-tecnico').checked = false;
+  document.getElementById('vendedor-admin').checked = false;
+  document.getElementById('vendedor-pode-trabalhar').checked = true;
+  document.getElementById('vendedor-trabalhar-wrap').style.display = 'none';
   document.getElementById('vendedor-salario-revelado').value = '0';
-  document.getElementById('vendedor-salario-area').style.display = 'none';
+  document.getElementById('vendedor-restrito-area').style.display = 'none';
   document.getElementById('btn-cancelar-vendedor').style.display = 'none';
-  window._vendedorSalarioBase = 0;
+  window._vendedorRestrito = {};
 }
 
 async function salvarVendedor() {
   const id = document.getElementById('vendedor-id').value;
   const nome = document.getElementById('vendedor-nome').value;
   const telefone = document.getElementById('vendedor-telefone').value;
-  const percentual_comissao = document.getElementById('vendedor-comissao').value;
-  const meta = document.getElementById('vendedor-meta').value;
-  const bonus_meta = document.getElementById('vendedor-bonus').value;
+  const tecnico = document.getElementById('vendedor-tecnico').checked ? 1 : 0;
+  const is_admin = document.getElementById('vendedor-admin').checked ? 1 : 0;
+  const pode_trabalhar = document.getElementById('vendedor-pode-trabalhar').checked ? 1 : 0;
   const revelado = document.getElementById('vendedor-salario-revelado').value === '1';
-  const salario_base = revelado ? (document.getElementById('vendedor-salario').value || 0) : undefined;
 
   if (!nome) return toast('Nome é obrigatório', 'warning');
   try {
-    const body = { nome, telefone, percentual_comissao, meta, bonus_meta };
-    if (salario_base !== undefined) body.salario_base = salario_base;
+    const body = { nome, telefone, tecnico, is_admin, pode_trabalhar: is_admin ? pode_trabalhar : 1 };
+    if (revelado) {
+      body.percentual_comissao = document.getElementById('vendedor-comissao').value || 0;
+      body.percentual_plantao  = document.getElementById('vendedor-plantao').value  || 0;
+      body.meta                = document.getElementById('vendedor-meta').value      || 0;
+      body.bonus_meta          = document.getElementById('vendedor-bonus').value     || 0;
+      body.salario_base        = document.getElementById('vendedor-salario').value   || 0;
+    }
 
     if (id) {
       await api('PUT', `/vendedores/${id}`, body);
@@ -168,9 +216,6 @@ async function salvarVendedor() {
       await api('POST', '/vendedores', body);
       document.getElementById('vendedor-nome').value = '';
       document.getElementById('vendedor-telefone').value = '';
-      document.getElementById('vendedor-comissao').value = '';
-      document.getElementById('vendedor-meta').value = '';
-      document.getElementById('vendedor-bonus').value = '';
       toast('Funcionário cadastrado!');
     }
     carregarVendedores();

@@ -23,6 +23,7 @@ import OSListScreen from './screens/OSListScreen';
 import OSDetalheScreen from './screens/OSDetalheScreen';
 import OSNovaScreen from './screens/OSNovaScreen';
 import BuscaScreen from './screens/BuscaScreen';
+import AdminScreen from './screens/AdminScreen';
 import api from './services/api';
 
 Notifications.setNotificationHandler({
@@ -136,6 +137,11 @@ export default function App() {
             name="Busca"
             component={BuscaScreen}
             options={{ title: '🔍 Consulta de Preços', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
+          />
+          <Stack.Screen
+            name="Admin"
+            component={AdminScreen}
+            options={{ title: '👑 Painel Admin', headerBackTitle: 'Voltar', headerTintColor: '#7c3aed' }}
           />
         </Stack.Navigator>
       ) : (
