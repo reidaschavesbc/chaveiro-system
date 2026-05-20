@@ -161,10 +161,10 @@ function migrate() {
   `);
 
   // Seed admin user if not exists
-  const admin = db.prepare('SELECT id FROM usuarios WHERE email = ?').get('admin');
+  const admin = db.prepare("SELECT id FROM usuarios WHERE perfil = 'admin'").get();
   if (!admin) {
     const hash = bcrypt.hashSync('admin123', 10);
-    db.prepare("INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)").run('Administrador', 'admin', hash, 'admin');
+    db.prepare("INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)").run('Administrador', 'chaveiro', hash, 'admin');
   }
 
 
