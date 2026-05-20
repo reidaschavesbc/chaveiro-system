@@ -16,7 +16,7 @@ async function vendedores(el) {
         </div>
         <div class="form-group form-full" style="display:flex;align-items:center;gap:10px;margin-top:4px">
           <input type="checkbox" id="vendedor-tecnico" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer">
-          <label for="vendedor-tecnico" style="margin:0;cursor:pointer;font-weight:500">É técnico <span style="color:#64748b;font-weight:400;font-size:12px">(aparece na lista de técnicos ao criar OS)</span></label>
+          <label for="vendedor-tecnico" style="margin:0;cursor:pointer;font-weight:500">Técnico</label>
         </div>
       </div>
 

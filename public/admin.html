@@ -1052,7 +1052,7 @@
     });
     const content = document.getElementById('fin-content');
     content.innerHTML = '<div class="fin-loading">Carregando...</div>';
-    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque };
+    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque, funcionarios: finFuncionarios };
     if (fns[tab]) fns[tab](content);
   }
 
