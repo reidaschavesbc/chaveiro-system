@@ -62,6 +62,21 @@ router.get('/me', (req, res) => {
     }
 });
 
+// POST /api/auth/acesso-loja — admin gera token com acesso financeiro a uma loja
+router.post('/acesso-loja', require('../middleware/auth'), (req, res) => {
+    if (req.user.perfil !== 'admin') return res.status(403).json({ error: 'Acesso restrito a administradores' });
+    const { loja_id } = req.body;
+    if (!loja_id) return res.status(400).json({ error: 'loja_id é obrigatório' });
+    const loja = db.prepare('SELECT id, nome FROM lojas WHERE id = ?').get(loja_id);
+    if (!loja) return res.status(404).json({ error: 'Loja não encontrada' });
+    const token = jwt.sign(
+        { id: req.user.id, nome: req.user.nome, email: req.user.email, perfil: 'admin', loja_id: loja.id, principal: 1 },
+        process.env.JWT_SECRET,
+        { expiresIn: '4h' }
+    );
+    res.json({ token, loja });
+});
+
 // PUT /api/auth/senha (change password)
 router.put('/senha', require('../middleware/auth'), (req, res) => {
     const { senha_atual, senha_nova } = req.body;
@@ -69,6 +84,26 @@ router.put('/senha', require('../middleware/auth'), (req, res) => {
     if (!bcrypt.compareSync(senha_atual, user.senha)) return res.status(400).json({ error: 'Senha atual incorreta' });
     const hash = bcrypt.hashSync(senha_nova, 10);
     db.prepare('UPDATE usuarios SET senha = ? WHERE id = ?').run(hash, req.user.id);
+    res.json({ ok: true });
+});
+
+// PUT /api/auth/admin-senha — troca senha do admin (autenticado pelo token do painel admin)
+router.put('/admin-senha', (req, res) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Não autenticado' });
+    let decoded;
+    try { decoded = require('jsonwebtoken').verify(token, process.env.JWT_SECRET); }
+    catch { return res.status(401).json({ error: 'Token inválido' }); }
+    if (decoded.perfil !== 'admin') return res.status(403).json({ error: 'Acesso negado' });
+
+    const { senha_atual, senha_nova } = req.body;
+    if (!senha_atual || !senha_nova) return res.status(400).json({ error: 'Preencha todos os campos' });
+    if (senha_nova.length < 6) return res.status(400).json({ error: 'Senha nova deve ter pelo menos 6 caracteres' });
+
+    const user = db.prepare('SELECT * FROM usuarios WHERE id = ? AND perfil = ?').get(decoded.id, 'admin');
+    if (!user || !bcrypt.compareSync(senha_atual, user.senha)) return res.status(400).json({ error: 'Senha atual incorreta' });
+
+    db.prepare('UPDATE usuarios SET senha = ? WHERE id = ?').run(bcrypt.hashSync(senha_nova, 10), user.id);
     res.json({ ok: true });
 });
 

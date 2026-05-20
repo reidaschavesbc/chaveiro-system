@@ -355,6 +355,7 @@
         <div class="topbar-avatar" id="p-avatar">A</div>
         <span class="topbar-nome" id="p-nome">Admin</span>
       </div>
+      <button onclick="abrirConfig()" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;margin-right:6px">⚙️ Config</button>
       <button class="btn-sair" onclick="sair()">Sair</button>
     </div>
   </div>
@@ -412,6 +413,39 @@
   </div>
   <div class="fin-body" id="fin-content">
     <div class="fin-loading">Carregando...</div>
+  </div>
+</div>
+
+<!-- ── MODAL CONFIG ───────────────────────────────────────────────────────── -->
+<div id="modal-config" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:16px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;padding-bottom:16px">
+      <span style="font-size:16px;font-weight:700;color:#f1f5f9">⚙️ Configurações</span>
+      <button onclick="fecharConfig()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8">✕</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Alterar Senha do Admin</div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Senha atual</label>
+        <input type="password" id="cfg-senha-atual" autocomplete="current-password"
+          style="width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:14px;color:#f1f5f9;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Nova senha</label>
+        <input type="password" id="cfg-senha-nova" autocomplete="new-password"
+          style="width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:14px;color:#f1f5f9;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Confirmar nova senha</label>
+        <input type="password" id="cfg-senha-conf" autocomplete="new-password"
+          style="width:100%;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:14px;color:#f1f5f9;outline:none;box-sizing:border-box">
+      </div>
+      <div id="cfg-erro" style="color:#f87171;font-size:13px;margin-bottom:10px;display:none"></div>
+      <button onclick="salvarSenhaAdmin()"
+        style="width:100%;padding:12px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">
+        Alterar Senha
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1718,6 +1752,42 @@
       statusEl.textContent = 'Salvo ✔';
       setTimeout(() => { statusEl.textContent = ''; }, 2000);
     } catch(e) { chk.checked = !chk.checked; statusEl.textContent = 'Erro'; }
+  }
+
+  // ── Config / Senha Admin ─────────────────────────────────────────────────
+  function abrirConfig() {
+    document.getElementById('cfg-senha-atual').value = '';
+    document.getElementById('cfg-senha-nova').value = '';
+    document.getElementById('cfg-senha-conf').value = '';
+    document.getElementById('cfg-erro').style.display = 'none';
+    document.getElementById('modal-config').style.display = 'flex';
+    setTimeout(() => document.getElementById('cfg-senha-atual').focus(), 50);
+  }
+
+  function fecharConfig() {
+    document.getElementById('modal-config').style.display = 'none';
+  }
+
+  async function salvarSenhaAdmin() {
+    const atual = document.getElementById('cfg-senha-atual').value;
+    const nova  = document.getElementById('cfg-senha-nova').value;
+    const conf  = document.getElementById('cfg-senha-conf').value;
+    const erroEl = document.getElementById('cfg-erro');
+    erroEl.style.display = 'none';
+    if (!atual || !nova || !conf) { erroEl.textContent = 'Preencha todos os campos'; erroEl.style.display = ''; return; }
+    if (nova !== conf) { erroEl.textContent = 'As senhas não coincidem'; erroEl.style.display = ''; return; }
+    if (nova.length < 6) { erroEl.textContent = 'Senha deve ter pelo menos 6 caracteres'; erroEl.style.display = ''; return; }
+    try {
+      const res = await fetch(API + '/auth/admin-senha', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+        body: JSON.stringify({ senha_atual: atual, senha_nova: nova })
+      });
+      const data = await res.json();
+      if (!res.ok) { erroEl.textContent = data.error || 'Erro ao alterar senha'; erroEl.style.display = ''; return; }
+      fecharConfig();
+      toast('Senha alterada com sucesso!');
+    } catch(e) { erroEl.textContent = 'Erro de conexão'; erroEl.style.display = ''; }
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
