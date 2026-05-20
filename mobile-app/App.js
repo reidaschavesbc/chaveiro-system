@@ -53,9 +53,12 @@ export default function App() {
   async function verificarAtualizacao() {
     try {
       const serverUrl = api.defaults.baseURL.replace('/api/app', '');
-      const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: AbortSignal.timeout(5000) });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: controller.signal });
+      clearTimeout(timer);
       const { version: versaoServidor } = await resp.json();
-      const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || '1.0.0';
+      const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
       if (versaoServidor && versaoServidor !== versaoApp) {
         Alert.alert(
           'Atualização disponível',
