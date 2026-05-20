@@ -18,14 +18,6 @@ async function vendedores(el) {
           <input type="checkbox" id="vendedor-tecnico" style="width:18px;height:18px;accent-color:#2563eb;cursor:pointer">
           <label for="vendedor-tecnico" style="margin:0;cursor:pointer;font-weight:500">É técnico <span style="color:#64748b;font-weight:400;font-size:12px">(aparece na lista de técnicos ao criar OS)</span></label>
         </div>
-        <div class="form-group form-full" style="display:flex;align-items:center;gap:10px;margin-top:4px">
-          <input type="checkbox" id="vendedor-admin" style="width:18px;height:18px;accent-color:#7c3aed;cursor:pointer" onchange="toggleAdminOpts()">
-          <label for="vendedor-admin" style="margin:0;cursor:pointer;font-weight:500">👑 Admin App <span style="color:#64748b;font-weight:400;font-size:12px">(acesso ao painel administrativo no app)</span></label>
-        </div>
-        <div class="form-group form-full" id="vendedor-trabalhar-wrap" style="display:none;align-items:center;gap:10px;margin-top:4px;padding-left:28px">
-          <input type="checkbox" id="vendedor-pode-trabalhar" style="width:18px;height:18px;accent-color:#10b981;cursor:pointer" checked>
-          <label for="vendedor-pode-trabalhar" style="margin:0;cursor:pointer;font-weight:500">Pode receber OS <span style="color:#64748b;font-weight:400;font-size:12px">(desmarque para admin somente visualização)</span></label>
-        </div>
       </div>
 
       <!-- Campos restritos: Comissão, Meta, Bônus, % Plantão, Salário -->
@@ -83,7 +75,7 @@ async function carregarVendedores() {
   const el = document.getElementById('lista-vendedores');
   if (!list.length) { el.innerHTML = '<p class="text-center text-muted">Nenhum funcionário cadastrado</p>'; return; }
   el.innerHTML = `<div class="table-scroll"><table style="min-width:600px">
-    <thead><tr><th>Nome</th><th>Técnico</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Admin</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Nome</th><th>Técnico</th><th>WhatsApp</th><th>Comissão</th><th>Meta</th><th>Bônus</th><th>App</th><th>Ações</th></tr></thead>
     <tbody>${list.map(v => `
       <tr>
         <td>${v.nome}</td>
@@ -110,12 +102,7 @@ async function carregarVendedores() {
             : `<span class="text-muted" style="font-size:12px">—</span>`}
         </td>
         <td>
-          ${v.is_admin
-            ? `<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">👑 ${v.pode_trabalhar !== 0 ? 'Admin' : 'Admin s/ OS'}</span>`
-            : `<span class="text-muted" style="font-size:12px">—</span>`}
-        </td>
-        <td>
-          <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarVendedor(${v.id},'${escHtml(v.nome)}','${escHtml(v.telefone||'')}',${v.percentual_comissao||0},${v.percentual_plantao||0},${v.meta||0},${v.bonus_meta||0},${v.salario_base||0},${v.tecnico||0},${v.is_admin||0},${v.pode_trabalhar!==0?1:0})">
+          <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarVendedor(${v.id},'${escHtml(v.nome)}','${escHtml(v.telefone||'')}',${v.percentual_comissao||0},${v.percentual_plantao||0},${v.meta||0},${v.bonus_meta||0},${v.salario_base||0},${v.tecnico||0})">
             <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
           </button>
           <button class="btn btn-sm btn-secondary btn-icon" title="Acesso App" onclick="abrirAcessoApp(${v.id},'${escHtml(v.nome)}','${escHtml(v.email||'')}')">📱</button>
@@ -128,19 +115,11 @@ async function carregarVendedores() {
 
 function escHtml(s) { return (s || '').replace(/'/g, "\\'"); }
 
-function toggleAdminOpts() {
-  const isAdmin = document.getElementById('vendedor-admin').checked;
-  document.getElementById('vendedor-trabalhar-wrap').style.display = isAdmin ? 'flex' : 'none';
-}
-
-function editarVendedor(id, nome, telefone, percentual, percentual_plantao, meta, bonus_meta, salario_base, tecnico, is_admin, pode_trabalhar) {
+function editarVendedor(id, nome, telefone, percentual, percentual_plantao, meta, bonus_meta, salario_base, tecnico) {
   document.getElementById('vendedor-id').value = id;
   document.getElementById('vendedor-nome').value = nome;
   document.getElementById('vendedor-telefone').value = aplicarMascaraTelefone(telefone);
   document.getElementById('vendedor-tecnico').checked = !!tecnico;
-  document.getElementById('vendedor-admin').checked = !!is_admin;
-  document.getElementById('vendedor-pode-trabalhar').checked = pode_trabalhar !== 0;
-  toggleAdminOpts();
   document.getElementById('btn-cancelar-vendedor').style.display = 'inline-flex';
 
   // Guarda valores restritos sem expor
@@ -179,9 +158,6 @@ function cancelarEdicaoVendedor() {
   document.getElementById('vendedor-meta').value = '';
   document.getElementById('vendedor-bonus').value = '';
   document.getElementById('vendedor-tecnico').checked = false;
-  document.getElementById('vendedor-admin').checked = false;
-  document.getElementById('vendedor-pode-trabalhar').checked = true;
-  document.getElementById('vendedor-trabalhar-wrap').style.display = 'none';
   document.getElementById('vendedor-salario-revelado').value = '0';
   document.getElementById('vendedor-restrito-area').style.display = 'none';
   document.getElementById('btn-cancelar-vendedor').style.display = 'none';
@@ -193,13 +169,11 @@ async function salvarVendedor() {
   const nome = document.getElementById('vendedor-nome').value;
   const telefone = document.getElementById('vendedor-telefone').value;
   const tecnico = document.getElementById('vendedor-tecnico').checked ? 1 : 0;
-  const is_admin = document.getElementById('vendedor-admin').checked ? 1 : 0;
-  const pode_trabalhar = document.getElementById('vendedor-pode-trabalhar').checked ? 1 : 0;
   const revelado = document.getElementById('vendedor-salario-revelado').value === '1';
 
   if (!nome) return toast('Nome é obrigatório', 'warning');
   try {
-    const body = { nome, telefone, tecnico, is_admin, pode_trabalhar: is_admin ? pode_trabalhar : 1 };
+    const body = { nome, telefone, tecnico };
     if (revelado) {
       body.percentual_comissao = document.getElementById('vendedor-comissao').value || 0;
       body.percentual_plantao  = document.getElementById('vendedor-plantao').value  || 0;

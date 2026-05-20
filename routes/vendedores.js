@@ -51,6 +51,17 @@ router.delete('/:id', (req, res) => {
     res.json({ ok: true });
 });
 
+// PUT /api/vendedores/:id/admin — altera permissões admin (só admin do sistema)
+router.put('/:id/admin', (req, res) => {
+    if (!req.user.principal) return res.status(403).json({ error: 'Acesso negado' });
+    const { is_admin, pode_trabalhar } = req.body;
+    const v = db.prepare('SELECT id FROM vendedores WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    if (!v) return res.status(404).json({ error: 'Funcionário não encontrado' });
+    if (is_admin !== undefined) db.prepare('UPDATE vendedores SET is_admin = ? WHERE id = ? AND loja_id = ?').run(is_admin ? 1 : 0, req.params.id, req.user.loja_id);
+    if (pode_trabalhar !== undefined) db.prepare('UPDATE vendedores SET pode_trabalhar = ? WHERE id = ? AND loja_id = ?').run(pode_trabalhar ? 1 : 0, req.params.id, req.user.loja_id);
+    res.json({ ok: true });
+});
+
 // PUT /api/vendedores/:id/acesso-app — define email e senha para o app
 router.put('/:id/acesso-app', (req, res) => {
     const { email, senha } = req.body;

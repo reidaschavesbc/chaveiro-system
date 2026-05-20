@@ -399,15 +399,16 @@
     </div>
   </div>
   <div class="fin-tabs" id="fin-tabs">
-    <button class="fin-tab ativa" onclick="finNavegar('geral')">Geral</button>
-    <button class="fin-tab" onclick="finNavegar('os')">OS</button>
+    <button class="fin-tab ativa" onclick="finNavegar('geral')">📊 Geral</button>
+    <button class="fin-tab" onclick="finNavegar('os')">🔧 OS</button>
     <button class="fin-tab" onclick="finNavegar('plantao')">🌙 Plantão</button>
-    <button class="fin-tab" onclick="finNavegar('vendas')">Vendas</button>
-    <button class="fin-tab" onclick="finNavegar('areceber')">Cobranças</button>
-    <button class="fin-tab" onclick="finNavegar('comissoes')">Comissões</button>
-    <button class="fin-tab" onclick="finNavegar('gastos')">Gastos</button>
-    <button class="fin-tab" onclick="finNavegar('vales')">Vales</button>
-    <button class="fin-tab" onclick="finNavegar('estoque')">Estoque</button>
+    <button class="fin-tab" onclick="finNavegar('vendas')">🛒 Vendas</button>
+    <button class="fin-tab" onclick="finNavegar('areceber')">💰 Cobranças</button>
+    <button class="fin-tab" onclick="finNavegar('comissoes')">📈 Comissões</button>
+    <button class="fin-tab" onclick="finNavegar('gastos')">💸 Gastos</button>
+    <button class="fin-tab" onclick="finNavegar('vales')">🎫 Vales</button>
+    <button class="fin-tab" onclick="finNavegar('estoque')">📦 Estoque</button>
+    <button class="fin-tab" onclick="finNavegar('funcionarios')">👥 Funcionários</button>
   </div>
   <div class="fin-body" id="fin-content">
     <div class="fin-loading">Carregando...</div>
@@ -1163,34 +1164,63 @@
       if (di) url += 'data_inicio='+di+'&';
       if (df) url += 'data_fim='+df+'&';
       if (q)  url += 'q='+encodeURIComponent(q);
-      const rows = await reqLoja('GET', url);
-      const totalPeriodo = rows.reduce((s,o) => s+(o.valor||0), 0);
-      const concluidas   = rows.filter(o => o.status === 'concluida');
-      const abertas      = rows.filter(o => o.status === 'aberta' || o.status === 'em_andamento');
+      const [rows, vends] = await Promise.all([
+        reqLoja('GET', url),
+        reqLoja('GET', '/vendedores')
+      ]);
+      const vendMap = {};
+      vends.forEach(v => { vendMap[v.id] = v; });
+
+      const calcLucro = o => {
+        if (o.status !== 'concluida') return null;
+        const valor = o.valor || 0;
+        const custo = o.custo_materiais || 0;
+        const percPlantao = vendMap[o.vendedor_id]?.percentual_plantao || 0;
+        const comissao = valor * percPlantao / 100;
+        return { valor, custo, comissao, percPlantao, liquido: valor - custo - comissao };
+      };
+
+      const concluidas = rows.filter(o => o.status === 'concluida');
+      const abertas    = rows.filter(o => o.status === 'aberta' || o.status === 'em_andamento');
+      const totalBruto = concluidas.reduce((s,o) => s+(o.valor||0), 0);
+      const totalCusto = concluidas.reduce((s,o) => s+(o.custo_materiais||0), 0);
+      const totalComis = concluidas.reduce((s,o) => {
+        const v = o.valor||0; const p = vendMap[o.vendedor_id]?.percentual_plantao||0;
+        return s + v*p/100;
+      }, 0);
+      const totalLiq   = totalBruto - totalCusto - totalComis;
+
       el.innerHTML = `
         <div style="background:#3b0764;border:1px solid #6d28d9;border-radius:12px;padding:12px 16px;margin-bottom:16px;color:#e9d5ff;font-size:13px">
           🌙 <strong>Plantões</strong> são contabilizados separadamente e <strong>não entram no fechamento geral</strong>.
         </div>
         <div class="stat-grid" style="margin-bottom:16px">
-          <div class="stat-card destaque"><div class="stat-label">Total no período</div><div class="stat-val">${fmtV(totalPeriodo)}</div><div class="stat-sub">${rows.length} OS</div></div>
-          <div class="stat-card ok"><div class="stat-label">Concluídas</div><div class="stat-val">${concluidas.length}</div><div class="stat-sub">${fmtV(concluidas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
-          <div class="stat-card alerta"><div class="stat-label">Em aberto</div><div class="stat-val">${abertas.length}</div><div class="stat-sub">${fmtV(abertas.reduce((s,o)=>s+(o.valor||0),0))}</div></div>
+          <div class="stat-card destaque"><div class="stat-label">Faturado (concluídas)</div><div class="stat-val">${fmtV(totalBruto)}</div><div class="stat-sub">${concluidas.length} OS</div></div>
+          <div class="stat-card alerta"><div class="stat-label">Custo materiais</div><div class="stat-val">${fmtV(totalCusto)}</div><div class="stat-sub">abatido do lucro</div></div>
+          <div class="stat-card alerta"><div class="stat-label">Comissão plantão</div><div class="stat-val">${fmtV(totalComis)}</div><div class="stat-sub">abatido do lucro</div></div>
+          <div class="stat-card ok"><div class="stat-label">Lucro líquido</div><div class="stat-val">${fmtV(totalLiq)}</div><div class="stat-sub">${abertas.length} em aberto</div></div>
         </div>
         ${rows.length ? `
         <div class="fin-table-wrap">
           <table class="fin-table">
-            <thead><tr><th>Número</th><th>Cliente</th><th>Endereço</th><th>Funcionário</th><th>Status</th><th>Valor</th><th>Pagamento</th><th>Data</th></tr></thead>
-            <tbody>${rows.map(o => `
+            <thead><tr><th>Número</th><th>Cliente</th><th>Endereço</th><th>Funcionário</th><th>Status</th><th>Valor</th><th>Custo mat.</th><th>Comissão</th><th>Lucro</th><th>Data</th></tr></thead>
+            <tbody>${rows.map(o => {
+              const l = calcLucro(o);
+              return `
               <tr>
                 <td class="n">${o.numero} <span style="font-size:10px;background:#6d28d9;color:#e9d5ff;padding:1px 5px;border-radius:4px">🌙</span></td>
                 <td>${esc(o.cliente_nome||o.cliente_nome_avulso||'—')}</td>
                 <td style="font-size:12px;color:#94a3b8">${esc([o.cliente_avulso_rua,o.cliente_avulso_numero,o.cliente_avulso_cidade].filter(Boolean).join(', '))||'—'}</td>
-                <td>${esc(o.vendedor_nome||'—')}</td>
+                <td>${esc(o.vendedor_nome||'—')}${l&&l.percPlantao?`<br><span style="font-size:11px;color:#7c3aed">${l.percPlantao}% plantão</span>`:''}
+                </td>
                 <td><span class="st-badge st-${o.status}">${traduzStatus(o.status)}</span></td>
                 <td>${fmtV(o.valor)}</td>
-                <td>${esc(o.forma_pagamento||'—')}</td>
+                <td style="color:${o.custo_materiais>0?'#dc2626':'#94a3b8'}">${fmtV(o.custo_materiais||0)}</td>
+                <td style="color:${l&&l.comissao>0?'#d97706':'#94a3b8'}">${l ? fmtV(l.comissao) : '—'}</td>
+                <td style="font-weight:600;color:${l&&l.liquido>=0?'#059669':'#dc2626'}">${l ? fmtV(l.liquido) : '—'}</td>
                 <td>${fmtDH(o.data_entrada)}</td>
-              </tr>`).join('')}
+              </tr>`;
+            }).join('')}
             </tbody>
           </table>
         </div>` : '<div class="fin-empty">Nenhum plantão encontrado neste período</div>'}`;
@@ -1620,6 +1650,74 @@
           </tr>`).join('')}</tbody>
         </table></div>`;
     } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Funcionários ────────────────────────────────────────────────────
+  async function finFuncionarios(el) {
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const list = await reqLoja('GET', '/vendedores');
+      el.innerHTML = `
+        <div style="margin-bottom:16px;font-size:13px;color:#94a3b8;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px">
+          👑 Configure aqui quais funcionários têm acesso ao <strong style="color:#a78bfa">Painel Admin</strong> no app. Esta configuração é exclusiva desta tela.
+        </div>
+        <div class="fin-table-wrap"><table class="fin-table">
+          <thead><tr><th>Nome</th><th>App</th><th>Admin App</th><th>Pode receber OS</th><th>Ação</th></tr></thead>
+          <tbody id="admin-func-tbody">
+            ${list.map(v => `
+              <tr id="func-row-${v.id}">
+                <td style="font-weight:600">${esc(v.nome)}</td>
+                <td>${v.email ? `<span style="color:#34d399;font-size:12px">✔ ${esc(v.email)}</span>` : '<span style="color:#475569;font-size:12px">—</span>'}</td>
+                <td>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" onchange="adminToggleFuncionario(${v.id})" id="adm-chk-${v.id}" ${v.is_admin ? 'checked' : ''}
+                      style="width:18px;height:18px;accent-color:#7c3aed;cursor:pointer">
+                    ${v.is_admin ? '<span style="background:#f3e8ff;color:#7c3aed;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">👑 Admin</span>' : '<span style="color:#475569;font-size:12px">—</span>'}
+                  </label>
+                </td>
+                <td id="adm-trab-${v.id}">
+                  ${v.is_admin ? `
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                    <input type="checkbox" onchange="adminToggleTrabalhar(${v.id})" id="adm-trab-chk-${v.id}" ${v.pode_trabalhar !== 0 ? 'checked' : ''}
+                      style="width:18px;height:18px;accent-color:#10b981;cursor:pointer">
+                    <span style="font-size:12px;color:#94a3b8">${v.pode_trabalhar !== 0 ? 'Sim' : 'Não'}</span>
+                  </label>` : '<span style="color:#475569;font-size:12px">—</span>'}
+                </td>
+                <td id="adm-status-${v.id}" style="font-size:12px;color:#94a3b8"></td>
+              </tr>`).join('')}
+          </tbody>
+        </table></div>`;
+    } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function adminToggleFuncionario(id) {
+    const chk = document.getElementById(`adm-chk-${id}`);
+    const isAdmin = chk.checked ? 1 : 0;
+    const statusEl = document.getElementById(`adm-status-${id}`);
+    const trabEl = document.getElementById(`adm-trab-${id}`);
+    try {
+      await reqLoja('PUT', `/vendedores/${id}/admin`, { is_admin: isAdmin, pode_trabalhar: 1 });
+      statusEl.textContent = 'Salvo ✔';
+      trabEl.innerHTML = isAdmin ? `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" onchange="adminToggleTrabalhar(${id})" id="adm-trab-chk-${id}" checked
+            style="width:18px;height:18px;accent-color:#10b981;cursor:pointer">
+          <span style="font-size:12px;color:#94a3b8">Sim</span>
+        </label>` : '<span style="color:#475569;font-size:12px">—</span>';
+      setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    } catch(e) { chk.checked = !chk.checked; statusEl.textContent = 'Erro'; }
+  }
+
+  async function adminToggleTrabalhar(id) {
+    const chk = document.getElementById(`adm-trab-chk-${id}`);
+    const pode = chk.checked ? 1 : 0;
+    const statusEl = document.getElementById(`adm-status-${id}`);
+    try {
+      await reqLoja('PUT', `/vendedores/${id}/admin`, { pode_trabalhar: pode });
+      chk.nextElementSibling.textContent = pode ? 'Sim' : 'Não';
+      statusEl.textContent = 'Salvo ✔';
+      setTimeout(() => { statusEl.textContent = ''; }, 2000);
+    } catch(e) { chk.checked = !chk.checked; statusEl.textContent = 'Erro'; }
   }
 
   // ── Init ─────────────────────────────────────────────────────────────────
