@@ -242,10 +242,57 @@ ipcMain.on('retry-load', () => {
   }
 });
 
+function abrirPainelAdmin() {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    title: 'Painel Administrativo',
+    icon: path.join(__dirname, 'icon.png'),
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      partition: 'adm-' + Date.now(), // sessão isolada e única = nunca salva login
+    },
+    backgroundColor: '#0f172a',
+  });
+  win.loadURL(SERVER_URL + '/admin');
+  win.maximize();
+}
+
+function criarMenuBar() {
+  const template = [
+    {
+      label: 'Sistema',
+      submenu: [
+        { role: 'reload', label: 'Recarregar' },
+        { role: 'forceReload', label: 'Forçar Recarregar' },
+        { type: 'separator' },
+        { label: 'Sair', click: () => app.quit() },
+      ],
+    },
+    {
+      label: 'Visualizar',
+      submenu: [
+        { role: 'resetZoom', label: 'Zoom Padrão' },
+        { role: 'zoomIn', label: 'Aumentar Zoom' },
+        { role: 'zoomOut', label: 'Diminuir Zoom' },
+        { type: 'separator' },
+        { role: 'togglefullscreen', label: 'Tela Cheia' },
+      ],
+    },
+    {
+      label: '👑 ADM',
+      click: () => abrirPainelAdmin(),
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(() => {
   log('=== Sistema Chaveiro iniciando (servidor: ' + SERVER_URL + ') ===');
   createWindow();
   createTray();
+  criarMenuBar();
   setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 10000);
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 60 * 60 * 1000);
 });
