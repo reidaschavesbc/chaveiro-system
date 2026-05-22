@@ -123,10 +123,18 @@ export default function AdminScreen({ navigation }) {
                       : `Sem OS abertas · ${f.os_hoje} concluída(s) hoje`}
                   </Text>
                 </View>
-                <View style={[s.osBadge, { backgroundColor: f.os_abertas > 0 ? '#fef3c7' : '#f0fdf4' }]}>
-                  <Text style={[s.osBadgeNum, { color: f.os_abertas > 0 ? '#d97706' : '#16a34a' }]}>
-                    {f.os_abertas}
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    style={s.novaOsBtn}
+                    onPress={() => navigation.navigate('OSNova', { vendedor_id: f.id, vendedor_nome: f.nome })}
+                  >
+                    <Text style={s.novaOsBtnText}>+ OS</Text>
+                  </TouchableOpacity>
+                  <View style={[s.osBadge, { backgroundColor: f.os_abertas > 0 ? '#fef3c7' : '#f0fdf4' }]}>
+                    <Text style={[s.osBadgeNum, { color: f.os_abertas > 0 ? '#d97706' : '#16a34a' }]}>
+                      {f.os_abertas}
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))}
@@ -220,6 +228,11 @@ const s = StyleSheet.create({
   adminBadge: { fontSize: 14 },
   osBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   osBadgeNum: { fontSize: 18, fontWeight: '800' },
+  novaOsBtn: {
+    backgroundColor: '#2563eb', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  novaOsBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   filtroBtn: {
     paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
     backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0',

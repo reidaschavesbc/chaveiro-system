@@ -5,14 +5,19 @@ import {
 } from 'react-native';
 import api from '../services/api';
 
-export default function OSNovaScreen({ navigation }) {
+export default function OSNovaScreen({ navigation, route }) {
+  const vendedorId   = route?.params?.vendedor_id   || null;
+  const vendedorNome = route?.params?.vendedor_nome || null;
+
   const [isPlantao, setIsPlantao] = useState(false);
   const [chaveAuto, setChaveAuto] = useState(false);
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTel, setClienteTel] = useState('');
   const [rua, setRua] = useState('');
   const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
   const [cidade, setCidade] = useState('');
+  const [referencia, setReferencia] = useState('');
   const [descricao, setDescricao] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -31,10 +36,13 @@ export default function OSNovaScreen({ navigation }) {
         cliente_telefone_avulso: clienteTel.trim() || null,
         cliente_avulso_rua: rua.trim() || null,
         cliente_avulso_numero: numero.trim() || null,
+        cliente_avulso_complemento: complemento.trim() || null,
         cliente_avulso_cidade: cidade.trim() || null,
+        cliente_avulso_referencia: referencia.trim() || null,
         descricao: descricao.trim() || null,
         is_plantao: isPlantao,
         chave_auto: chaveAuto,
+        vendedor_id: vendedorId,
       });
       navigation.replace('OSDetalhe', { osId: data.id });
     } catch (e) {
@@ -47,6 +55,13 @@ export default function OSNovaScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={s.container} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+
+        {/* Banner funcionário (quando admin cria para alguém) */}
+        {vendedorNome && (
+          <View style={s.funcBanner}>
+            <Text style={s.funcBannerText}>👤 Para: <Text style={{ fontWeight: '700' }}>{vendedorNome}</Text></Text>
+          </View>
+        )}
 
         {/* Toggles */}
         <View style={s.togglesCard}>
@@ -106,17 +121,30 @@ export default function OSNovaScreen({ navigation }) {
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               style={[s.input, { flex: 1 }]}
-              placeholder="Número"
+              placeholder="Nº"
               value={numero}
               onChangeText={setNumero}
+              keyboardType="numeric"
             />
             <TextInput
               style={[s.input, { flex: 2 }]}
-              placeholder="Cidade"
-              value={cidade}
-              onChangeText={setCidade}
+              placeholder="Complemento (ap, bloco...)"
+              value={complemento}
+              onChangeText={setComplemento}
             />
           </View>
+          <TextInput
+            style={s.input}
+            placeholder="Cidade"
+            value={cidade}
+            onChangeText={setCidade}
+          />
+          <TextInput
+            style={s.input}
+            placeholder="Referência (perto de, cor da casa...)"
+            value={referencia}
+            onChangeText={setReferencia}
+          />
         </View>
 
         {!isPlantao && (
@@ -185,4 +213,9 @@ const s = StyleSheet.create({
   },
   btnCriarPlantao: { backgroundColor: '#7c3aed' },
   btnCriarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  funcBanner: {
+    backgroundColor: '#ede9fe', borderRadius: 10, padding: 12,
+    marginBottom: 14, borderLeftWidth: 3, borderLeftColor: '#7c3aed',
+  },
+  funcBannerText: { fontSize: 14, color: '#5b21b6' },
 });

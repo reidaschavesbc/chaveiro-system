@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import api from '../services/api';
 
-const SERVER = 'http://104.251.216.253:3002';
+const SERVER = api.defaults.baseURL.replace('/api/app', '');
 
 function fmtV(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
