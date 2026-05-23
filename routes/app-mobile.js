@@ -89,10 +89,14 @@ router.get('/os', authFuncionario, (req, res) => {
       FROM ordens_servico os
       LEFT JOIN clientes c ON os.cliente_id = c.id
       LEFT JOIN vendedores v ON os.vendedor_id = v.id
-      WHERE os.loja_id = ?
-        AND date(os.data_entrada) >= date('now', '-2 days', 'localtime')`;
+      WHERE os.loja_id = ?`;
     const params = [lojaAlvo];
-    if (status) { sql += ` AND os.status = ?`; params.push(status); }
+    if (status === 'concluida' || status === 'cancelada') {
+      sql += ` AND os.status = ? AND date(COALESCE(os.data_conclusao, os.data_entrada)) >= date('now', '-2 days', 'localtime')`;
+      params.push(status);
+    } else {
+      sql += ` AND os.status IN ('aberta', 'em_andamento')`;
+    }
     sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
     return res.json(db.prepare(sql).all(...params));
   }

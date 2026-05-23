@@ -281,7 +281,7 @@ const s = StyleSheet.create({
   logoutText: { color: '#fff', fontSize: 13 },
 
   // Cards ADM
-  cardsScroll: { backgroundColor: '#1a1a2e', maxHeight: 110 },
+  cardsScroll: { backgroundColor: '#1a1a2e', height: 110, flexShrink: 0 },
   cardsRow: { paddingHorizontal: 12, paddingVertical: 10, gap: 10 },
   statCard: {
     borderRadius: 12, padding: 14, minWidth: 110, alignItems: 'center', justifyContent: 'center',
