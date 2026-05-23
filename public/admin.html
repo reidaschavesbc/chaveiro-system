@@ -458,6 +458,10 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             Adicionar sub-usuário
           </button>
+          <button class="btn-add-sub" onclick="abrirModalAcessoAdm(${l.id}, '${esc(l.nome)}')" style="border-color:rgba(250,204,21,.3);color:#fbbf24">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3H5v-1h14v1z"/></svg>
+            Acesso ADM Mobile
+          </button>
         </div>
       </div>`).join('');
   }
@@ -697,6 +701,90 @@
   }
 
   function fecharModal() { const ov = document.getElementById('modal-ativo'); if (ov) ov.remove(); }
+
+  // ── Acesso ADM Mobile ────────────────────────────────────────────────────
+  async function abrirModalAcessoAdm(lojaId, lojaNome) {
+    let lista = [];
+    try { lista = await req('GET', `/lojas/${lojaId}/adm-acesso`); } catch (_) {}
+
+    function renderLista(items) {
+      if (!items.length) return `<div style="color:#475569;font-size:13px;text-align:center;padding:12px">Nenhum acesso concedido</div>`;
+      return items.map(a => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:#f1f5f9">${esc(a.nome)}</div>
+            <div style="font-size:11px;color:#64748b">${esc(a.email)} · ${esc(a.loja_origem)}</div>
+          </div>
+          <button class="btn-acao danger" onclick="revogarAcessoAdm(${lojaId}, ${a.id})">Revogar</button>
+        </div>`).join('');
+    }
+
+    criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Acesso ADM Mobile — ${esc(lojaNome)}</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">Conceder novo acesso</div>
+        <div class="m-field">
+          <label>E-mail do funcionário (de outra loja)</label>
+          <input type="text" id="adm-email" placeholder="funcionario@email.com" autocomplete="off">
+        </div>
+        <div class="m-erro" id="adm-erro"></div>
+        <div style="margin-bottom:16px">
+          <button class="btn-modal primary" onclick="concederAcessoAdm(${lojaId})">Conceder Acesso</button>
+        </div>
+        <div class="modal-section">Acessos concedidos</div>
+        <div id="adm-lista">${renderLista(lista)}</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Fechar</button>
+      </div>`);
+  }
+
+  async function concederAcessoAdm(lojaId) {
+    const email = document.getElementById('adm-email').value.trim();
+    const erro = document.getElementById('adm-erro');
+    erro.textContent = '';
+    if (!email) { erro.textContent = 'Informe o e-mail'; return; }
+    try {
+      const r = await req('POST', `/lojas/${lojaId}/adm-acesso`, { email });
+      toast(`Acesso concedido para ${r.nome}!`);
+      const lista = await req('GET', `/lojas/${lojaId}/adm-acesso`);
+      document.getElementById('adm-lista').innerHTML = (() => {
+        if (!lista.length) return `<div style="color:#475569;font-size:13px;text-align:center;padding:12px">Nenhum acesso concedido</div>`;
+        return lista.map(a => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#f1f5f9">${esc(a.nome)}</div>
+              <div style="font-size:11px;color:#64748b">${esc(a.email)} · ${esc(a.loja_origem)}</div>
+            </div>
+            <button class="btn-acao danger" onclick="revogarAcessoAdm(${lojaId}, ${a.id})">Revogar</button>
+          </div>`).join('');
+      })();
+      document.getElementById('adm-email').value = '';
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  async function revogarAcessoAdm(lojaId, acessoId) {
+    if (!confirm('Revogar este acesso?')) return;
+    try {
+      await req('DELETE', `/lojas/${lojaId}/adm-acesso/${acessoId}`);
+      toast('Acesso revogado');
+      const lista = await req('GET', `/lojas/${lojaId}/adm-acesso`);
+      const el = document.getElementById('adm-lista');
+      if (el) el.innerHTML = lista.length
+        ? lista.map(a => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1e293b">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#f1f5f9">${esc(a.nome)}</div>
+              <div style="font-size:11px;color:#64748b">${esc(a.email)} · ${esc(a.loja_origem)}</div>
+            </div>
+            <button class="btn-acao danger" onclick="revogarAcessoAdm(${lojaId}, ${a.id})">Revogar</button>
+          </div>`).join('')
+        : `<div style="color:#475569;font-size:13px;text-align:center;padding:12px">Nenhum acesso concedido</div>`;
+    } catch (e) { toast(e.message, 'error'); }
+  }
 
   // ── WhatsApp ─────────────────────────────────────────────────────────────
   let _waTimer = null;
