@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions
+  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions, Linking
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
+import UpperTextInput from '../components/UpperTextInput';
 
 const STATUS_LABEL = {
   aberta:       { label: 'Aberta',       color: '#f59e0b' },
@@ -47,6 +49,7 @@ function parseDateBR(s) {
 }
 
 export default function OSDetalheScreen({ route, navigation }) {
+  const insets = useSafeAreaInsets();
   const { osId } = route.params;
   const [os, setOs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,16 @@ export default function OSDetalheScreen({ route, navigation }) {
   // Edição desconto
   const [desconto, setDesconto] = useState('');
   const [editandoDesconto, setEditandoDesconto] = useState(false);
+
+  // Edição endereço
+  const [endRua, setEndRua] = useState('');
+  const [endNumero, setEndNumero] = useState('');
+  const [endCidade, setEndCidade] = useState('');
+  const [editandoEnd, setEditandoEnd] = useState(false);
+
+  // Edição contato
+  const [contato, setContato] = useState('');
+  const [editandoContato, setEditandoContato] = useState(false);
 
   // Modal adicionar item
   const [modalItem, setModalItem] = useState(false);
@@ -89,7 +102,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [editItemQtd, setEditItemQtd] = useState('');
   const [editItemPreco, setEditItemPreco] = useState('');
 
-  // Modal consumo de estoque
+  // Modal consumo de estoque (normal e plantão)
   const [modalEstoque, setModalEstoque] = useState(false);
   const [estoqueItens, setEstoqueItens] = useState([]);
   const [estoqueProdutos, setEstoqueProdutos] = useState([]);
@@ -97,6 +110,8 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [estoqueProdSel, setEstoqueProdSel] = useState(null);
   const [estoqueQtd, setEstoqueQtd] = useState('1');
   const [osIdParaEstoque, setOsIdParaEstoque] = useState(null);
+  const [estoqueModo, setEstoqueModo] = useState('normal'); // 'normal' | 'custo' | 'estoque'
+  const estoqueResolveRef = React.useRef(null);
 
   useEffect(() => { carregarOS(); }, []);
 
@@ -107,6 +122,10 @@ export default function OSDetalheScreen({ route, navigation }) {
       setDesc(data.descricao || '');
       setObs(data.observacoes || '');
       setDesconto(data.desconto ? String(data.desconto) : '');
+      setEndRua(data.cliente_avulso_rua || '');
+      setEndNumero(data.cliente_avulso_numero || '');
+      setEndCidade(data.cliente_avulso_cidade || '');
+      setContato(data.contato_cliente || '');
     } catch {
       Alert.alert('Erro', 'Não foi possível carregar a OS');
       navigation.goBack();
@@ -124,6 +143,38 @@ export default function OSDetalheScreen({ route, navigation }) {
       await api.put(`/os/${osId}`, { descricao: desc.trim() });
       setOs(prev => ({ ...prev, descricao: desc.trim() }));
       setEditandoDesc(false);
+    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    finally { setSalvando(false); }
+  }
+
+  async function salvarContato() {
+    setSalvando(true);
+    try {
+      await api.put(`/os/${osId}`, { contato_cliente: contato.trim() || null });
+      setOs(prev => ({ ...prev, contato_cliente: contato.trim() || null }));
+      setEditandoContato(false);
+    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    finally { setSalvando(false); }
+  }
+
+  function abrirWhatsApp(numero) {
+    const limpo = numero.replace(/\D/g, '');
+    const phone = limpo.startsWith('55') ? limpo : '55' + limpo;
+    Linking.openURL(`whatsapp://send?phone=${phone}`).catch(() =>
+      Linking.openURL(`https://wa.me/${phone}`)
+    );
+  }
+
+  async function salvarEndereco() {
+    setSalvando(true);
+    try {
+      await api.put(`/os/${osId}`, {
+        cliente_avulso_rua: endRua.trim() || null,
+        cliente_avulso_numero: endNumero.trim() || null,
+        cliente_avulso_cidade: endCidade.trim() || null,
+      });
+      await carregarOS();
+      setEditandoEnd(false);
     } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
@@ -286,7 +337,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         setModalFinalizar(false);
         await carregarOS();
         Alert.alert('✅ OS finalizada!', 'Marcada como A Receber.');
-        await verificarEAbrirEstoque(osId);
+        await verificarEAbrirEstoque(osId, os?.is_plantao);
       } catch (e) {
         Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
       } finally { setSalvando(false); }
@@ -312,7 +363,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setModalFinalizar(false);
       await carregarOS();
       Alert.alert('✅ OS finalizada!', 'Pagamento registrado.');
-      await verificarEAbrirEstoque(osId);
+      await verificarEAbrirEstoque(osId, os?.is_plantao);
     } catch (e) {
       Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
     } finally { setSalvando(false); }
@@ -320,17 +371,45 @@ export default function OSDetalheScreen({ route, navigation }) {
 
   // ── Modal consumo de estoque ────────────────────────────────────────────────
 
-  async function verificarEAbrirEstoque(osIdLocal) {
+  function abrirModalEstoque(osIdLocal, modo) {
+    return new Promise(resolve => {
+      estoqueResolveRef.current = resolve;
+      setEstoqueModo(modo || 'normal');
+      setEstoqueItens([]);
+      setEstoqueBusca('');
+      setEstoqueProdSel(null);
+      setEstoqueQtd('1');
+      setOsIdParaEstoque(osIdLocal);
+      setModalEstoque(true);
+    });
+  }
+
+  async function verificarEAbrirEstoque(osIdLocal, isPlantao) {
     try {
       const { data } = await api.get('/produtos');
       setEstoqueProdutos(data);
     } catch { setEstoqueProdutos([]); }
-    setEstoqueItens([]);
-    setEstoqueBusca('');
-    setEstoqueProdSel(null);
-    setEstoqueQtd('1');
-    setOsIdParaEstoque(osIdLocal);
-    setModalEstoque(true);
+
+    if (isPlantao) {
+      // 1º modal: material com custo
+      const itensCusto = await abrirModalEstoque(osIdLocal, 'custo');
+      if (itensCusto && itensCusto.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensCusto, registrar_custo: true }); }
+        catch { Alert.alert('Erro', 'Falha ao registrar material com custo'); }
+      }
+      // 2º modal: retirada de estoque sem custo
+      const itensEst = await abrirModalEstoque(osIdLocal, 'estoque');
+      if (itensEst && itensEst.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensEst, registrar_custo: false }); }
+        catch { Alert.alert('Erro', 'Falha ao registrar retirada de estoque'); }
+      }
+    } else {
+      const itens = await abrirModalEstoque(osIdLocal, 'normal');
+      if (itens && itens.length) {
+        try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens }); }
+        catch { Alert.alert('Erro', 'Não foi possível registrar consumo'); }
+      }
+    }
   }
 
   function adicionarItemEstoque() {
@@ -350,15 +429,16 @@ export default function OSDetalheScreen({ route, navigation }) {
     setEstoqueQtd('1');
   }
 
-  async function confirmarConsumoEstoque() {
-    if (!estoqueItens.length) { setModalEstoque(false); return; }
-    try {
-      await api.post(`/os/${osIdParaEstoque}/consumo-estoque`, { itens: estoqueItens });
-      setModalEstoque(false);
-      Alert.alert('✅ Registrado!', 'Consumo de estoque registrado.');
-    } catch {
-      Alert.alert('Erro', 'Não foi possível registrar consumo');
+  function fecharModalEstoque(confirmar) {
+    setModalEstoque(false);
+    if (estoqueResolveRef.current) {
+      estoqueResolveRef.current(confirmar ? estoqueItens : []);
+      estoqueResolveRef.current = null;
     }
+  }
+
+  async function confirmarConsumoEstoque() {
+    fecharModalEstoque(true);
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -377,9 +457,12 @@ export default function OSDetalheScreen({ route, navigation }) {
         <ScrollView contentContainerStyle={{ padding: 16 }}>
 
           {/* Header */}
-          <View style={s.card}>
+          <View style={[s.card, os.is_plantao ? { borderLeftWidth: 3, borderLeftColor: '#7c3aed' } : null]}>
             <View style={s.row}>
-              <Text style={s.numero}>{os.numero}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={s.numero}>{os.numero}</Text>
+                {os.is_plantao ? <Text style={{ fontSize: 11, color: '#7c3aed', backgroundColor: '#f3e8ff', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, fontWeight: '700' }}>🌙 Plantão</Text> : null}
+              </View>
               <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
                 <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
               </View>
@@ -387,7 +470,7 @@ export default function OSDetalheScreen({ route, navigation }) {
             <Text style={s.secLabel}>Descrição</Text>
             {editandoDesc ? (
               <>
-                <TextInput style={s.obsInput} value={desc} onChangeText={setDesc} multiline placeholder="Descrição do serviço" placeholderTextColor="#999" />
+                <UpperTextInput style={s.obsInput} value={desc} onChangeText={setDesc} multiline placeholder="Descrição do serviço" placeholderTextColor="#999" />
                 <View style={s.row}>
                   <TouchableOpacity style={s.cancelBtn} onPress={() => { setDesc(os.descricao || ''); setEditandoDesc(false); }}>
                     <Text style={s.cancelBtnText}>Cancelar</Text>
@@ -410,7 +493,102 @@ export default function OSDetalheScreen({ route, navigation }) {
             <Text style={s.secLabel}>Cliente</Text>
             <Text style={s.secValue}>{os.cliente_nome}</Text>
             {os.cliente_telefone ? <Text style={s.secSub}>📞 {os.cliente_telefone}</Text> : null}
-            {os.cliente_endereco ? <Text style={s.secSub}>📍 {os.cliente_endereco}</Text> : null}
+
+            {/* Contato da OS */}
+            <View style={[s.rowSpaced, { marginTop: 8 }]}>
+              <Text style={s.secLabel}>Contato desta OS</Text>
+              {!editandoContato && (
+                <TouchableOpacity onPress={() => setEditandoContato(true)}>
+                  <Text style={s.editLink}>{os.contato_cliente ? 'Editar' : '+ Adicionar'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {editandoContato ? (
+              <View>
+                <TextInput
+                  style={[s.obsInput, { minHeight: 0, paddingVertical: 10, marginBottom: 8 }]}
+                  value={contato}
+                  onChangeText={setContato}
+                  placeholder="Tel / WhatsApp"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                />
+                <View style={s.row}>
+                  <TouchableOpacity style={s.cancelBtn} onPress={() => { setContato(os.contato_cliente || ''); setEditandoContato(false); }}>
+                    <Text style={s.cancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.saveBtn} onPress={salvarContato} disabled={salvando}>
+                    {salvando ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : os.contato_cliente ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={[s.secSub, { flex: 1 }]}>📞 {os.contato_cliente}</Text>
+                <TouchableOpacity
+                  style={{ backgroundColor: '#25d366', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+                  onPress={() => abrirWhatsApp(os.contato_cliente)}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>WhatsApp</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={[s.secSub, { color: '#cbd5e1' }]}>Não informado</Text>
+            )}
+
+            <View style={[s.rowSpaced, { marginTop: 8 }]}>
+              <Text style={s.secLabel}>Endereço</Text>
+              {!editandoEnd && (
+                <TouchableOpacity onPress={() => setEditandoEnd(true)}>
+                  <Text style={s.editLink}>{os.cliente_endereco ? 'Editar' : '+ Adicionar'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {editandoEnd ? (
+              <>
+                <UpperTextInput
+                  style={[s.obsInput, { minHeight: 0, paddingVertical: 10, marginBottom: 6 }]}
+                  value={endRua}
+                  onChangeText={setEndRua}
+                  placeholder="Rua / Av."
+                  placeholderTextColor="#999"
+                />
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 6 }}>
+                  <TextInput
+                    style={[s.obsInput, { flex: 1, minHeight: 0, paddingVertical: 10, marginBottom: 0 }]}
+                    value={endNumero}
+                    onChangeText={setEndNumero}
+                    placeholder="Nº"
+                    placeholderTextColor="#999"
+                    keyboardType="numeric"
+                  />
+                  <UpperTextInput
+                    style={[s.obsInput, { flex: 3, minHeight: 0, paddingVertical: 10, marginBottom: 0 }]}
+                    value={endCidade}
+                    onChangeText={setEndCidade}
+                    placeholder="Cidade"
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                <View style={s.row}>
+                  <TouchableOpacity style={s.cancelBtn} onPress={() => {
+                    setEndRua(os.cliente_avulso_rua || '');
+                    setEndNumero(os.cliente_avulso_numero || '');
+                    setEndCidade(os.cliente_avulso_cidade || '');
+                    setEditandoEnd(false);
+                  }}>
+                    <Text style={s.cancelBtnText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.saveBtn} onPress={salvarEndereco} disabled={salvando}>
+                    {salvando ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Salvar</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              os.cliente_endereco
+                ? <Text style={s.secSub}>📍 {os.cliente_endereco}</Text>
+                : <Text style={[s.secSub, { color: '#cbd5e1' }]}>Sem endereço</Text>
+            )}
           </View>
 
           {/* Itens */}
@@ -542,7 +720,7 @@ export default function OSDetalheScreen({ route, navigation }) {
             </View>
             {editandoObs ? (
               <>
-                <TextInput style={s.obsInput} value={obs} onChangeText={setObs} multiline placeholder="Adicione uma observação..." placeholderTextColor="#999" />
+                <UpperTextInput style={s.obsInput} value={obs} onChangeText={setObs} multiline placeholder="Adicione uma observação..." placeholderTextColor="#999" />
                 <View style={s.row}>
                   <TouchableOpacity style={s.cancelBtn} onPress={() => { setObs(os.observacoes || ''); setEditandoObs(false); }}>
                     <Text style={s.cancelBtnText}>Cancelar</Text>
@@ -576,9 +754,9 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Adicionar Item ─────────────────────────────────────────── */}
         <Modal visible={modalItem} transparent animationType="slide">
-          <View style={s.modalOverlay}>
+          <View style={[s.modalOverlay, { paddingBottom: insets.bottom }]}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-            <View style={[s.modalCard, { maxHeight: '85%', minHeight: Dimensions.get('window').height * 0.55 }]}>
+            <View style={[s.modalCard, { maxHeight: '88%', minHeight: Dimensions.get('window').height * 0.55 }]}>
               <View style={s.modalHeader}>
                 <Text style={s.modalTitle}>Adicionar Item</Text>
                 <TouchableOpacity onPress={() => setModalItem(false)}>
@@ -605,7 +783,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                   <View style={{ padding: 16 }}>
                     {!itemSel ? (
                       <>
-                        <TextInput style={s.searchInput} value={buscaProd} onChangeText={setBuscaProd} placeholder="Buscar produto..." placeholderTextColor="#999" />
+                        <UpperTextInput style={s.searchInput} value={buscaProd} onChangeText={setBuscaProd} placeholder="Buscar produto..." placeholderTextColor="#999" />
                         {produtos.filter(p => p.nome.toLowerCase().includes(buscaProd.toLowerCase())).map(p => (
                           <TouchableOpacity key={p.id} style={s.listaItem} onPress={() => selecionarProduto(p)}>
                             <Text style={s.listaItemNome}>{p.nome}</Text>
@@ -629,7 +807,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                   <View style={{ padding: 16 }}>
                     {!itemSel ? (
                       <>
-                        <TextInput style={s.searchInput} value={buscaServ} onChangeText={setBuscaServ} placeholder="Buscar serviço..." placeholderTextColor="#999" />
+                        <UpperTextInput style={s.searchInput} value={buscaServ} onChangeText={setBuscaServ} placeholder="Buscar serviço..." placeholderTextColor="#999" />
                         {servicos.filter(sv => sv.nome.toLowerCase().includes(buscaServ.toLowerCase())).map(sv => (
                           <TouchableOpacity key={sv.id} style={s.listaItem} onPress={() => selecionarServico(sv)}>
                             <Text style={s.listaItemNome}>{sv.nome}</Text>
@@ -652,7 +830,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                 {tabItem === 'manual' && (
                   <View style={{ padding: 16 }}>
                     <Text style={s.fieldLabel}>Descrição</Text>
-                    <TextInput style={s.fieldInput} value={itemDescManual} onChangeText={setItemDescManual} placeholder="Ex: Troca de fechadura" placeholderTextColor="#999" />
+                    <UpperTextInput style={s.fieldInput} value={itemDescManual} onChangeText={setItemDescManual} placeholder="Ex: Troca de fechadura" placeholderTextColor="#999" />
                     <ItemForm
                       nome={null} qtd={itemQtd} preco={itemPreco}
                       onQtd={setItemQtd} onPreco={setItemPreco}
@@ -676,9 +854,9 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Finalizar ──────────────────────────────────────────────── */}
         <Modal visible={modalFinalizar} transparent animationType="slide">
-          <View style={s.modalOverlay}>
+          <View style={[s.modalOverlay, { paddingBottom: insets.bottom }]}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-              <View style={[s.modalCard, { maxHeight: '90%' }]}>
+              <View style={[s.modalCard, { maxHeight: '92%' }]}>
                 <View style={s.modalHeader}>
                   <Text style={s.modalTitle}>Finalizar OS</Text>
                   <TouchableOpacity onPress={() => setModalFinalizar(false)}>
@@ -783,7 +961,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Editar Item ────────────────────────────────────────── */}
         <Modal visible={modalEditItem} transparent animationType="slide">
-          <View style={s.modalOverlay}>
+          <View style={[s.modalOverlay, { paddingBottom: insets.bottom }]}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
               <View style={s.modalCard}>
                 <View style={s.modalHeader}>
@@ -826,18 +1004,24 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Consumo de Estoque ─────────────────────────────────── */}
         <Modal visible={modalEstoque} transparent animationType="slide">
-          <View style={s.modalOverlay}>
+          <View style={[s.modalOverlay, { paddingBottom: insets.bottom }]}>
             <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-            <View style={[s.modalCard, { maxHeight: '80%' }]}>
+            <View style={[s.modalCard, { maxHeight: '85%' }]}>
               <View style={s.modalHeader}>
-                <Text style={s.modalTitle}>📦 Consumo de Estoque</Text>
-                <TouchableOpacity onPress={() => setModalEstoque(false)}>
+                <Text style={[s.modalTitle, estoqueModo === 'custo' ? { color: '#7c3aed' } : estoqueModo === 'estoque' ? { color: '#475569' } : {}]}>
+                  {estoqueModo === 'custo' ? '💰 Material com custo' : estoqueModo === 'estoque' ? '📦 Retirada de estoque' : '📦 Consumo de Estoque'}
+                </Text>
+                <TouchableOpacity onPress={() => fecharModalEstoque(false)}>
                   <Text style={s.modalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView keyboardShouldPersistTaps="handled" style={{ padding: 16 }}>
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ flex: 1, padding: 16 }}>
                 <Text style={[s.secSub, { marginBottom: 12 }]}>
-                  Houve uso de materiais do estoque nesta OS? Adicione os produtos consumidos.
+                  {estoqueModo === 'custo'
+                    ? 'Material usado no plantão — abate do estoque e do lucro.'
+                    : estoqueModo === 'estoque'
+                    ? 'Material retirado do estoque — sem impacto financeiro.'
+                    : 'Houve uso de materiais do estoque nesta OS?'}
                 </Text>
 
                 {estoqueItens.map((it, i) => (
@@ -852,9 +1036,9 @@ export default function OSDetalheScreen({ route, navigation }) {
                   </View>
                 ))}
 
-                <View style={{ borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, marginTop: 8 }}>
+                <View style={{ borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, marginTop: 8, marginBottom: 8 }}>
                   <Text style={[s.secLabel, { marginBottom: 8 }]}>Adicionar produto</Text>
-                  <TextInput
+                  <UpperTextInput
                     style={s.searchInput}
                     value={estoqueBusca}
                     onChangeText={setEstoqueBusca}
@@ -884,7 +1068,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                           placeholder="1"
                           placeholderTextColor="#999"
                         />
-                        <TouchableOpacity style={[s.saveBtn, { flex: 0, paddingHorizontal: 20 }]} onPress={adicionarItemEstoque}>
+                        <TouchableOpacity style={[s.saveBtn, { flex: 0, paddingHorizontal: 20 }, estoqueModo === 'custo' ? { backgroundColor: '#7c3aed' } : {}]} onPress={adicionarItemEstoque}>
                           <Text style={s.saveBtnText}>+ Add</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[s.cancelBtn, { flex: 0, paddingHorizontal: 12, marginRight: 0 }]} onPress={() => setEstoqueProdSel(null)}>
@@ -894,20 +1078,20 @@ export default function OSDetalheScreen({ route, navigation }) {
                     </View>
                   )}
                 </View>
+              </ScrollView>
 
-                <View style={[s.modalFooter, { flexDirection: 'row', gap: 10, marginBottom: 8, borderTopWidth: 0 }]}>
-                  <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => setModalEstoque(false)}>
+              <View style={{ flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderColor: '#f1f5f9' }}>
+                  <TouchableOpacity style={[s.cancelBtn, { flex: 1, marginRight: 0 }]} onPress={() => fecharModalEstoque(false)}>
                     <Text style={s.cancelBtnText}>Não houve</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }]}
+                    style={[s.saveBtn, { flex: 1, opacity: estoqueItens.length ? 1 : 0.4 }, estoqueModo === 'custo' ? { backgroundColor: '#7c3aed' } : {}]}
                     onPress={confirmarConsumoEstoque}
                     disabled={!estoqueItens.length}
                   >
-                    <Text style={s.saveBtnText}>Registrar</Text>
+                    <Text style={s.saveBtnText}>{estoqueModo === 'custo' ? 'Registrar custo' : estoqueModo === 'estoque' ? 'Registrar retirada' : 'Registrar'}</Text>
                   </TouchableOpacity>
                 </View>
-              </ScrollView>
             </View>
             </KeyboardAvoidingView>
           </View>

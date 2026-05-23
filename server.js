@@ -1,16 +1,39 @@
 require('dotenv').config();
-// Fallback para quando .env não está disponível (executável Electron no cliente)
-if (!process.env.JWT_SECRET) process.env.JWT_SECRET = 'chaveiro_super_secret_key_2024';
+if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET não configurado no .env');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const cron = require('node-cron');
+const wa = require('./services/whatsapp');
+const { fmtVal, fmtDate, fmtDH, fmtAddr } = require('./utils/formatters');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// CORS — permite apenas origens sem Origin (mobile/curl/same-origin) + localhost dev
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true); // mobile app / curl / same-origin
+        if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+        if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+        callback(null, false);
+    }
+}));
+
+// Rate limiting simples em memória para endpoints de autenticação
+const _loginAttempts = new Map();
+function loginRateLimit(req, res, next) {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = _loginAttempts.get(ip) || { count: 0, resetAt: now + 15 * 60 * 1000 };
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + 15 * 60 * 1000; }
+    entry.count++;
+    _loginAttempts.set(ip, entry);
+    if (entry.count > 20) return res.status(429).json({ error: 'Muitas tentativas. Aguarde 15 minutos.' });
+    next();
+}
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
@@ -21,6 +44,14 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 const auth = require('./middleware/auth');
+const bcrypt = require('bcryptjs');
+
+// Verifica senha do gerente com suporte a bcrypt e texto plano legado
+function verificarSenhaGerente(senha, hash) {
+    if (!hash) return true;
+    if (hash.startsWith('$2')) return bcrypt.compareSync(senha, hash);
+    return senha === hash; // compatibilidade com senhas antigas em texto plano
+}
 
 // Download do app Electron (público)
 app.get('/download', (req, res) => {
@@ -29,7 +60,7 @@ app.get('/download', (req, res) => {
   if (fs.existsSync(localFile)) {
     res.download(localFile, 'SistemaChaveiro-Setup.exe');
   } else {
-    res.redirect(302, 'https://github.com/tvsxgames/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
+    res.redirect(302, 'https://github.com/reidaschavesbc/chaveiro-system/releases/latest/download/SistemaChaveiro-Setup.exe');
   }
 });
 
@@ -52,7 +83,10 @@ app.get('/api/apk-version', (req, res) => {
   }
 });
 
-// Public routes
+// Public routes — rate limiting aplicado ANTES dos routers nos endpoints de login
+app.use('/api/auth/login', loginRateLimit);
+app.use('/api/auth/admin-login', loginRateLimit);
+app.use('/api/app/login', loginRateLimit);
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/app', require('./routes/app-mobile').router);
 
@@ -103,7 +137,7 @@ app.post('/api/auth/verificar-gerente', auth, (req, res) => {
     const { senha } = req.body;
     const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
     if (!cfg || !cfg.valor) return res.json({ ok: true }); // sem senha configurada = livre
-    res.json({ ok: senha === cfg.valor });
+    res.json({ ok: verificarSenhaGerente(senha, cfg.valor) });
 });
 
 app.put('/api/config/senha-gerente', auth, (req, res) => {
@@ -114,9 +148,9 @@ app.put('/api/config/senha-gerente', auth, (req, res) => {
     const jaConfigurada = cfg && cfg.valor;
     if (jaConfigurada) {
         if (!senha_atual) return res.status(400).json({ error: 'Senha atual é obrigatória' });
-        if (senha_atual !== cfg.valor) return res.status(422).json({ error: 'Senha atual incorreta' });
+        if (!verificarSenhaGerente(senha_atual, cfg.valor)) return res.status(422).json({ error: 'Senha atual incorreta' });
     }
-    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_gerente', senha_nova);
+    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_gerente', bcrypt.hashSync(senha_nova, 10));
     res.json({ ok: true });
 });
 
@@ -125,137 +159,135 @@ app.put('/api/config/senha-exclusao', auth, (req, res) => {
     const { senha_atual, senha_nova } = req.body;
     if (!senha_nova) return res.status(400).json({ error: 'Nova senha é obrigatória' });
     const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    if (cfg && cfg.valor && senha_atual !== cfg.valor) return res.status(422).json({ error: 'Senha atual incorreta' });
-    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_gerente', senha_nova);
+    if (cfg && cfg.valor && !verificarSenhaGerente(senha_atual, cfg.valor)) return res.status(422).json({ error: 'Senha atual incorreta' });
+    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_gerente', bcrypt.hashSync(senha_nova, 10));
     res.json({ ok: true });
 });
 
-// ─── Crons de Pedidos de Compra ───────────────────────────────────────────────
-const { enviarResumoDiario } = require('./routes/pedidos');
+// ─── Imports de rotas usadas nos crons ───────────────────────────────────────
+const { enviarResumoDiario, enviarAvisoPedido } = require('./routes/pedidos');
+const { executarFechamento, montarMensagemWhatsapp, MESES } = require('./routes/comissoes');
 
 // Alta prioridade: lembrete a cada 1h para não confirmados e não silenciados
 cron.schedule('0 * * * *', async () => {
-    const pedidos = db.prepare(`
-        SELECT * FROM pedidos_compra
-        WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'alta'
-          AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
-          AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-1 hours'))
-    `).all();
-    const { enviarAvisoPedido } = require('./routes/pedidos');
-    for (const p of pedidos) await enviarAvisoPedido(p, 'lembrete');
+    try {
+        const pedidos = db.prepare(`
+            SELECT * FROM pedidos_compra
+            WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'alta'
+              AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
+              AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-1 hours'))
+        `).all();
+        for (const p of pedidos) await enviarAvisoPedido(p, 'lembrete');
+    } catch (e) { console.error('Cron pedidos alta:', e.message); }
 });
 
 // Média prioridade: lembrete a cada 3h para não confirmados e não silenciados
 cron.schedule('0 */3 * * *', async () => {
-    const pedidos = db.prepare(`
-        SELECT * FROM pedidos_compra
-        WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'media'
-          AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
-          AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-3 hours'))
-    `).all();
-    const { enviarAvisoPedido } = require('./routes/pedidos');
-    for (const p of pedidos) await enviarAvisoPedido(p, 'lembrete');
+    try {
+        const pedidos = db.prepare(`
+            SELECT * FROM pedidos_compra
+            WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'media'
+              AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
+              AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-3 hours'))
+        `).all();
+        for (const p of pedidos) await enviarAvisoPedido(p, 'lembrete');
+    } catch (e) { console.error('Cron pedidos media:', e.message); }
 });
 
 // Diário às 9h: resumo geral de todos não confirmados + baixa prioridade
 cron.schedule('0 9 * * *', async () => {
-    await enviarResumoDiario();
+    try { await enviarResumoDiario(); }
+    catch (e) { console.error('Cron resumo diário:', e.message); }
 });
 
 // ─── Cron: aviso de cobranças A Receber — a cada hora das 08h às 20h
 cron.schedule('0 8-20 * * *', async () => {
-    const hoje = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const hojeStr = `${hoje.getFullYear()}-${pad(hoje.getMonth()+1)}-${pad(hoje.getDate())}`;
-
-    const pendentes = db.prepare(`
-        SELECT os.numero, os.valor, os.valor_pago, os.data_vencimento,
-               COALESCE(c.nome, os.cliente_nome_avulso, '????') as cliente_nome
-        FROM ordens_servico os
-        LEFT JOIN clientes c ON os.cliente_id = c.id
-        WHERE os.a_receber = 1
-          AND os.a_receber_pago = 0
-          AND (os.cobranca_pausado_em IS NULL OR os.cobranca_pausado_em != ?)
-          AND (os.data_vencimento IS NULL OR os.data_vencimento <= ?)
-        ORDER BY os.data_vencimento ASC
-    `).all(hojeStr, hojeStr + ' 23:59:59');
-
-    if (!pendentes.length) return;
-
-    const cfgWa = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_cobrancas'").get();
-    if (!cfgWa || !cfgWa.valor) return;
-
-    const fmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
-    const fmtData = dt => {
-        if (!dt) return null;
-        const [y, m, d] = dt.slice(0,10).split('-');
-        return `${d}/${m}/${y}`;
-    };
-
-    const hoje_ddmm = `${pad(hoje.getDate())}/${pad(hoje.getMonth()+1)}/${hoje.getFullYear()}`;
-    const vencem_hoje = pendentes.filter(o => o.data_vencimento && o.data_vencimento.startsWith(hojeStr));
-    const atrasados   = pendentes.filter(o => o.data_vencimento && o.data_vencimento < hojeStr);
-    const sem_data    = pendentes.filter(o => !o.data_vencimento);
-
-    const totalGeral = pendentes.reduce((s, o) => s + o.valor, 0);
-
-    let msg = `💰 *Cobranças A Receber — ${hoje_ddmm}*\n`;
-
-    const restanteOS = o => o.valor - (o.valor_pago || 0);
-    const fmtOS = o => {
-        const r = restanteOS(o);
-        const parcial = (o.valor_pago || 0) > 0 ? ` (pago ${fmtVal(o.valor_pago)}, restam ${fmtVal(r)})` : ` — *${fmtVal(r)}*`;
-        return parcial;
-    };
-
-    if (vencem_hoje.length) {
-        msg += `\n📅 *Vencem hoje:*\n`;
-        vencem_hoje.forEach(o => { msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)}\n`; });
-    }
-    if (atrasados.length) {
-        msg += `\n⚠ *Em atraso:*\n`;
-        atrasados.forEach(o => {
-            const dias = Math.round((hoje - new Date(o.data_vencimento)) / 86400000);
-            msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)} (${dias}d atraso)\n`;
-        });
-    }
-    if (sem_data.length) {
-        msg += `\n📋 *Sem data definida:*\n`;
-        sem_data.forEach(o => { msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)}\n`; });
-    }
-
-    const totalRestante = pendentes.reduce((s, o) => s + restanteOS(o), 0);
-    msg += `\n💵 *Total pendente: ${fmtVal(totalRestante)}*`;
-
     try {
+        const hoje = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const hojeStr = `${hoje.getFullYear()}-${pad(hoje.getMonth()+1)}-${pad(hoje.getDate())}`;
+
+        const pendentes = db.prepare(`
+            SELECT os.numero, os.valor, os.valor_pago, os.data_vencimento,
+                   COALESCE(c.nome, os.cliente_nome_avulso, '????') as cliente_nome,
+                   l.nome as loja_nome
+            FROM ordens_servico os
+            LEFT JOIN clientes c ON os.cliente_id = c.id
+            LEFT JOIN lojas l ON os.loja_id = l.id
+            WHERE os.a_receber = 1
+              AND os.a_receber_pago = 0
+              AND (os.cobranca_pausado_em IS NULL OR os.cobranca_pausado_em != ?)
+              AND (os.data_vencimento IS NULL OR os.data_vencimento <= ?)
+            ORDER BY os.loja_id, os.data_vencimento ASC
+        `).all(hojeStr, hojeStr + ' 23:59:59');
+
+        if (!pendentes.length) return;
+
+        const cfgWa = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_cobrancas'").get();
+        if (!cfgWa || !cfgWa.valor) return;
+
+        const hoje_ddmm = `${pad(hoje.getDate())}/${pad(hoje.getMonth()+1)}/${hoje.getFullYear()}`;
+        const vencem_hoje = pendentes.filter(o => o.data_vencimento && o.data_vencimento.startsWith(hojeStr));
+        const atrasados   = pendentes.filter(o => o.data_vencimento && o.data_vencimento < hojeStr);
+        const sem_data    = pendentes.filter(o => !o.data_vencimento);
+
+        let msg = `💰 *Cobranças A Receber — ${hoje_ddmm}*\n`;
+
+        const restanteOS = o => o.valor - (o.valor_pago || 0);
+        const fmtOS = o => {
+            const r = restanteOS(o);
+            const lojaTag = o.loja_nome ? ` [${o.loja_nome}]` : '';
+            return (o.valor_pago || 0) > 0 ? `${lojaTag} (pago ${fmtVal(o.valor_pago)}, restam ${fmtVal(r)})` : `${lojaTag} — *${fmtVal(r)}*`;
+        };
+
+        if (vencem_hoje.length) {
+            msg += `\n📅 *Vencem hoje:*\n`;
+            vencem_hoje.forEach(o => { msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)}\n`; });
+        }
+        if (atrasados.length) {
+            msg += `\n⚠ *Em atraso:*\n`;
+            atrasados.forEach(o => {
+                const dias = Math.round((hoje - new Date(o.data_vencimento)) / 86400000);
+                msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)} (${dias}d atraso)\n`;
+            });
+        }
+        if (sem_data.length) {
+            msg += `\n📋 *Sem data definida:*\n`;
+            sem_data.forEach(o => { msg += `  • ${o.numero} — ${o.cliente_nome}${fmtOS(o)}\n`; });
+        }
+
+        const totalRestante = pendentes.reduce((s, o) => s + restanteOS(o), 0);
+        msg += `\n💵 *Total pendente: ${fmtVal(totalRestante)}*`;
+
         await wa.enviarMensagem(cfgWa.valor, msg);
         console.log(`📱 Aviso de cobranças enviado: ${pendentes.length} OS`);
     } catch (e) {
-        console.error('Aviso cobranças WhatsApp:', e.message);
+        console.error('Cron cobranças:', e.message);
     }
 });
 
-// Cron: fechamento automático de comissões todo dia 1º às 00:05
+// Cron: fechamento automático de comissões todo dia 1º às 00:05 — roda por loja
 cron.schedule('5 0 1 * *', async () => {
     const hoje = new Date();
     const mes = hoje.getMonth() === 0 ? 12 : hoje.getMonth();
     const ano = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
-    console.log(`📊 Iniciando fechamento automático de comissões: ${mes}/${ano}`);
-    try {
-        const { executarFechamento, montarMensagemWhatsapp, MESES } = require('./routes/comissoes');
-        const resultado = executarFechamento(mes, ano);
-        if (resultado.jaExistia) { console.log(`📊 Fechamento ${mes}/${ano} já existia, pulando.`); return; }
-
-        const cfgWa = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_comissao'").get();
-        if (cfgWa && cfgWa.valor) {
-            const msg = montarMensagemWhatsapp(mes, ano, resultado.fechamento_id);
-            await wa.enviarMensagem(cfgWa.valor, msg);
-            db.prepare('UPDATE fechamentos_comissao SET enviado_whatsapp = 1 WHERE id = ?').run(resultado.fechamento_id);
-            console.log(`📱 Comissões ${MESES[mes-1]}/${ano} enviadas via WhatsApp`);
+    const cfgWa = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_comissao'").get();
+    const lojas = db.prepare('SELECT id, nome FROM lojas WHERE ativo = 1').all();
+    for (const loja of lojas) {
+        try {
+            console.log(`📊 Fechamento automático de comissões ${mes}/${ano} — ${loja.nome}`);
+            const resultado = executarFechamento(mes, ano, loja.id);
+            if (resultado.jaExistia) { console.log(`📊 Já existia para ${loja.nome}, pulando.`); continue; }
+            if (cfgWa && cfgWa.valor) {
+                const msg = `🏪 *${loja.nome}*\n\n` + montarMensagemWhatsapp(mes, ano, resultado.fechamento_id);
+                await wa.enviarMensagem(cfgWa.valor, msg);
+                db.prepare('UPDATE fechamentos_comissao SET enviado_whatsapp = 1 WHERE id = ?').run(resultado.fechamento_id);
+                console.log(`📱 Comissões ${MESES[mes-1]}/${ano} — ${loja.nome} enviadas via WhatsApp`);
+            }
+            console.log(`✅ Fechamento ${mes}/${ano} — ${loja.nome}: ${resultado.qtd_os} OS, R$ ${resultado.total_geral?.toFixed(2)}`);
+        } catch (e) {
+            console.error(`Erro fechamento comissões ${loja.nome}:`, e.message);
         }
-        console.log(`✅ Fechamento ${mes}/${ano} concluído: ${resultado.qtd_os} OS, R$ ${resultado.total_geral?.toFixed(2)}`);
-    } catch (e) {
-        console.error('Erro no fechamento automático de comissões:', e.message);
     }
 });
 
@@ -265,10 +297,13 @@ cron.schedule('* * * * *', async () => {
     const pad = n => String(n).padStart(2, '0');
     const agoraStr = `${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())} ${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
 
-    const pendentes = db.prepare(`
-        SELECT * FROM lembretes
-        WHERE status = 'pendente' AND data_envio <= ?
-    `).all(agoraStr);
+    let pendentes;
+    try {
+        pendentes = db.prepare(`
+            SELECT * FROM lembretes
+            WHERE status = 'pendente' AND data_envio <= ?
+        `).all(agoraStr);
+    } catch (e) { console.error('Cron lembretes query:', e.message); return; }
 
     for (const lembrete of pendentes) {
         try {
@@ -287,11 +322,6 @@ cron.schedule('* * * * *', async () => {
                   .run('Nenhum destinatário com telefone cadastrado', lembrete.id);
                 continue;
             }
-
-            const fmtDH = dt => {
-                const [d, h] = dt.slice(0, 16).split(' ');
-                return d.split('-').reverse().join('/') + (h ? ' às ' + h : '');
-            };
 
             const msg = `🔔 *Lembrete!*\n\n${lembrete.mensagem}\n\n📅 ${fmtDH(lembrete.data_envio)}`;
             const erros = [];
@@ -316,32 +346,33 @@ cron.schedule('* * * * *', async () => {
 });
 
 // Cron: lembrete 30 min antes da OS
-const wa = require('./services/whatsapp');
-cron.schedule('* * * * *', () => {
+cron.schedule('* * * * *', async () => {
     const agora = new Date();
     const em30 = new Date(agora.getTime() + 30 * 60 * 1000);
     const em35 = new Date(agora.getTime() + 35 * 60 * 1000);
     const pad = n => String(n).padStart(2, '0');
     const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-    const pendentes = db.prepare(`
-        SELECT os.*, v.nome as vendedor_nome, v.telefone as vendedor_telefone,
-               c.nome as cliente_nome, c.endereco as cli_rua, c.numero as cli_numero,
-               c.complemento as cli_complemento, c.bairro as cli_bairro,
-               c.cidade as cli_cidade, c.referencia as cli_referencia
-        FROM ordens_servico os
-        LEFT JOIN vendedores v ON os.vendedor_id = v.id
-        LEFT JOIN clientes c ON os.cliente_id = c.id
-        WHERE datetime(os.data_prevista) >= datetime(?) AND datetime(os.data_prevista) <= datetime(?)
-          AND os.status NOT IN ('cancelada','concluida')
-          AND os.lembrete_enviado = 0
-          AND v.telefone IS NOT NULL AND v.telefone != ''
-    `).all(fmt(em30), fmt(em35));
+    let pendentes;
+    try {
+        pendentes = db.prepare(`
+            SELECT os.*, v.nome as vendedor_nome, v.telefone as vendedor_telefone,
+                   c.nome as cliente_nome, c.endereco as cli_rua, c.numero as cli_numero,
+                   c.complemento as cli_complemento, c.bairro as cli_bairro,
+                   c.cidade as cli_cidade, c.referencia as cli_referencia
+            FROM ordens_servico os
+            LEFT JOIN vendedores v ON os.vendedor_id = v.id
+            LEFT JOIN clientes c ON os.cliente_id = c.id
+            WHERE datetime(os.data_prevista) >= datetime(?) AND datetime(os.data_prevista) <= datetime(?)
+              AND os.status NOT IN ('cancelada','concluida')
+              AND os.lembrete_enviado = 0
+              AND v.telefone IS NOT NULL AND v.telefone != ''
+        `).all(fmt(em30), fmt(em35));
+    } catch (e) { console.error('Cron lembrete OS query:', e.message); return; }
 
     const pgLabels = { dinheiro: 'Dinheiro 💵', pix: 'PIX 📱', debito: 'Cartão Débito 💳', credito: 'Cartão Crédito 💳' };
-    const fmtVal = v => 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ',');
 
-    pendentes.forEach(async os => {
+    for (const os of pendentes) {
         try {
             const itensOS = db.prepare(`
                 SELECT descricao, quantidade, preco_unitario, subtotal, servico_id, produto_id
@@ -356,21 +387,6 @@ cron.schedule('* * * * *', () => {
                 }).join('\n')
                 : '  (sem itens)';
 
-            const fmtDH = dp => {
-                const s = String(dp).slice(0, 16);
-                const [dt, hr] = s.split(' ');
-                const [y, m, d] = dt.split('-');
-                return `${d}/${m}/${y}${hr ? ' ' + hr : ''}`;
-            };
-            const fmtAddr = (rua, num, comp, bairro, cidade, ref) => {
-                if (!rua && !cidade) return '';
-                let linha = rua || '';
-                if (num) linha += `, ${num}`;
-                if (comp) linha += ` - ${comp}`;
-                if (bairro) linha += (linha ? ', ' : '') + bairro;
-                if (cidade) linha += (linha ? ' - ' : '') + cidade;
-                return `\n📍 *Endereço:* ${linha}${ref ? '\n🗺️ *Ref:* ' + ref : ''}`;
-            };
             const enderecoWA = os.cliente_id
                 ? fmtAddr(os.cli_rua, os.cli_numero, os.cli_complemento, os.cli_bairro, os.cli_cidade, os.cli_referencia)
                 : fmtAddr(os.cliente_avulso_rua, os.cliente_avulso_numero, os.cliente_avulso_complemento, null, os.cliente_avulso_cidade, os.cliente_avulso_referencia);
@@ -407,11 +423,11 @@ cron.schedule('* * * * *', () => {
         } catch (e) {
             console.error(`Lembrete OS ${os.numero}:`, e.message);
         }
-    });
+    }
 });
 
 // CEP lookup via ViaCEP
-app.get('/api/cnpj/:cnpj', async (req, res) => {
+app.get('/api/cnpj/:cnpj', auth, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, '');
     if (cnpj.length !== 14) return res.status(400).json({ error: 'CNPJ deve ter 14 dígitos' });
     try {
@@ -425,7 +441,7 @@ app.get('/api/cnpj/:cnpj', async (req, res) => {
     }
 });
 
-app.get('/api/cep/:cep', (req, res) => {
+app.get('/api/cep/:cep', auth, (req, res) => {
     const cep = req.params.cep.replace(/\D/g, '');
     if (cep.length !== 8) return res.status(400).json({ error: 'CEP inválido' });
     const https = require('https');
@@ -451,7 +467,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`\n🔑 Sistema Chaveiro rodando em http://localhost:${PORT}`);
-    console.log(`📧 Usuário: admin`);
-    console.log(`🔒 Senha: admin123\n`);
+    console.log(`\n🔑 Sistema Chaveiro rodando em http://localhost:${PORT}\n`);
 });

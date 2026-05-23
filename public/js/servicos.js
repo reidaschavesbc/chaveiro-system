@@ -158,7 +158,7 @@ async function salvarServico() {
 }
 
 async function excluirServico(id) {
-    if (!confirmDialog('Confirma exclusão do serviço?')) return;
+    if (!await confirmDialog('Confirma exclusão do serviço?')) return;
     await api('DELETE', `/servicos/${id}`);
     toast('Serviço excluído!');
     await carregarServicos();

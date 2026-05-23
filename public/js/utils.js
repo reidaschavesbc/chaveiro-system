@@ -67,11 +67,11 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function monthStart() { return new Date().toISOString().slice(0, 7) + '-01'; }
 
 function badgeStatus(status) {
-    const labels = { aberta: 'Aberta', em_andamento: 'Em Andamento', concluida: 'Concluída', cancelada: 'Cancelada', concluida: 'Concluída' };
+    const labels = { aberta: 'Aberta', em_andamento: 'Em Andamento', concluida: 'Concluída', cancelada: 'Cancelada', reagendar: 'Reagendar' };
     return `<span class="badge badge-${status}">${labels[status] || status}</span>`;
 }
 function badgePagamento(fp) {
-    const labels = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito' };
+    const labels = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Cartão Crédito', debito: 'Cartão Débito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
     return `<span class="badge badge-${fp}">${labels[fp] || fp}</span>`;
 }
 
@@ -167,6 +167,60 @@ function modalConfirmar({ titulo, mensagem, icone = '❓', corBotao = '#2563eb',
     });
 }
 
+// Modal de confirmação de envio WhatsApp com campo de telefone editável — retorna Promise<string|null>
+function modalConfirmarEnvioWA({ telefone = '', titulo = 'Enviar via WhatsApp', icone = '📱' } = {}) {
+    return new Promise(resolve => {
+        let overlay = document.getElementById('modal-confirmar-wa');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-confirmar-wa';
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML = `
+        <div class="modal" style="max-width:400px;width:100%" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title">${icone} ${titulo}</span>
+                <button class="modal-close" id="btn-wa-fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Número de destino</label>
+                <input id="input-wa-telefone" type="tel"
+                    value="${telefone}"
+                    placeholder="Ex: 48999998888"
+                    style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:15px;outline:none"
+                    oninput="this.style.borderColor='#2563eb'"
+                />
+                <p style="font-size:12px;color:#6b7280;margin:8px 0 0">Confirme ou altere o número antes de enviar.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-wa-cancelar">Cancelar</button>
+                <button class="btn" id="btn-wa-ok" style="background:#25d366;color:#fff;border:none;gap:6px">
+                    📲 Enviar
+                </button>
+            </div>
+        </div>`;
+
+        openModal('modal-confirmar-wa');
+        const input = document.getElementById('input-wa-telefone');
+        input.focus();
+        input.select();
+
+        const fechar = (val) => { closeModal('modal-confirmar-wa'); resolve(val); };
+
+        overlay.onclick = () => fechar(null);
+        overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+        document.getElementById('btn-wa-fechar').onclick   = () => fechar(null);
+        document.getElementById('btn-wa-cancelar').onclick = () => fechar(null);
+        document.getElementById('btn-wa-ok').onclick = () => {
+            const num = input.value.trim();
+            if (!num) { input.style.borderColor = '#ef4444'; input.focus(); return; }
+            fechar(num);
+        };
+        input.onkeydown = e => { if (e.key === 'Enter') document.getElementById('btn-wa-ok').click(); };
+    });
+}
+
 function pedirSenhaExclusao(descricao) {
     return new Promise((resolve) => {
         let overlay = document.getElementById('modal-senha-excl');
@@ -243,4 +297,16 @@ function logout() {
 
 document.addEventListener('focusin', e => {
     if (e.target.type === 'number') e.target.select();
+});
+
+// Padroniza toda digitação em maiúsculas (exceto senha, email, número, data)
+const _skipUppercase = new Set(['password', 'email', 'number', 'date', 'time', 'month', 'color', 'file', 'range', 'checkbox', 'radio']);
+document.addEventListener('input', e => {
+    const el = e.target;
+    if ((el.tagName === 'INPUT' && !_skipUppercase.has(el.type)) || el.tagName === 'TEXTAREA') {
+        const start = el.selectionStart;
+        const end = el.selectionEnd;
+        el.value = el.value.toUpperCase();
+        try { el.setSelectionRange(start, end); } catch (_) {}
+    }
 });

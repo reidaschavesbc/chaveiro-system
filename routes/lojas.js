@@ -126,44 +126,4 @@ router.post('/:id/usuarios', apenasAdmin, (req, res) => {
     res.status(201).json({ id: result.lastInsertRowid, ok: true });
 });
 
-// GET /api/lojas/:id/adm-acesso — lista funcionários com acesso ADM externo à loja
-router.get('/:id/adm-acesso', apenasAdmin, (req, res) => {
-    const lista = db.prepare(`
-        SELECT a.id, a.funcionario_id, v.nome, v.email, l.nome as loja_origem, a.concedido_em
-        FROM adm_acesso_externo a
-        JOIN vendedores v ON v.id = a.funcionario_id
-        JOIN lojas l ON l.id = v.loja_id
-        WHERE a.loja_id = ?
-        ORDER BY a.concedido_em DESC
-    `).all(req.params.id);
-    res.json(lista);
-});
-
-// POST /api/lojas/:id/adm-acesso — concede acesso ADM externo a um funcionário (busca por email)
-router.post('/:id/adm-acesso', apenasAdmin, (req, res) => {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'E-mail obrigatório' });
-
-    const loja = db.prepare('SELECT id FROM lojas WHERE id = ?').get(req.params.id);
-    if (!loja) return res.status(404).json({ error: 'Loja não encontrada' });
-
-    const func = db.prepare(`SELECT id, nome, loja_id FROM vendedores WHERE email = ? AND ativo = 1`).get(email.toLowerCase().trim());
-    if (!func) return res.status(404).json({ error: 'Funcionário não encontrado com este e-mail' });
-    if (func.loja_id === parseInt(req.params.id)) return res.status(400).json({ error: 'Funcionário já pertence a esta loja' });
-
-    try {
-        db.prepare(`INSERT INTO adm_acesso_externo (funcionario_id, loja_id) VALUES (?, ?)`).run(func.id, req.params.id);
-        res.status(201).json({ ok: true, nome: func.nome });
-    } catch (e) {
-        if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Este funcionário já tem acesso a esta loja' });
-        throw e;
-    }
-});
-
-// DELETE /api/lojas/:id/adm-acesso/:acesso_id — revoga acesso ADM externo
-router.delete('/:id/adm-acesso/:acesso_id', apenasAdmin, (req, res) => {
-    db.prepare(`DELETE FROM adm_acesso_externo WHERE id = ? AND loja_id = ?`).run(req.params.acesso_id, req.params.id);
-    res.json({ ok: true });
-});
-
 module.exports = router;

@@ -161,10 +161,10 @@ function migrate() {
   `);
 
   // Seed admin user if not exists
-  const admin = db.prepare('SELECT id FROM usuarios WHERE email = ?').get('admin');
+  const admin = db.prepare("SELECT id FROM usuarios WHERE perfil = 'admin'").get();
   if (!admin) {
     const hash = bcrypt.hashSync('admin123', 10);
-    db.prepare("INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)").run('Administrador', 'admin', hash, 'admin');
+    db.prepare("INSERT INTO usuarios (nome, email, senha, perfil) VALUES (?, ?, ?, ?)").run('Administrador', 'chaveiro', hash, 'admin');
   }
 
 
@@ -258,13 +258,18 @@ function migrate() {
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN produto_quantidade REAL NOT NULL DEFAULT 1'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN orcamento INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN desconto REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN is_plantao INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN custo_materiais REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendedores ADD COLUMN percentual_plantao REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE produtos ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE produtos ADD COLUMN estoque_ideal INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_vales REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_liquido REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_salarios REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_bonus REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_a_pagar REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN contato_cliente TEXT'); } catch (_) {}
   db.exec(`
     CREATE TABLE IF NOT EXISTS pagamentos_os (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -403,6 +408,8 @@ function migrate() {
   addCol('vendedores', 'email',           'TEXT');
   addCol('vendedores', 'senha',           'TEXT');
   addCol('vendedores', 'expo_push_token', 'TEXT');
+  addCol('vendedores', 'is_admin',        'INTEGER NOT NULL DEFAULT 0');
+  addCol('vendedores', 'pode_trabalhar',  'INTEGER NOT NULL DEFAULT 1');
 
   // Estoque por sub-usuário
   db.exec(`
@@ -429,19 +436,6 @@ function migrate() {
     );
   `);
 
-  // Acesso ADM multi-loja no app mobile
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS adm_acesso_externo (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      funcionario_id INTEGER NOT NULL,
-      loja_id INTEGER NOT NULL,
-      concedido_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
-      UNIQUE(funcionario_id, loja_id),
-      FOREIGN KEY (funcionario_id) REFERENCES vendedores(id),
-      FOREIGN KEY (loja_id) REFERENCES lojas(id)
-    );
-  `);
-
   // Default config
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('empresa_nome', 'Chaveiro')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('empresa_telefone', '')").run();
@@ -452,16 +446,7 @@ function migrate() {
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('senha_gerente', '')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('whatsapp_pedidos', '')").run();
 
-  // NFS-e config
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnpj', '41370832000187')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_inscricao_municipal', '184784')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_aliquota_iss', '2.00')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_nac', '240101')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cod_trib_mun', '')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_cnae', '4744005')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_regime_tributario', 'simples')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_ambiente', '2')").run();
-  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('nfse_pfx_senha', '123456')").run();
+  // NFS-e config — removido da tabela global (agora em nfse_config por loja)
 
   // Colunas NFS-e na tabela ordens_servico
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero TEXT'); } catch (_) {}
@@ -471,6 +456,27 @@ function migrate() {
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_emitida_em TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_ambiente TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero_seq INTEGER'); } catch (_) {}
+
+  // NFS-e config por loja
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nfse_config (
+      loja_id INTEGER NOT NULL REFERENCES lojas(id),
+      chave   TEXT    NOT NULL,
+      valor   TEXT,
+      PRIMARY KEY (loja_id, chave)
+    );
+  `);
+  // Migrar configs globais da tabela configuracoes para REI DAS CHAVES (loja_id = 3)
+  {
+    const jaExiste = db.prepare('SELECT COUNT(*) as c FROM nfse_config WHERE loja_id = 3').get();
+    if (jaExiste.c === 0) {
+      const configs = db.prepare("SELECT chave, valor FROM configuracoes WHERE chave LIKE 'nfse_%'").all();
+      const ins = db.prepare('INSERT OR IGNORE INTO nfse_config (loja_id, chave, valor) VALUES (3, ?, ?)');
+      for (const c of configs) {
+        ins.run(c.chave.replace('nfse_', ''), c.valor);
+      }
+    }
+  }
 
   console.log('✅ Banco de dados inicializado com sucesso!');
 }

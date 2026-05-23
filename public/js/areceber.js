@@ -1,6 +1,6 @@
 // === A RECEBER ===
 
-const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito' };
+const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
 const arFmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
 const arFmtDate = s => s ? s.slice(0,10).split('-').reverse().join('/') : '—';
 
@@ -37,7 +37,7 @@ async function renderAReceber(el) {
   const resumo = `
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px">
       <div style="flex:1;min-width:140px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border-radius:12px;padding:16px 20px;color:#fff">
-        <div style="font-size:11px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.5px">A Receber</div>
+        <div style="font-size:11px;font-weight:600;opacity:.85;text-transform:uppercase;letter-spacing:.5px">Cobranças</div>
         <div style="font-size:24px;font-weight:800;margin-top:4px">${arFmtVal(totalPendente)}</div>
         <div style="font-size:11px;opacity:.8">${pendentes.length} OS pendente${pendentes.length!==1?'s':''}</div>
       </div>
@@ -140,7 +140,7 @@ async function renderAReceber(el) {
 
 function arHistoricoHtml(historico) {
   if (!historico?.length) return '';
-  const pgLabel = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito' };
+  const pgLabel = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
   return `
     <div class="card" style="margin-top:24px">
       <div class="card-header">

@@ -17,9 +17,13 @@ if (Platform.OS === 'android') {
   });
 }
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoginScreen from './screens/LoginScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSDetalheScreen from './screens/OSDetalheScreen';
+import OSNovaScreen from './screens/OSNovaScreen';
+import BuscaScreen from './screens/BuscaScreen';
+import AdminScreen from './screens/AdminScreen';
 import api from './services/api';
 
 Notifications.setNotificationHandler({
@@ -51,9 +55,12 @@ export default function App() {
   async function verificarAtualizacao() {
     try {
       const serverUrl = api.defaults.baseURL.replace('/api/app', '');
-      const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: AbortSignal.timeout(5000) });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: controller.signal });
+      clearTimeout(timer);
       const { version: versaoServidor } = await resp.json();
-      const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || '1.0.0';
+      const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
       if (versaoServidor && versaoServidor !== versaoApp) {
         Alert.alert(
           'Atualização disponível',
@@ -109,6 +116,7 @@ export default function App() {
   if (loading) return null;
 
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       {funcionario ? (
         <Stack.Navigator>
@@ -120,10 +128,26 @@ export default function App() {
             component={OSDetalheScreen}
             options={{ title: 'Detalhes da OS', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
           />
+          <Stack.Screen
+            name="OSNova"
+            component={OSNovaScreen}
+            options={{ title: 'Nova OS', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
+          />
+          <Stack.Screen
+            name="Busca"
+            component={BuscaScreen}
+            options={{ title: '🔍 Consulta de Preços', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
+          />
+          <Stack.Screen
+            name="Admin"
+            component={AdminScreen}
+            options={{ title: '👑 Painel Admin', headerBackTitle: 'Voltar', headerTintColor: '#7c3aed' }}
+          />
         </Stack.Navigator>
       ) : (
         <LoginScreen onLogin={handleLogin} />
       )}
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

@@ -23,20 +23,20 @@ git commit -m "release v$VERSION"
 git tag "v$VERSION"
 
 # Push com a tag (o CI/GitHub Actions vai buildar e publicar o release)
-TOKEN="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"
-REMOTE="https://tvsxgames:${TOKEN}@github.com/tvsxgames/chaveiro-system.git"
+TOKEN=$(cat /home/chaveiro/.backup_token)
+REMOTE="https://reidaschavesbc:${TOKEN}@github.com/reidaschavesbc/chaveiro-system.git"
 
 git push "$REMOTE" main
 git push "$REMOTE" "v$VERSION"
 
-# Reconstrói a imagem e recria o container (garante que html/css/js atualizem)
-docker compose up -d --build
+# Reinicia o PM2 para aplicar as mudanças
+pm2 restart chaveiro-system
 
 echo ""
 echo "Release v$VERSION enviado! Aguardando build do GitHub Actions (~5 min)..."
 echo "Quando terminar, execute para publicar e copiar os arquivos:"
 echo ""
-echo "  GH_TOKEN=\"$TOKEN\" gh release edit v$VERSION --repo tvsxgames/chaveiro-system --draft=false"
-echo "  GH_TOKEN=\"$TOKEN\" gh release download v$VERSION --repo tvsxgames/chaveiro-system --pattern \"SistemaChaveiro-Setup.exe\" --pattern \"latest.yml\" --pattern \"SistemaChaveiro-Setup.exe.blockmap\" --dir /root/chaveiro-system/public/downloads/ --clobber"
+echo "  GH_TOKEN=\"$TOKEN\" gh release edit v$VERSION --repo reidaschavesbc/chaveiro-system --draft=false"
+echo "  GH_TOKEN=\"$TOKEN\" gh release download v$VERSION --repo reidaschavesbc/chaveiro-system --pattern \"SistemaChaveiro-Setup.exe\" --pattern \"latest.yml\" --pattern \"SistemaChaveiro-Setup.exe.blockmap\" --dir /home/chaveiro/chaveiro-system/public/downloads/ --clobber"
 echo ""
 echo "Após isso o auto-update nos clientes funcionará automaticamente."

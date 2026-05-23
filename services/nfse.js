@@ -13,10 +13,10 @@ const URL_HOMOLOG = 'https://sefin.producaorestrita.nfse.gov.br/SefinNacional/nf
 const URL_DANFSE_PROD = 'https://adn.nfse.gov.br/danfse';
 const URL_DANFSE_HOMOLOG = 'https://adn.producaorestrita.nfse.gov.br/danfse';
 
-function getConfig() {
-  const rows = db.prepare(`SELECT chave, valor FROM configuracoes WHERE chave LIKE 'nfse_%'`).all();
+function getConfig(lojaId) {
+  const rows = db.prepare(`SELECT chave, valor FROM nfse_config WHERE loja_id = ?`).all(lojaId);
   const cfg = {};
-  for (const r of rows) cfg[r.chave.replace('nfse_', '')] = r.valor;
+  for (const r of rows) cfg[r.chave] = r.valor;
   return cfg;
 }
 
@@ -38,8 +38,8 @@ function extractCpfFromCert(cert) {
   return cpf.length === 11 ? cpf : null;
 }
 
-function loadCertificate() {
-  const cfg = getConfig();
+function loadCertificate(lojaId) {
+  const cfg = getConfig(lojaId);
   const pfxPath = cfg.pfx_path || path.join(__dirname, '..', '41.370.832 ELAINE ESTER CORREA DA CUNHA_41370832000187.pfx');
   const pfxSenha = cfg.pfx_senha || '123456';
 
@@ -212,8 +212,25 @@ function signXml(xmlStr, privateKey, certificate, dpsId) {
   return sig.getSignedXml();
 }
 
+async function buscarNomeOficial(tipo, doc, nomeFallback) {
+  try {
+    if (tipo === 'CNPJ' && doc) {
+      const cnpjLimpo = doc.replace(/\D/g, '');
+      const res = await axios.get(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`, { timeout: 5000 });
+      if (res.data?.razao_social) return res.data.razao_social;
+    }
+  } catch (_) {}
+  return nomeFallback;
+}
+
 async function emitirNfse(osId) {
-  const cfg = getConfig();
+  // Buscar loja_id da OS antes de qualquer coisa
+  const osBase = db.prepare(`SELECT loja_id FROM ordens_servico WHERE id = ?`).get(osId);
+  if (!osBase) throw new Error('OS não encontrada');
+  if (!osBase.loja_id) throw new Error('OS sem loja associada — não é possível emitir NFS-e');
+  const lojaId = osBase.loja_id;
+
+  const cfg = getConfig(lojaId);
   const cnpj = cfg.cnpj || '41370832000187';
   const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
   const aliquotaIss = cfg.aliquota_iss || '2.00';
@@ -249,16 +266,16 @@ async function emitirNfse(osId) {
   if (!os) throw new Error('OS não encontrada');
   if (os.nfse_numero) throw new Error(`NFS-e já emitida para esta OS: ${os.nfse_numero}`);
 
-  // Número sequencial da DPS — usa o maior entre o MAX do banco e o config nfse_ultimo_seq
-  const ultimaDps  = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL`).get();
-  const cfgUltimo  = db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'nfse_ultimo_seq'`).get();
+  // Número sequencial da DPS por loja — usa o maior entre o MAX do banco e o config ultimo_seq
+  const ultimaDps  = db.prepare(`SELECT MAX(nfse_numero_seq) as ultimo FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL AND loja_id = ?`).get(lojaId);
+  const cfgUltimo  = db.prepare(`SELECT valor FROM nfse_config WHERE loja_id = ? AND chave = 'ultimo_seq'`).get(lojaId);
   const ultimoSeq  = Math.max(ultimaDps?.ultimo || 0, parseInt(cfgUltimo?.valor || '0'));
   const numeroDps  = ultimoSeq + 1;
   const serie = '00001';
 
   // Reservar o número ANTES de enviar ao SEFIN — evita reutilização em caso de falha
   db.prepare(`UPDATE ordens_servico SET nfse_numero_seq = ?, nfse_status = 'pendente' WHERE id = ?`).run(numeroDps, osId);
-  db.prepare(`INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES ('nfse_ultimo_seq', ?)`).run(String(numeroDps));
+  db.prepare(`INSERT OR REPLACE INTO nfse_config (loja_id, chave, valor) VALUES (?, 'ultimo_seq', ?)`).run(lojaId, String(numeroDps));
 
   const agora = new Date();
   const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
@@ -303,13 +320,15 @@ async function emitirNfse(osId) {
     }
   }
 
-  const cert = loadCertificate();
+  const cert = loadCertificate(lojaId);
+
+  const tomadorNome = await buscarNomeOficial(tomadorTipo, tomadorDoc, os.cliente_nome);
 
   const { xml: dpsXml, dpsId } = buildDpsXml({
     cnpj, cpf: cert.cpf, inscricaoMunicipal, serie, numeroDps,
     dhEmi, dCompet,
     tomadorTipo, tomadorDoc,
-    tomadorNome: os.cliente_nome,
+    tomadorNome,
     tomadorEmail: os.cliente_email,
     tomadorFone:  os.cliente_telefone,
     tomadorEndereco:    os.cliente_avulso_rua    || os.cliente_endereco,
@@ -370,6 +389,10 @@ async function emitirNfse(osId) {
     || (nfseXmlDecoded ? extrairNumeroNota(nfseXmlDecoded) : null)
     || extrairNumeroNota(JSON.stringify(resposta));
 
+  // Extrair mensagem/aviso do SEFIN (se houver)
+  const aviso = resposta?.mensagem || resposta?.xMsg || resposta?.descricao
+    || (nfseXmlDecoded ? (nfseXmlDecoded.match(/<xMsg>([^<]+)<\/xMsg>/)?.[1] || null) : null);
+
   // Salvar no banco
   db.prepare(`
     UPDATE ordens_servico SET
@@ -383,7 +406,7 @@ async function emitirNfse(osId) {
     WHERE id = ?
   `).run(chaveAcesso, numeroNota, numeroDps, xmlAssinado, tpAmb, osId);
 
-  return { chaveAcesso, numeroNota, xml: resposta };
+  return { chaveAcesso, numeroNota, aviso, xml: resposta };
 }
 
 function extrairChaveAcesso(xmlResp) {
@@ -398,42 +421,39 @@ function extrairNumeroNota(xmlResp) {
   return match ? match[1] : null;
 }
 
-async function consultarDanfse(chaveAcesso) {
-  const cfg = getConfig();
-  const tpAmb = cfg.ambiente || '2';
-  const cert = loadCertificate();
-  const agent = new https.Agent({
-    pfx: cert.pfxBuffer,
-    passphrase: cert.pfxSenha,
-    rejectUnauthorized: true,
+async function consultarDanfse(chaveAcesso, lojaId) {
+  const cert = loadCertificate(lojaId);
+  const agent = new https.Agent({ pfx: cert.pfxBuffer, passphrase: cert.pfxSenha, rejectUnauthorized: false });
+  const headers = { 'User-Agent': 'Mozilla/5.0' };
+
+  // Passo 1: autenticar com certificado e obter cookies de sessão
+  const authRes = await axios.get('https://www.nfse.gov.br/EmissorNacional/Certificado', {
+    httpsAgent: agent, maxRedirects: 0, timeout: 20000, headers, validateStatus: s => true,
   });
+  if (authRes.status !== 302 && authRes.status !== 200) {
+    throw new Error(`Falha na autenticação com o certificado no portal NFS-e (status ${authRes.status})`);
+  }
+  const cookies = (authRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+  if (!cookies) throw new Error('Portal NFS-e não retornou cookies de sessão — certificado inválido ou expirado');
 
-  const baseUrl = tpAmb === '1' ? URL_DANFSE_PROD : URL_DANFSE_HOMOLOG;
-  const url = `${baseUrl}/nfse/${chaveAcesso}`;
-  const ambiente = tpAmb === '1' ? 'produção' : 'homologação';
-
+  // Passo 2: baixar o PDF da DANFSE
+  const url = `https://www.nfse.gov.br/EmissorNacional/Notas/Download/DANFSe/${chaveAcesso}`;
   try {
     const res = await axios.get(url, {
-      httpsAgent: agent,
-      responseType: 'arraybuffer',
-      timeout: 30000,
+      httpsAgent: agent, responseType: 'arraybuffer', timeout: 30000,
+      headers: { ...headers, 'Cookie': cookies },
     });
+    if (!res.headers['content-type']?.includes('pdf')) {
+      throw new Error('Resposta não é um PDF. Verifique se a nota foi emitida corretamente.');
+    }
     return res.data;
   } catch (err) {
+    if (err.message.startsWith('Resposta')) throw err;
     const status = err.response?.status;
-    if (status === 502 || status === 503) {
-      throw new Error(`Servidor do governo indisponível (${status}) no ambiente de ${ambiente}. Tente novamente em alguns minutos.`);
-    }
-    if (status === 404) {
-      throw new Error(`Nota não encontrada no servidor do governo (ambiente: ${ambiente}). Verifique se a emissão foi concluída.`);
-    }
-    if (status === 401 || status === 403) {
-      throw new Error(`Sem autorização para acessar esta nota (${status}). Verifique o certificado digital.`);
-    }
-    const detalhe = err.response?.data
-      ? Buffer.from(err.response.data).toString('utf-8').substring(0, 300)
-      : err.message;
-    throw new Error(`Erro ao buscar DANFSE (${status || 'sem resposta'}): ${detalhe}`);
+    if (status === 404) throw new Error('Nota não encontrada no portal NFS-e. Verifique se a emissão foi concluída.');
+    if (status === 401 || status === 403) throw new Error(`Acesso negado ao PDF (${status}). Verifique o certificado digital.`);
+    const detalhe = err.response?.data ? Buffer.from(err.response.data).toString('utf-8').substring(0, 200) : err.message;
+    throw new Error(`Erro ao baixar DANFSE (${status || 'sem resposta'}): ${detalhe}`);
   }
 }
 
@@ -457,7 +477,11 @@ function buildDescricaoDetalhada(os, itens) {
 }
 
 function previewNfse(osId) {
-  const cfg = getConfig();
+  const osBase = db.prepare(`SELECT loja_id FROM ordens_servico WHERE id = ?`).get(osId);
+  if (!osBase) throw new Error('OS não encontrada');
+  const lojaId = osBase.loja_id;
+
+  const cfg = getConfig(lojaId || 0);
   const cnpj = cfg.cnpj || '41370832000187';
   const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
   const aliquotaIss = cfg.aliquota_iss || '2.00';

@@ -11,11 +11,22 @@ function apenasAdmin(req, res, next) {
 // GET /api/usuarios — lista todos os usuários
 router.get('/', apenasAdmin, (req, res) => {
     const usuarios = db.prepare(`
-        SELECT id, nome, email, perfil, ativo, criado_em
+        SELECT id, nome, email, perfil, ativo, loja_id, principal, criado_em
         FROM usuarios
         ORDER BY nome ASC
     `).all();
     res.json(usuarios);
+});
+
+// GET /api/usuarios/pontos — sub-usuários da loja do token (para filtro no painel financeiro)
+router.get('/pontos', (req, res) => {
+    if (req.user.perfil !== 'admin' && !req.user.principal) return res.status(403).json({ error: 'Acesso negado' });
+    const lojaId = req.user.loja_id;
+    const pontos = db.prepare(`
+        SELECT id, nome, email, principal FROM usuarios
+        WHERE loja_id = ? AND ativo = 1 ORDER BY principal DESC, nome ASC
+    `).all(lojaId);
+    res.json(pontos);
 });
 
 // POST /api/usuarios — cria novo usuário

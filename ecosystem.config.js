@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'chaveiro-system',
     script: 'server.js',
-    cwd: '/var/www/chaveiro-system',
+    cwd: '/home/chaveiro/chaveiro-system',
     instances: 1,
     autorestart: true,
     watch: false,

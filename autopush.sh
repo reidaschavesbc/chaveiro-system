@@ -1,7 +1,7 @@
 #!/bin/bash
 
-APP_DIR="/root/chaveiro-system"
-TOKEN=$(cat /root/.github_token 2>/dev/null)
+APP_DIR="/home/chaveiro/chaveiro-system"
+TOKEN=$(cat /home/chaveiro/.backup_token)
 REMOTE="https://reidaschavesbc:${TOKEN}@github.com/reidaschavesbc/chaveiro-system.git"
 DATA=$(date +"%Y-%m-%d %H:%M")
 

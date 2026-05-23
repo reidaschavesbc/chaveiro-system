@@ -134,21 +134,32 @@ async function trocarConta() {
     await iniciar();
 }
 
-async function enviarMensagem(telefone, texto) {
-    if (_status !== 'conectado' || !client) throw new Error('WhatsApp não está conectado');
+async function resolverNumero(telefone) {
     const num = normalizePhone(telefone);
     const numId = await client.getNumberId(num);
-    if (!numId) throw new Error(`Número ${telefone} não encontrado no WhatsApp`);
-    await client.sendMessage(numId._serialized, texto);
+    if (numId) return numId._serialized;
+    // Tenta com 9 na frente (celular BR 9 dígitos)
+    const digits = num.replace(/\D/g, '');
+    if (digits.length === 12) {
+        const com9 = digits.slice(0, 4) + '9' + digits.slice(4);
+        const numId9 = await client.getNumberId(com9);
+        if (numId9) return numId9._serialized;
+    }
+    // Envia direto sem verificação
+    return `${num}@c.us`;
+}
+
+async function enviarMensagem(telefone, texto) {
+    if (_status !== 'conectado' || !client) throw new Error('WhatsApp não está conectado');
+    const chatId = await resolverNumero(telefone);
+    await client.sendMessage(chatId, texto);
 }
 
 async function enviarArquivo(telefone, mimeType, base64Data, filename, caption) {
     if (_status !== 'conectado' || !client) throw new Error('WhatsApp não está conectado');
-    const num = normalizePhone(telefone);
-    const numId = await client.getNumberId(num);
-    if (!numId) throw new Error(`Número ${telefone} não encontrado no WhatsApp`);
+    const chatId = await resolverNumero(telefone);
     const media = new MessageMedia(mimeType, base64Data, filename);
-    await client.sendMessage(numId._serialized, media, caption ? { caption } : {});
+    await client.sendMessage(chatId, media, caption ? { caption } : {});
 }
 
 function getStatus() {

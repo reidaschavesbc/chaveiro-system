@@ -14,7 +14,8 @@ function resolverFiltroUsuario(req) {
 }
 
 function sqlUsuario(filtroId, alias = 'v') {
-    return filtroId ? ` AND ${alias}.usuario_id = ${filtroId}` : '';
+    if (!filtroId) return '';
+    return alias ? ` AND ${alias}.usuario_id = ?` : ' AND usuario_id = ?';
 }
 
 // GET /api/relatorios/dashboard
@@ -23,39 +24,41 @@ router.get('/dashboard', (req, res) => {
     const now = new Date();
     const hoje = now.toLocaleDateString('en-CA');
     const mesAtual = hoje.slice(0, 7);
-    const fU_v = filtroId ? ` AND usuario_id = ${filtroId}` : '';
-    const fU_os = filtroId ? ` AND usuario_id = ${filtroId}` : '';
+    const fU_v   = sqlUsuario(filtroId, 'v');   // para queries com alias 'v' (JOIN vendas v)
+    const fU_os  = sqlUsuario(filtroId, 'os');  // para queries com alias 'os' (JOIN ordens_servico os)
+    const fU_sub = sqlUsuario(filtroId, '');    // para sub-queries sem alias
+    const ph = filtroId ? [filtroId] : []; // parâmetro opcional para queries com filtroId
 
     const vendasHoje = db.prepare(`SELECT
-        (SELECT COUNT(*) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COUNT(*) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as qtd,
-        (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as total
-    `).get(hoje, lojaId, hoje, lojaId, hoje, lojaId, hoje, lojaId);
+        (SELECT COUNT(*) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_sub}) +
+        (SELECT COUNT(*) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_sub}) as qtd,
+        (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE date(data) = ? AND status != 'cancelada' AND loja_id = ?${fU_sub}) +
+        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE COALESCE(date(data_conclusao), date(data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_sub}) as total
+    `).get(hoje, lojaId, ...ph, hoje, lojaId, ...ph, hoje, lojaId, ...ph, hoje, lojaId, ...ph);
 
     const vendasMes = db.prepare(`SELECT
-        (SELECT COUNT(*) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as qtd,
-        (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_v}) +
-        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND loja_id = ?${fU_os}) as total
-    `).get(mesAtual, lojaId, mesAtual, lojaId, mesAtual, lojaId, mesAtual, lojaId);
+        (SELECT COUNT(*) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_sub}) +
+        (SELECT COUNT(*) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_sub}) as qtd,
+        (SELECT COALESCE(SUM(total_final), 0) FROM vendas WHERE strftime('%Y-%m', data) = ? AND status != 'cancelada' AND loja_id = ?${fU_sub}) +
+        (SELECT COALESCE(SUM(valor), 0) FROM ordens_servico WHERE strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND status = 'concluida' AND COALESCE(is_plantao,0)=0 AND loja_id = ?${fU_sub}) as total
+    `).get(mesAtual, lojaId, ...ph, mesAtual, lojaId, ...ph, mesAtual, lojaId, ...ph, mesAtual, lojaId, ...ph);
 
-    const osAbertas = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status IN ('aberta', 'em_andamento') AND loja_id = ?${fU_os}`).get(lojaId);
-    const osConcluidas = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status = 'concluida' AND strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?${fU_os}`).get(mesAtual, lojaId);
+    const osAbertas      = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status IN ('aberta', 'em_andamento') AND loja_id = ?${fU_sub}`).get(lojaId, ...ph);
+    const osConcluidas   = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE status = 'concluida' AND strftime('%Y-%m', COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?${fU_sub}`).get(mesAtual, lojaId, ...ph);
     const produtosBaixoEstoque = db.prepare('SELECT COUNT(*) as qtd FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ?').get(lojaId);
-    const totalClientes = db.prepare('SELECT COUNT(*) as qtd FROM clientes WHERE ativo = 1 AND loja_id = ?').get(lojaId);
-    const aReceber = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(valor - COALESCE(valor_pago,0)),0) as total FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND loja_id = ?${fU_os}`).get(lojaId);
-    const aReceberVencido = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ? AND loja_id = ?${fU_os}`).get(hoje, lojaId);
-    const gastosMes = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE strftime('%Y-%m', data) = ? AND loja_id = ?`).get(mesAtual, lojaId);
+    const totalClientes  = db.prepare('SELECT COUNT(*) as qtd FROM clientes WHERE ativo = 1 AND loja_id = ?').get(lojaId);
+    const aReceber       = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(valor - COALESCE(valor_pago,0)),0) as total FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND loja_id = ?${fU_sub}`).get(lojaId, ...ph);
+    const aReceberVencido = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ? AND loja_id = ?${fU_sub}`).get(hoje, lojaId, ...ph);
+    const gastosMes      = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE strftime('%Y-%m', data) = ? AND loja_id = ?`).get(mesAtual, lojaId);
 
     const ultimasVendas = db.prepare(`SELECT v.*, c.nome as cliente_nome, ven.nome as vendedor_nome FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
     LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
-    WHERE v.status != 'cancelada' AND v.loja_id = ?${fU_v} ORDER BY v.data DESC LIMIT 5`).all(lojaId);
+    WHERE v.status != 'cancelada' AND v.loja_id = ?${fU_v} ORDER BY v.data DESC LIMIT 5`).all(lojaId, ...ph);
     const ultimasOS = db.prepare(`SELECT os.*, c.nome as cliente_nome, ven.nome as vendedor_nome FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
-    WHERE os.loja_id = ?${fU_os} ORDER BY os.data_entrada DESC LIMIT 5`).all(lojaId);
+    WHERE os.loja_id = ?${fU_os} ORDER BY os.data_entrada DESC LIMIT 5`).all(lojaId, ...ph);
 
     res.json({
         vendas_hoje: vendasHoje, vendas_mes: vendasMes,
@@ -73,17 +76,18 @@ router.get('/vendas', (req, res) => {
     const { data_inicio, data_fim } = req.query;
     const di = data_inicio || new Date().toLocaleDateString('en-CA').slice(0, 7) + '-01';
     const df = data_fim || new Date().toLocaleDateString('en-CA');
-    const fU = filtroId ? ` AND v.usuario_id = ${filtroId}` : '';
+    const fU = sqlUsuario(filtroId, 'v');
+    const ph = filtroId ? [filtroId] : [];
 
     const vendas = db.prepare(`SELECT v.*, c.nome as cliente_nome, ven.nome as vendedor_nome FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
     LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
-    WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU} ORDER BY v.data DESC`).all(di, df, lojaId);
+    WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU} ORDER BY v.data DESC`).all(di, df, lojaId, ...ph);
 
     const totais = db.prepare(`SELECT metodo as forma_pagamento, COALESCE(SUM(pv.valor), 0) as total
         FROM pagamentos_venda pv
         JOIN vendas v ON pv.venda_id = v.id
-        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU} GROUP BY metodo`).all(di, df, lojaId);
+        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU} GROUP BY metodo`).all(di, df, lojaId, ...ph);
 
     res.json({ vendas, totais });
 });
@@ -102,14 +106,15 @@ router.get('/os', (req, res) => {
     const { data_inicio, data_fim, status } = req.query;
     const di = data_inicio || new Date().toLocaleDateString('en-CA').slice(0, 7) + '-01';
     const df = data_fim || new Date().toLocaleDateString('en-CA');
-    const fU = filtroId ? ` AND os.usuario_id = ${filtroId}` : '';
+    const fU = sqlUsuario(filtroId, 'os');
+    const ph = filtroId ? [filtroId] : [];
 
     let query = `SELECT os.*, c.nome as cliente_nome, ts.nome as servico_nome, v.nome as vendedor_nome FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
     LEFT JOIN tipos_servico ts ON os.tipo_servico_id = ts.id
     LEFT JOIN vendedores v ON os.vendedor_id = v.id
     WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.loja_id = ?${fU}`;
-    const params = [di, df, lojaId];
+    const params = [di, df, lojaId, ...ph];
     if (status) { query += ' AND os.status = ?'; params.push(status); }
     query += ' ORDER BY os.data_entrada DESC';
     const os = db.prepare(query).all(...params);
@@ -124,7 +129,7 @@ router.get('/os', (req, res) => {
             WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU}
             AND os.id NOT IN (SELECT DISTINCT ordem_id FROM pagamentos_os)
         ) GROUP BY COALESCE(metodo, 'outros')
-    `).all(di, df, lojaId, di, df, lojaId);
+    `).all(di, df, lojaId, ...ph, di, df, lojaId, ...ph);
 
     res.json({ os, totais });
 });
@@ -135,39 +140,40 @@ router.get('/geral', (req, res) => {
     const { data_inicio, data_fim } = req.query;
     const di = data_inicio || new Date().toLocaleDateString('en-CA').slice(0, 7) + '-01';
     const df = data_fim || new Date().toLocaleDateString('en-CA');
-    const fU_v = filtroId ? ` AND v.usuario_id = ${filtroId}` : '';
-    const fU_os = filtroId ? ` AND os.usuario_id = ${filtroId}` : '';
+    const fU_v  = sqlUsuario(filtroId, 'v');
+    const fU_os = sqlUsuario(filtroId, 'os');
+    const ph = filtroId ? [filtroId] : [];
 
     const vendas = db.prepare(`SELECT v.id, v.numero, v.data, v.total_final as valor, v.forma_pagamento, 'venda' as tipo, c.nome as cliente_nome, ven.nome as vendedor_nome
         FROM vendas v
         LEFT JOIN clientes c ON v.cliente_id = c.id
         LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
-        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU_v}`).all(di, df, lojaId);
+        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU_v}`).all(di, df, lojaId, ...ph);
 
     const os = db.prepare(`SELECT os.id, os.numero, COALESCE(os.data_conclusao, os.data_entrada) as data, os.valor, os.forma_pagamento, 'os' as tipo, c.nome as cliente_nome, ven.nome as vendedor_nome
         FROM ordens_servico os
         LEFT JOIN clientes c ON os.cliente_id = c.id
         LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
-        WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}`).all(di, df, lojaId);
+        WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}`).all(di, df, lojaId, ...ph);
 
     const list = [...vendas, ...os].sort((a, b) => new Date(b.data) - new Date(a.data));
 
     const totaisVendas = db.prepare(`SELECT metodo as forma_pagamento, SUM(pv.valor) as total
         FROM pagamentos_venda pv
         JOIN vendas v ON pv.venda_id = v.id
-        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU_v} GROUP BY metodo`).all(di, df, lojaId);
+        WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU_v} GROUP BY metodo`).all(di, df, lojaId, ...ph);
 
     const totaisOS = db.prepare(`
         SELECT COALESCE(metodo, 'outros') as forma_pagamento, SUM(valor) as total FROM (
             SELECT po.metodo, po.valor FROM pagamentos_os po
             JOIN ordens_servico os ON po.ordem_id = os.id
-            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}
+            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
             UNION ALL
             SELECT os.forma_pagamento, os.valor FROM ordens_servico os
-            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND os.loja_id = ?${fU_os}
+            WHERE date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
             AND os.id NOT IN (SELECT DISTINCT ordem_id FROM pagamentos_os)
         ) GROUP BY COALESCE(metodo, 'outros')
-    `).all(di, df, lojaId, di, df, lojaId);
+    `).all(di, df, lojaId, ...ph, di, df, lojaId, ...ph);
 
     const map = {};
     [...totaisVendas, ...totaisOS].forEach(t => {
@@ -176,8 +182,9 @@ router.get('/geral', (req, res) => {
     });
     const totais = Object.keys(map).map(met => ({ forma_pagamento: met, total: map[met] }));
 
-    const _sumOS = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(COALESCE(data_conclusao,data_entrada)) BETWEEN ? AND ? AND status='concluida' AND loja_id = ?${filtroId ? ` AND usuario_id = ${filtroId}` : ''}`).get(di, df, lojaId);
-    const _sumVendas = db.prepare(`SELECT COALESCE(SUM(total_final),0) as t FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada' AND loja_id = ?${filtroId ? ` AND usuario_id = ${filtroId}` : ''}`).get(di, df, lojaId);
+    const fU_sum = filtroId ? ' AND usuario_id = ?' : '';
+    const _sumOS     = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(COALESCE(data_conclusao,data_entrada)) BETWEEN ? AND ? AND status='concluida' AND COALESCE(is_plantao,0) = 0 AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
+    const _sumVendas = db.prepare(`SELECT COALESCE(SUM(total_final),0) as t FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada' AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
     const faturamentoBruto = _sumOS.t + _sumVendas.t;
 
     const gastos = db.prepare(`

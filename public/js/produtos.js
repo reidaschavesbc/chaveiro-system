@@ -95,6 +95,10 @@ async function produtos(el) {
               <label>Estoque Mínimo</label>
               <input type="number" id="produto-estoque-min" min="0" value="5">
             </div>
+            <div class="form-group">
+              <label title="Quando o estoque cair abaixo do mínimo, o pedido de compra será aberto com esta quantidade">Estoque Ideal <span style="font-size:11px;color:#94a3b8;font-weight:400">(qtd. do pedido automático)</span></label>
+              <input type="number" id="produto-estoque-ideal" min="0" value="0">
+            </div>
             <div class="form-group form-full">
               <label>Descrição</label>
               <textarea id="produto-desc"></textarea>
@@ -241,6 +245,7 @@ function editarProduto(id) {
     _bloquearCustoProduto(p.preco_custo);
     document.getElementById('produto-estoque').value = p.estoque;
     document.getElementById('produto-estoque-min').value = p.estoque_minimo;
+    document.getElementById('produto-estoque-ideal').value = p.estoque_ideal || 0;
     document.getElementById('produto-desc').value = p.descricao || '';
     document.getElementById('produto-perguntar-estoque').checked = !!p.perguntar_estoque;
     document.getElementById('modal-produto-title').textContent = 'Editar Produto';
@@ -281,9 +286,8 @@ async function previewImagemProduto(input) {
 }
 
 function removerImagemProduto() {
-    imagemPendente = null;
-    imagemRemover = true;
     _resetImagemForm();
+    imagemRemover = true;
 }
 
 async function salvarProduto() {
@@ -296,6 +300,7 @@ async function salvarProduto() {
         preco_venda: parseFloat(document.getElementById('produto-venda').value) || 0,
         estoque: parseInt(document.getElementById('produto-estoque').value) || 0,
         estoque_minimo: parseInt(document.getElementById('produto-estoque-min').value) || 5,
+        estoque_ideal: parseInt(document.getElementById('produto-estoque-ideal').value) || 0,
         descricao: document.getElementById('produto-desc').value,
         perguntar_estoque: document.getElementById('produto-perguntar-estoque').checked ? 1 : 0,
     };
@@ -348,7 +353,7 @@ async function salvarEntradaEstoque() {
 }
 
 async function excluirProduto(id) {
-    if (!confirmDialog('Confirma exclusão do produto?')) return;
+    if (!await confirmDialog('Confirma exclusão do produto?')) return;
     try {
         await api('DELETE', `/produtos/${id}`);
         toast('Produto excluído!');

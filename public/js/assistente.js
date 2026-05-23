@@ -4,13 +4,13 @@ const ASS_SUGESTOES = [
   { label: '📊 Como tá o negócio?',    texto: 'Como tá o negócio hoje?' },
   { label: '💰 Caixa de hoje',         texto: 'Fechar o caixa de hoje' },
   { label: '📈 Resultado do mês',      texto: 'Qual o resultado líquido do mês?' },
-  { label: '🔔 A receber',             texto: 'Quem ainda não pagou? Listar OS a receber' },
+  { label: '🔔 Cobranças',              texto: 'Quem ainda não pagou? Listar cobranças pendentes' },
   { label: '🔧 OS em aberto',          texto: 'Quais ordens de serviço estão em aberto?' },
   { label: '📦 Estoque baixo',         texto: 'Produtos com estoque baixo' },
   { label: '👥 Desempenho da semana',  texto: 'Como foi o desempenho dos funcionários essa semana?' },
   { label: '🛒 Lista de compras',      texto: 'O que precisa comprar? Pedidos pendentes' },
-  { label: '⚠️ A receber vencido',    texto: 'Cobranças vencidas, quem tá atrasado?' },
-  { label: '🔁 Consumo interno',       texto: 'Consumo interno do mês, quanto perdi?' },
+  { label: '⚠️ Cobranças vencidas',    texto: 'Cobranças vencidas, quem tá atrasado?' },
+  { label: '🔁 Uso da equipe',         texto: 'Uso da equipe no mês, quanto foi consumido?' },
 ];
 
 function assistentePage(contentDiv) {
@@ -45,7 +45,7 @@ function assistentePage(contentDiv) {
           <div class="ass-bubble">
             Olá! Sou seu assistente de gestão 👋<br><br>
             Posso consultar e controlar o sistema em tempo real:<br>
-            <strong>caixa · faturamento · OS · clientes · a receber · estoque · gastos · funcionários · pedidos · lembretes</strong><br><br>
+            <strong>caixa · faturamento · OS · clientes · cobranças · estoque · gastos · funcionários · pedidos · lembretes</strong><br><br>
             Também posso <strong>criar OS, registrar consumo, criar lembretes, adicionar pedidos de compra</strong> e muito mais — é só pedir!
           </div>
         </div>

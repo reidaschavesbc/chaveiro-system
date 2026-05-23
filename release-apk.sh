@@ -10,8 +10,8 @@ if [ -z "$VERSION" ]; then
 fi
 
 TAG="apk-$VERSION"
-TOKEN="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"
-REMOTE="https://tvsxgames:${TOKEN}@github.com/tvsxgames/chaveiro-system.git"
+TOKEN=$(cat /home/chaveiro/.backup_token)
+REMOTE="https://reidaschavesbc:${TOKEN}@github.com/reidaschavesbc/chaveiro-system.git"
 
 echo "Atualizando versão para $VERSION..."
 

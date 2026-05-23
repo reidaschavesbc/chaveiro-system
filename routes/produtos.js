@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../database/db');
 const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
 const { verificarEstoqueBaixo } = require('./pedidos');
 
 const UPLOADS_DIR = path.join(__dirname, '../public/uploads/produtos');
@@ -63,13 +64,13 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode criar produtos' });
     const loja_id = req.user.loja_id;
-    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, perguntar_estoque } = req.body;
+    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, estoque_ideal, unidade, perguntar_estoque } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
     try {
         const result = db.prepare(`
-            INSERT INTO produtos (nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, loja_id, perguntar_estoque)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque||0, estoque_minimo||5, unidade||'un', loja_id, perguntar_estoque ? 1 : 0);
+            INSERT INTO produtos (nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, estoque_ideal, unidade, loja_id, perguntar_estoque)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque||0, estoque_minimo||5, estoque_ideal||0, unidade||'un', loja_id, perguntar_estoque ? 1 : 0);
         res.status(201).json({ id: result.lastInsertRowid });
     } catch (e) {
         if (e.message.includes('UNIQUE')) return res.status(400).json({ error: 'Código já cadastrado' });
@@ -80,13 +81,13 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode editar produtos' });
     const loja_id = req.user.loja_id;
-    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, unidade, perguntar_estoque } = req.body;
+    const { nome, descricao, codigo, preco_custo, preco_venda, estoque, estoque_minimo, estoque_ideal, unidade, perguntar_estoque } = req.body;
     const p = db.prepare('SELECT * FROM produtos WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!p) return res.status(404).json({ error: 'Produto não encontrado' });
 
     const estoqueAnterior = p.estoque;
-    db.prepare(`UPDATE produtos SET nome=?,descricao=?,codigo=?,preco_custo=?,preco_venda=?,estoque=?,estoque_minimo=?,unidade=?,perguntar_estoque=? WHERE id=? AND loja_id=?`)
-        .run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque??p.estoque, estoque_minimo||5, unidade||'un', perguntar_estoque ? 1 : 0, req.params.id, loja_id);
+    db.prepare(`UPDATE produtos SET nome=?,descricao=?,codigo=?,preco_custo=?,preco_venda=?,estoque=?,estoque_minimo=?,estoque_ideal=?,unidade=?,perguntar_estoque=? WHERE id=? AND loja_id=?`)
+        .run(nome, descricao||null, codigo||null, preco_custo||0, preco_venda||0, estoque??p.estoque, estoque_minimo||5, estoque_ideal??p.estoque_ideal??0, unidade||'un', perguntar_estoque ? 1 : 0, req.params.id, loja_id);
 
     if (estoque !== undefined && estoque !== p.estoque) {
         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, observacao, usuario_id, loja_id)
@@ -117,7 +118,7 @@ router.delete('/:id', (req, res) => {
     res.json({ ok: true });
 });
 
-router.put('/:id/imagem', (req, res) => {
+router.put('/:id/imagem', async (req, res) => {
     const loja_id = req.user.loja_id;
     const { imagem } = req.body;
     if (!imagem) return res.status(400).json({ error: 'Imagem é obrigatória' });
@@ -131,11 +132,12 @@ router.put('/:id/imagem', (req, res) => {
         const oldPath = path.join(__dirname, '../public', produto.imagem);
         if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
-    const mimeType = matches[1];
-    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('gif') ? 'gif' : mimeType.includes('webp') ? 'webp' : 'jpg';
     const buffer = Buffer.from(matches[2], 'base64');
-    const filename = `${req.params.id}_${Date.now()}.${ext}`;
-    fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+    const filename = `${req.params.id}_${Date.now()}.jpg`;
+    await sharp(buffer)
+        .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toFile(path.join(UPLOADS_DIR, filename));
     const imagemPath = `/uploads/produtos/${filename}`;
     db.prepare('UPDATE produtos SET imagem = ? WHERE id = ? AND loja_id = ?').run(imagemPath, req.params.id, loja_id);
     res.json({ ok: true, imagem: imagemPath });

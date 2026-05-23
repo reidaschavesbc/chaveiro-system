@@ -30,10 +30,6 @@ jobs:
         working-directory: mobile-app
         run: npm ci
 
-      - name: Substituir URL do servidor
-        working-directory: mobile-app
-        run: sed -i "s|SERVER_URL_PLACEHOLDER|${{ secrets.SERVER_URL }}|g" services/api.js
-
       - name: Gerar projeto Android nativo
         working-directory: mobile-app
         run: npx expo prebuild --platform android --clean --no-install
@@ -99,4 +95,4 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           VERSION=${TAG#apk-}
-          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo reidaschavesbc/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /root/chaveiro-system/public/downloads/ --clobber && echo '{\"version\":\"'${VERSION}'\"}' > /root/chaveiro-system/public/downloads/version-apk.json"
+          ssh "$VPS_USER@$VPS_HOST" "export GH_TOKEN='${GH_TOKEN}' && gh release download ${TAG} --repo reidaschavesbc/chaveiro-system --pattern 'ChaveiroOS.apk' --dir /home/chaveiro/chaveiro-system/public/downloads/ --clobber && echo '{\"version\":\"'${VERSION}'\"}' > /home/chaveiro/chaveiro-system/public/downloads/version-apk.json"

@@ -312,7 +312,7 @@ async function salvarCliente() {
 }
 
 async function excluirCliente(id) {
-    if (!confirmDialog('Confirma exclusão do cliente?')) return;
+    if (!await confirmDialog('Confirma exclusão do cliente?')) return;
     try {
         await api('DELETE', `/clientes/${id}`);
         toast('Cliente excluído!');

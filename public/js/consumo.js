@@ -36,7 +36,7 @@ async function consumo(el) {
 
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Histórico de Consumo Interno</span>
+        <span class="card-title">Histórico de Uso da Equipe</span>
       </div>
       <div id="cons-lista"></div>
     </div>
@@ -139,7 +139,7 @@ function consModalHtml() {
   return `
     <div id="cons-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center" onclick="if(event.target===this)consFecharModal()">
       <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
-        <div style="font-size:17px;font-weight:700;margin-bottom:20px">Registrar Consumo Interno</div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:20px">Registrar Uso da Equipe</div>
         <div class="form-grid">
           <div class="form-group form-full">
             <label>Produto *</label>
