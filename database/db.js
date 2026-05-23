@@ -478,6 +478,18 @@ function migrate() {
     }
   }
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS adm_acesso_externo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      funcionario_id INTEGER NOT NULL,
+      loja_id INTEGER NOT NULL,
+      concedido_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      UNIQUE(funcionario_id, loja_id),
+      FOREIGN KEY (funcionario_id) REFERENCES vendedores(id),
+      FOREIGN KEY (loja_id) REFERENCES lojas(id)
+    );
+  `);
+
   console.log('✅ Banco de dados inicializado com sucesso!');
 }
 

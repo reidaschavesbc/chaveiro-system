@@ -30,6 +30,12 @@ function authFuncionario(req, res, next) {
   }
 }
 
+function verificarAcessoAdm(req, lojaId) {
+  if (!req.funcionario.is_admin) return false;
+  if (req.funcionario.loja_id === lojaId) return true;
+  return !!db.prepare(`SELECT 1 FROM adm_acesso_externo WHERE funcionario_id = ? AND loja_id = ?`).get(req.funcionario.id, lojaId);
+}
+
 function recalcularValorOS(osId) {
   const { total } = db.prepare(`SELECT COALESCE(SUM(subtotal), 0) as total FROM itens_ordem_servico WHERE ordem_id = ?`).get(osId);
   const os = db.prepare(`SELECT COALESCE(desconto, 0) as desconto FROM ordens_servico WHERE id = ?`).get(osId);
@@ -52,7 +58,10 @@ router.post('/login', (req, res) => {
     JWT_SECRET,
     { expiresIn: '30d' }
   );
-  res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin } });
+  const lojasAdm = db.prepare(`
+    SELECT l.id, l.nome FROM adm_acesso_externo a JOIN lojas l ON a.loja_id = l.id WHERE a.funcionario_id = ?
+  `).all(func.id);
+  res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin, lojas_adm: lojasAdm } });
 });
 
 // POST /api/app/push-token
@@ -65,7 +74,29 @@ router.post('/push-token', authFuncionario, (req, res) => {
 
 // GET /api/app/os
 router.get('/os', authFuncionario, (req, res) => {
-  const { status, todas, dias } = req.query;
+  const { status, todas, dias, adm, loja_id } = req.query;
+
+  if (adm === '1' && req.funcionario.is_admin) {
+    const lojaAlvo = loja_id ? parseInt(loja_id) : req.funcionario.loja_id;
+    if (!verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+    let sql = `
+      SELECT os.id, os.numero, os.descricao, os.valor, os.status,
+             os.data_entrada, os.data_prevista, os.data_conclusao,
+             os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
+             COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+             c.telefone as cliente_telefone,
+             v.nome as vendedor_nome
+      FROM ordens_servico os
+      LEFT JOIN clientes c ON os.cliente_id = c.id
+      LEFT JOIN vendedores v ON os.vendedor_id = v.id
+      WHERE os.loja_id = ?
+        AND date(os.data_entrada) >= date('now', '-2 days', 'localtime')`;
+    const params = [lojaAlvo];
+    if (status) { sql += ` AND os.status = ?`; params.push(status); }
+    sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
+    return res.json(db.prepare(sql).all(...params));
+  }
+
   let sql = `
     SELECT os.id, os.numero, os.descricao, os.valor, os.status,
            os.data_entrada, os.data_prevista, os.data_conclusao,
@@ -88,6 +119,21 @@ router.get('/os', authFuncionario, (req, res) => {
 
   sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
   res.json(db.prepare(sql).all(...params));
+});
+
+// GET /api/app/adm-stats
+router.get('/adm-stats', authFuncionario, (req, res) => {
+  const lojaAlvo = req.query.loja_id ? parseInt(req.query.loja_id) : req.funcionario.loja_id;
+  if (!verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  const hoje = new Date().toLocaleDateString('en-CA');
+  const stats = {
+    em_andamento: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'em_andamento'`).get(lojaAlvo).n,
+    abertas:       db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'aberta'`).get(lojaAlvo).n,
+    finalizadas_hoje: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).n,
+    canceladas_hoje:  db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'cancelada' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).n,
+    valor_hoje:    db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).t,
+  };
+  res.json(stats);
 });
 
 // GET /api/app/os/:id

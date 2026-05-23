@@ -147,9 +147,13 @@ export default function OSListScreen({ navigation, onLogout }) {
           {funcionario && <Text style={s.headerSub}>Olá, {funcionario.nome.split(' ')[0]}!</Text>}
         </View>
         <View style={s.headerAcoes}>
+          {!modoAdm && (
+            <TouchableOpacity onPress={() => navigation.navigate('Busca')} style={s.iconBtn}>
+              <Text style={s.iconBusca}>🔍</Text>
+            </TouchableOpacity>
+          )}
           {isAdmin && !modoAdm && (
             <TouchableOpacity onPress={abrirCoroa} style={s.iconBtn}>
-              {/* Coroa */}
               <Text style={s.iconCoroa}>♛</Text>
             </TouchableOpacity>
           )}
@@ -226,6 +230,13 @@ export default function OSListScreen({ navigation, onLogout }) {
         />
       )}
 
+      {/* FAB Nova OS */}
+      {!modoAdm && (
+        <TouchableOpacity style={s.fab} onPress={() => navigation.navigate('OSNova')}>
+          <Text style={s.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Modal seleção de loja */}
       <Modal visible={modalLojas} transparent animationType="fade" onRequestClose={() => setModalLojas(false)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalLojas(false)}>
@@ -262,6 +273,7 @@ const s = StyleSheet.create({
   headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
   headerAcoes: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: { padding: 6 },
+  iconBusca: { fontSize: 20 },
   iconCoroa: { fontSize: 22, color: '#fbbf24' },
   voltarBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 },
   voltarText: { color: '#fff', fontSize: 13, fontWeight: '600' },
@@ -306,6 +318,15 @@ const s = StyleSheet.create({
   valor: { fontSize: 16, fontWeight: 'bold', color: '#2563eb' },
   data: { fontSize: 12, color: '#94a3b8' },
   vazio: { textAlign: 'center', marginTop: 60, color: '#94a3b8', fontSize: 15 },
+
+  // FAB
+  fab: {
+    position: 'absolute', right: 20, bottom: 28,
+    width: 58, height: 58, borderRadius: 29,
+    backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center',
+    elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3,
+  },
+  fabText: { fontSize: 34, color: '#fff', lineHeight: 40, marginTop: -2 },
 
   // Modal de seleção de loja
   modalOverlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'center', alignItems: 'center' },
