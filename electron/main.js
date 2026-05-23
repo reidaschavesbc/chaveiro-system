@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Tray, Menu, nativeImage, screen } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -146,6 +146,11 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.maximize();
+    const { width } = screen.getPrimaryDisplay().workAreaSize;
+    if (width < 1400) {
+      const zoom = Math.max(0.67, width / 1400);
+      mainWindow.webContents.setZoomFactor(zoom);
+    }
   });
 
   mainWindow.on('closed', () => { mainWindow = null; });
