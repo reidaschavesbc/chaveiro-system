@@ -48,11 +48,11 @@ router.post('/login', (req, res) => {
   if (!bcrypt.compareSync(senha, func.senha)) return res.status(401).json({ error: 'Credenciais inválidas' });
 
   const token = jwt.sign(
-    { id: func.id, nome: func.nome, loja_id: func.loja_id, tipo: 'funcionario' },
+    { id: func.id, nome: func.nome, loja_id: func.loja_id, tipo: 'funcionario', is_admin: func.is_admin },
     JWT_SECRET,
     { expiresIn: '30d' }
   );
-  res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id } });
+  res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin } });
 });
 
 // POST /api/app/push-token
@@ -65,20 +65,34 @@ router.post('/push-token', authFuncionario, (req, res) => {
 
 // GET /api/app/os
 router.get('/os', authFuncionario, (req, res) => {
-  const { status } = req.query;
+  const { status, adm, dias, minhas } = req.query;
   let sql = `
     SELECT os.id, os.numero, os.descricao, os.valor, os.status,
            os.data_entrada, os.data_prevista, os.data_conclusao,
            os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
-           c.telefone as cliente_telefone
+           c.telefone as cliente_telefone,
+           v.nome as vendedor_nome
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
-    WHERE os.loja_id = ? AND os.vendedor_id = ?`;
-  const params = [req.funcionario.loja_id, req.funcionario.id];
-  if (status) { sql += ` AND os.status = ?`; params.push(status); }
-  else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
-  sql += ` ORDER BY os.data_entrada DESC LIMIT 50`;
+    LEFT JOIN vendedores v ON os.vendedor_id = v.id
+    WHERE os.loja_id = ?`;
+  const params = [req.funcionario.loja_id];
+
+  if (adm === '1' && req.funcionario.is_admin) {
+    // Modo ADM: todas as OS da loja, com filtro de período e status
+    const d = Math.min(Math.max(parseInt(dias) || 30, 1), 90);
+    sql += ` AND date(os.data_entrada) >= date('now', '-${d - 1} days', 'localtime')`;
+    if (status) { sql += ` AND os.status = ?`; params.push(status); }
+  } else {
+    // Modo normal (Minhas OS): sempre filtra pelo vendedor logado
+    sql += ` AND os.vendedor_id = ?`;
+    params.push(req.funcionario.id);
+    if (status) { sql += ` AND os.status = ?`; params.push(status); }
+    else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
+  }
+
+  sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
   res.json(db.prepare(sql).all(...params));
 });
 
@@ -91,8 +105,8 @@ router.get('/os/:id', authFuncionario, (req, res) => {
            c.endereco as cliente_endereco
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
-    WHERE os.id = ? AND os.loja_id = ? AND os.vendedor_id = ?
-  `).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+    WHERE os.id = ? AND os.loja_id = ?${req.funcionario.is_admin ? '' : ' AND os.vendedor_id = ?'}
+  `).get(req.params.id, req.funcionario.loja_id, ...(req.funcionario.is_admin ? [] : [req.funcionario.id]));
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
 
   const itens = db.prepare(`

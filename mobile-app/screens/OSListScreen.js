@@ -25,11 +25,30 @@ function fmtVal(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+const ABAS_MINHAS = ['abertas', 'concluida', 'cancelada'];
+const ABAS_ADM = ['abertas', 'concluida', 'cancelada', 'cancelada_adm'];
+
+const ABA_LABEL = {
+  abertas: 'Abertas',
+  concluida: 'Concluídas',
+  cancelada: 'Canceladas',
+};
+
+const DIAS_ADM = [
+  { value: 7, label: '7 dias' },
+  { value: 15, label: '15 dias' },
+  { value: 30, label: '30 dias' },
+  { value: 60, label: '60 dias' },
+  { value: 90, label: '90 dias' },
+];
+
 export default function OSListScreen({ navigation, onLogout }) {
   const [os, setOs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filtro, setFiltro] = useState('abertas');
+  const [filtroStatus, setFiltroStatus] = useState('abertas');
+  const [modoAdm, setModoAdm] = useState(false);
+  const [diasAdm, setDiasAdm] = useState(30);
   const [funcionario, setFuncionario] = useState(null);
   const intervalRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
@@ -48,7 +67,7 @@ export default function OSListScreen({ navigation, onLogout }) {
       clearInterval(intervalRef.current);
       sub.remove();
     };
-  }, [filtro]));
+  }, [filtroStatus, modoAdm, diasAdm]));
 
   async function carregarFuncionario() {
     const f = await AsyncStorage.getItem('funcionario');
@@ -57,7 +76,21 @@ export default function OSListScreen({ navigation, onLogout }) {
 
   async function carregarOS() {
     try {
-      const params = filtro === 'abertas' ? {} : { status: filtro };
+      let params = {};
+      if (modoAdm) {
+        params = { adm: '1', dias: diasAdm };
+        if (filtroStatus !== 'abertas') {
+          params.status = filtroStatus;
+        } else {
+          params.status = 'aberta';
+        }
+      } else {
+        if (filtroStatus === 'abertas') {
+          params = {};
+        } else {
+          params = { status: filtroStatus };
+        }
+      }
       const { data } = await api.get('/os', { params });
       setOs(data);
     } catch (e) {
@@ -66,6 +99,12 @@ export default function OSListScreen({ navigation, onLogout }) {
       setLoading(false);
       setRefreshing(false);
     }
+  }
+
+  function trocarModo(adm) {
+    setModoAdm(adm);
+    setFiltroStatus('abertas');
+    setLoading(true);
   }
 
   function renderOS({ item }) {
@@ -79,6 +118,9 @@ export default function OSListScreen({ navigation, onLogout }) {
           </View>
         </View>
         <Text style={s.cliente}>{item.cliente_nome}</Text>
+        {modoAdm && item.vendedor_nome ? (
+          <Text style={s.vendedor}>Responsável: {item.vendedor_nome}</Text>
+        ) : null}
         <Text style={s.descricao} numberOfLines={2}>{item.descricao}</Text>
         <View style={s.cardBottom}>
           <Text style={s.valor}>{fmtVal(item.valor)}</Text>
@@ -88,11 +130,14 @@ export default function OSListScreen({ navigation, onLogout }) {
     );
   }
 
+  const isAdmin = funcionario?.is_admin;
+
   return (
     <View style={s.container}>
-      <View style={s.header}>
+      {/* Header */}
+      <View style={[s.header, modoAdm && s.headerAdm]}>
         <View>
-          <Text style={s.headerTitle}>Minhas OS</Text>
+          <Text style={s.headerTitle}>{modoAdm ? 'ADM — Todas as OS' : 'Minhas OS'}</Text>
           {funcionario && <Text style={s.headerSub}>Olá, {funcionario.nome.split(' ')[0]}!</Text>}
         </View>
         <TouchableOpacity onPress={onLogout} style={s.logoutBtn}>
@@ -100,28 +145,71 @@ export default function OSListScreen({ navigation, onLogout }) {
         </TouchableOpacity>
       </View>
 
+      {/* Seletor ADM / Minhas OS (apenas para admin) */}
+      {isAdmin && (
+        <View style={s.modoSelector}>
+          <TouchableOpacity
+            style={[s.modoBtn, !modoAdm && s.modoBtnAtivo]}
+            onPress={() => trocarModo(false)}
+          >
+            <Text style={[s.modoText, !modoAdm && s.modoTextAtivo]}>Minhas OS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.modoBtn, modoAdm && s.modoBtnAtivoAdm]}
+            onPress={() => trocarModo(true)}
+          >
+            <Text style={[s.modoText, modoAdm && s.modoTextAtivo]}>ADM</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Filtro de status */}
       <View style={s.filtros}>
         {['abertas', 'concluida', 'cancelada'].map(f => (
           <TouchableOpacity
             key={f}
-            style={[s.filtroBtn, filtro === f && s.filtroBtnAtivo]}
-            onPress={() => { setFiltro(f); setLoading(true); }}
+            style={[s.filtroBtn, filtroStatus === f && (modoAdm ? s.filtroBtnAtivoAdm : s.filtroBtnAtivo)]}
+            onPress={() => { setFiltroStatus(f); setLoading(true); }}
           >
-            <Text style={[s.filtroText, filtro === f && s.filtroTextAtivo]}>
-              {f === 'abertas' ? 'Abertas' : f === 'concluida' ? 'Concluídas' : 'Canceladas'}
+            <Text style={[s.filtroText, filtroStatus === f && s.filtroTextAtivo]}>
+              {ABA_LABEL[f]}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
+      {/* Filtro de período (modo ADM) */}
+      {modoAdm && (
+        <View style={s.diasFiltros}>
+          <Text style={s.diasLabel}>Período:</Text>
+          {DIAS_ADM.map(d => (
+            <TouchableOpacity
+              key={d.value}
+              style={[s.diaBtn, diasAdm === d.value && s.diaBtnAtivoAdm]}
+              onPress={() => { setDiasAdm(d.value); setLoading(true); }}
+            >
+              <Text style={[s.diaText, diasAdm === d.value && s.diaTextAtivo]}>
+                {d.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 40 }} size="large" color="#2563eb" />
+        <ActivityIndicator style={{ marginTop: 40 }} size="large" color={modoAdm ? '#dc2626' : '#2563eb'} />
       ) : (
         <FlatList
           data={os}
           keyExtractor={i => String(i.id)}
           renderItem={renderOS}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarOS(); }} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); carregarOS(); }}
+              colors={[modoAdm ? '#dc2626' : '#2563eb']}
+            />
+          }
           ListEmptyComponent={<Text style={s.vazio}>Nenhuma OS encontrada</Text>}
           contentContainerStyle={{ padding: 16 }}
         />
@@ -136,18 +224,53 @@ const s = StyleSheet.create({
     backgroundColor: '#1a1a2e', paddingTop: 50, paddingBottom: 16,
     paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end'
   },
+  headerAdm: { backgroundColor: '#7f1d1d' },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
   headerSub: { fontSize: 13, color: '#94a3b8', marginTop: 2 },
   logoutBtn: { paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 },
   logoutText: { color: '#fff', fontSize: 13 },
-  filtros: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+
+  // Seletor ADM / Minhas OS
+  modoSelector: {
+    flexDirection: 'row', backgroundColor: '#1e293b',
+    paddingHorizontal: 16, paddingVertical: 8, gap: 8,
+  },
+  modoBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+    backgroundColor: '#334155',
+  },
+  modoBtnAtivo: { backgroundColor: '#2563eb' },
+  modoBtnAtivoAdm: { backgroundColor: '#dc2626' },
+  modoText: { fontSize: 14, fontWeight: '700', color: '#94a3b8' },
+  modoTextAtivo: { color: '#fff' },
+
+  // Filtros de status
+  filtros: { flexDirection: 'row', backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
   filtroBtn: {
     flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center',
     backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0'
   },
   filtroBtnAtivo: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  filtroText: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  filtroBtnAtivoAdm: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
+  filtroText: { fontSize: 11, color: '#64748b', fontWeight: '600' },
   filtroTextAtivo: { color: '#fff' },
+
+  // Filtro de período (ADM)
+  diasFiltros: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    paddingHorizontal: 12, paddingVertical: 8, gap: 6, flexWrap: 'wrap',
+    borderBottomWidth: 1, borderBottomColor: '#f1f5f9'
+  },
+  diasLabel: { fontSize: 12, color: '#64748b', fontWeight: '600', marginRight: 4 },
+  diaBtn: {
+    paddingVertical: 4, paddingHorizontal: 10, borderRadius: 20,
+    backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0'
+  },
+  diaBtnAtivoAdm: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
+  diaText: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+  diaTextAtivo: { color: '#fff' },
+
+  // Cards
   card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
     elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1
@@ -156,7 +279,8 @@ const s = StyleSheet.create({
   numero: { fontSize: 15, fontWeight: 'bold', color: '#1e293b' },
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  cliente: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 4 },
+  cliente: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 2 },
+  vendedor: { fontSize: 12, color: '#dc2626', fontWeight: '600', marginBottom: 4 },
   descricao: { fontSize: 13, color: '#64748b', lineHeight: 18, marginBottom: 10 },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   valor: { fontSize: 16, fontWeight: 'bold', color: '#2563eb' },
