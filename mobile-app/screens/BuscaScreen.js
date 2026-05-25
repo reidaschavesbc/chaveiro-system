@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, ScrollView, Image, Modal
 } from 'react-native';
 import api from '../services/api';
+import UpperTextInput from '../components/UpperTextInput';
 
 const SERVER = api.defaults.baseURL.replace('/api/app', '');
 
@@ -71,7 +72,7 @@ export default function BuscaScreen() {
       </Modal>
       {/* Busca */}
       <View style={s.searchWrap}>
-        <TextInput
+        <UpperTextInput
           style={s.search}
           placeholder="Buscar produto ou serviço..."
           value={busca}

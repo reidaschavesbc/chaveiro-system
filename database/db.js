@@ -230,6 +230,7 @@ function migrate() {
   try { db.exec('ALTER TABLE clientes ADD COLUMN complemento TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE clientes ADD COLUMN bairro TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE clientes ADD COLUMN referencia TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE clientes ADD COLUMN nome_fantasia TEXT'); } catch (_) {}
   // OS - endereço de cliente avulso
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN cliente_avulso_rua TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN cliente_avulso_numero TEXT'); } catch (_) {}
@@ -262,12 +263,14 @@ function migrate() {
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN custo_materiais REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE vendedores ADD COLUMN percentual_plantao REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE produtos ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE produtos ADD COLUMN estoque_ideal INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE tipos_servico ADD COLUMN perguntar_estoque INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_vales REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_liquido REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_salarios REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_bonus REAL NOT NULL DEFAULT 0'); } catch (_) {}
   try { db.exec('ALTER TABLE fechamentos_comissao ADD COLUMN total_a_pagar REAL NOT NULL DEFAULT 0'); } catch (_) {}
+  try { db.exec('ALTER TABLE ordens_servico ADD COLUMN contato_cliente TEXT'); } catch (_) {}
   db.exec(`
     CREATE TABLE IF NOT EXISTS pagamentos_os (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -454,6 +457,14 @@ function migrate() {
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_emitida_em TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_ambiente TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE ordens_servico ADD COLUMN nfse_numero_seq INTEGER'); } catch (_) {}
+  // Colunas NFS-e na tabela vendas
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_numero TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_chave_acesso TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_status TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_xml_dps TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_emitida_em TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_ambiente TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE vendas ADD COLUMN nfse_numero_seq INTEGER'); } catch (_) {}
 
   // NFS-e config por loja
   db.exec(`
@@ -475,6 +486,18 @@ function migrate() {
       }
     }
   }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS adm_acesso_externo (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      funcionario_id INTEGER NOT NULL,
+      loja_id INTEGER NOT NULL,
+      concedido_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      UNIQUE(funcionario_id, loja_id),
+      FOREIGN KEY (funcionario_id) REFERENCES vendedores(id),
+      FOREIGN KEY (loja_id) REFERENCES lojas(id)
+    );
+  `);
 
   console.log('✅ Banco de dados inicializado com sucesso!');
 }

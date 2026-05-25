@@ -4,6 +4,7 @@ import {
   ScrollView, Switch, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
 import api from '../services/api';
+import UpperTextInput from '../components/UpperTextInput';
 
 export default function OSNovaScreen({ navigation, route }) {
   const vendedorId   = route?.params?.vendedor_id   || null;
@@ -19,6 +20,7 @@ export default function OSNovaScreen({ navigation, route }) {
   const [cidade, setCidade] = useState('');
   const [referencia, setReferencia] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [contatoCliente, setContatoCliente] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   async function criar() {
@@ -40,6 +42,7 @@ export default function OSNovaScreen({ navigation, route }) {
         cliente_avulso_cidade: cidade.trim() || null,
         cliente_avulso_referencia: referencia.trim() || null,
         descricao: descricao.trim() || null,
+        contato_cliente: contatoCliente.trim() || null,
         is_plantao: isPlantao,
         chave_auto: chaveAuto,
         vendedor_id: vendedorId,
@@ -95,7 +98,7 @@ export default function OSNovaScreen({ navigation, route }) {
 
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Cliente</Text>
-          <TextInput
+          <UpperTextInput
             style={s.input}
             placeholder="Nome do cliente (opcional)"
             value={clienteNome}
@@ -103,16 +106,23 @@ export default function OSNovaScreen({ navigation, route }) {
           />
           <TextInput
             style={s.input}
-            placeholder="Telefone (opcional)"
+            placeholder="Telefone cadastro (opcional)"
             value={clienteTel}
             onChangeText={setClienteTel}
+            keyboardType="phone-pad"
+          />
+          <TextInput
+            style={s.input}
+            placeholder="📞 Contato desta OS (tel/WhatsApp)"
+            value={contatoCliente}
+            onChangeText={setContatoCliente}
             keyboardType="phone-pad"
           />
         </View>
 
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Endereço{isPlantao ? ' *' : ' (opcional)'}</Text>
-          <TextInput
+          <UpperTextInput
             style={s.input}
             placeholder="Rua / Av."
             value={rua}
@@ -126,20 +136,20 @@ export default function OSNovaScreen({ navigation, route }) {
               onChangeText={setNumero}
               keyboardType="numeric"
             />
-            <TextInput
+            <UpperTextInput
               style={[s.input, { flex: 2 }]}
               placeholder="Complemento (ap, bloco...)"
               value={complemento}
               onChangeText={setComplemento}
             />
           </View>
-          <TextInput
+          <UpperTextInput
             style={s.input}
             placeholder="Cidade"
             value={cidade}
             onChangeText={setCidade}
           />
-          <TextInput
+          <UpperTextInput
             style={s.input}
             placeholder="Referência (perto de, cor da casa...)"
             value={referencia}
@@ -150,7 +160,7 @@ export default function OSNovaScreen({ navigation, route }) {
         {!isPlantao && (
           <View style={s.secao}>
             <Text style={s.secaoTitulo}>Descrição *</Text>
-            <TextInput
+            <UpperTextInput
               style={[s.input, s.textarea]}
               placeholder="Descreva o serviço..."
               value={descricao}
@@ -165,7 +175,7 @@ export default function OSNovaScreen({ navigation, route }) {
         {isPlantao && (
           <View style={s.secao}>
             <Text style={s.secaoTitulo}>Observação (opcional)</Text>
-            <TextInput
+            <UpperTextInput
               style={[s.input, s.textarea]}
               placeholder="Observações sobre o plantão..."
               value={descricao}
