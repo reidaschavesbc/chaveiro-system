@@ -4,6 +4,7 @@ const db = require('../database/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
+const gerarNumeroOS = require('../utils/gerarNumeroOS');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'chaveiro_super_secret_key_2024';
 
@@ -94,6 +95,9 @@ router.get('/os', authFuncionario, (req, res) => {
     if (status === 'concluida' || status === 'cancelada') {
       sql += ` AND os.status = ? AND date(COALESCE(os.data_conclusao, os.data_entrada)) >= date('now', '-2 days', 'localtime')`;
       params.push(status);
+    } else if (status === 'aberta' || status === 'em_andamento') {
+      sql += ` AND os.status = ?`;
+      params.push(status);
     } else {
       sql += ` AND os.status IN ('aberta', 'em_andamento')`;
     }
@@ -125,12 +129,73 @@ router.get('/os', authFuncionario, (req, res) => {
   res.json(db.prepare(sql).all(...params));
 });
 
+// POST /api/app/os — criar nova OS
+router.post('/os', authFuncionario, (req, res) => {
+  const {
+    cliente_nome_avulso, cliente_telefone_avulso,
+    cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento,
+    cliente_avulso_cidade, cliente_avulso_referencia,
+    descricao, contato_cliente, is_plantao, chave_auto, vendedor_id,
+  } = req.body;
+
+  const lojaId = req.funcionario.loja_id;
+  const vidFinal = (req.funcionario.is_admin && vendedor_id) ? vendedor_id : req.funcionario.id;
+
+  if (!is_plantao && !descricao?.trim()) return res.status(400).json({ error: 'Descrição obrigatória' });
+  if (is_plantao && !cliente_avulso_rua?.trim()) return res.status(400).json({ error: 'Endereço obrigatório para plantão' });
+
+  try {
+    const inserir = db.transaction(() => {
+      const numero = gerarNumeroOS();
+      const result = db.prepare(`
+        INSERT INTO ordens_servico (
+          numero, cliente_nome_avulso, cliente_telefone_avulso,
+          cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento,
+          cliente_avulso_cidade, cliente_avulso_referencia,
+          descricao, contato_cliente, is_plantao, chave_auto,
+          vendedor_id, status, valor, loja_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aberta', 0, ?)
+      `).run(
+        numero,
+        cliente_nome_avulso || null, cliente_telefone_avulso || null,
+        cliente_avulso_rua || null, cliente_avulso_numero || null,
+        cliente_avulso_complemento || null, cliente_avulso_cidade || null,
+        cliente_avulso_referencia || null,
+        descricao?.trim() || null, contato_cliente || null,
+        is_plantao ? 1 : 0, chave_auto ? 1 : 0,
+        vidFinal, lojaId
+      );
+      return { id: result.lastInsertRowid, numero };
+    });
+
+    const { id, numero } = inserir();
+
+    if (req.funcionario.is_admin && vendedor_id && vendedor_id !== req.funcionario.id) {
+      notificarFuncionario(vendedor_id, '🔧 Nova OS', `${numero} — ${cliente_nome_avulso || 'Avulso'}: ${descricao || 'Plantão'}`).catch(() => {});
+    }
+
+    res.status(201).json({ id, numero });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao criar OS' });
+  }
+});
+
 // GET /api/app/adm-stats
 router.get('/adm-stats', authFuncionario, (req, res) => {
   const lojaAlvo = req.query.loja_id ? parseInt(req.query.loja_id) : req.funcionario.loja_id;
   if (!verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
   const hoje = new Date().toLocaleDateString('en-CA');
+  const loja = db.prepare(`SELECT nome FROM lojas WHERE id = ?`).get(lojaAlvo);
+  const funcionarios = db.prepare(`
+    SELECT v.id, v.nome, v.is_admin,
+      (SELECT COUNT(*) FROM ordens_servico WHERE vendedor_id = v.id AND status IN ('aberta','em_andamento') AND loja_id = ?) as os_abertas,
+      (SELECT COUNT(*) FROM ordens_servico WHERE vendedor_id = v.id AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?) as os_hoje
+    FROM vendedores v WHERE v.loja_id = ? AND v.ativo = 1 ORDER BY v.nome
+  `).all(lojaAlvo, hoje, lojaAlvo, lojaAlvo);
   const stats = {
+    loja_nome: loja?.nome || 'Minha Loja',
+    funcionarios,
     em_andamento: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'em_andamento'`).get(lojaAlvo).n,
     abertas:       db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'aberta'`).get(lojaAlvo).n,
     finalizadas_hoje: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).n,
@@ -251,8 +316,9 @@ router.get('/servicos', authFuncionario, (req, res) => {
 
 // POST /api/app/os/:id/item
 router.post('/os/:id/item', authFuncionario, (req, res) => {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
-    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  const os = req.funcionario.is_admin
+    ? db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?`).get(req.params.id, req.funcionario.loja_id)
+    : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
   if (['concluida', 'cancelada'].includes(os.status)) return res.status(400).json({ error: 'OS já finalizada' });
 

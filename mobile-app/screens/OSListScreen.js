@@ -138,11 +138,11 @@ export default function OSListScreen({ navigation, onLogout }) {
           renderItem={renderOS}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); carregarOS(); }} />}
           ListEmptyComponent={<Text style={s.vazio}>Nenhuma OS encontrada</Text>}
-          contentContainerStyle={{ padding: 16, paddingBottom: 90 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 130 }}
         />
       )}
 
-      <TouchableOpacity style={[s.fab, { bottom: (insets.bottom || 0) + 20 }]} onPress={() => navigation.navigate('OSNova')}>
+      <TouchableOpacity style={[s.fab, { bottom: Math.max((insets.bottom || 0) + 24, 80) }]} onPress={() => navigation.navigate('OSNova')}>
         <Text style={s.fabText}>+ Nova OS</Text>
       </TouchableOpacity>
     </View>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform, Alert, Linking } from 'react-native';
+import { Platform, Alert, Linking, TouchableOpacity, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -141,7 +141,20 @@ export default function App() {
           <Stack.Screen
             name="Admin"
             component={AdminScreen}
-            options={{ title: '👑 Painel Admin', headerBackTitle: 'Voltar', headerTintColor: '#7c3aed' }}
+            options={({ navigation }) => ({
+              title: '👑 ADM',
+              headerBackVisible: false,
+              headerTintColor: '#7c3aed',
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 8 }}
+                >
+                  <Text style={{ fontSize: 26, color: '#7c3aed', lineHeight: 28, marginTop: -2 }}>‹</Text>
+                  <Text style={{ fontSize: 15, color: '#7c3aed', fontWeight: '600' }}>Voltar</Text>
+                </TouchableOpacity>
+              ),
+            })}
           />
         </Stack.Navigator>
       ) : (
