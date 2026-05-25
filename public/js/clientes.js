@@ -35,6 +35,11 @@ async function clientes(el) {
               <input type="text" id="cliente-nome" required>
             </div>
 
+            <div class="form-group form-full">
+              <label>Nome Fantasia</label>
+              <input type="text" id="cliente-nome-fantasia">
+            </div>
+
             <div class="form-group">
               <label>CPF / CNPJ</label>
               <div style="display:flex">
@@ -42,7 +47,7 @@ async function clientes(el) {
                   <option value="cpf">CPF</option>
                   <option value="cnpj">CNPJ</option>
                 </select>
-                <input type="text" id="cliente-doc" style="border-radius:0;flex:1">
+                <input type="text" id="cliente-doc" style="border-radius:0;flex:1" oninput="mascaraCPFCNPJ(this)" maxlength="18">
                 <button type="button" id="btn-buscar-cnpj" onclick="consultarCNPJAuto()" style="display:none;border-radius:0 6px 6px 0;padding:0 12px;background:#1d4ed8;color:#fff;border:1.5px solid #1d4ed8;cursor:pointer;font-size:12px;white-space:nowrap">🔍 Receita</button>
               </div>
             </div>
@@ -133,7 +138,11 @@ function renderClientes(list) {
         const endereco = [c.endereco, c.numero, c.complemento, c.cidade].filter(Boolean).join(', ') || '<span class="text-muted">-</span>';
         return `
       <tr>
-        <td><strong>${c.nome}</strong>${c.observacoes ? `<br><span class="text-muted" style="font-size:11px">${c.observacoes}</span>` : ''}</td>
+        <td>
+          <strong>${c.nome_fantasia || c.nome}</strong>
+          ${c.nome_fantasia ? `<br><span class="text-muted" style="font-size:11px">${c.nome}</span>` : ''}
+          ${c.observacoes ? `<br><span class="text-muted" style="font-size:11px">${c.observacoes}</span>` : ''}
+        </td>
         <td>${docLabel}</td>
         <td>${c.telefone || '<span class="text-muted">-</span>'}</td>
         <td style="font-size:12px">${endereco}</td>
@@ -152,6 +161,7 @@ function filtrarClientes() {
     const q = document.getElementById('search-clientes').value.toLowerCase();
     const filtered = clientesList.filter(c =>
         c.nome.toLowerCase().includes(q) ||
+        (c.nome_fantasia || '').toLowerCase().includes(q) ||
         (c.cpf || '').includes(q) ||
         (c.cnpj || '').includes(q) ||
         (c.telefone || '').includes(q) ||
@@ -182,11 +192,16 @@ async function consultarCNPJAuto() {
     try {
         const d = await api('GET', `/cnpj/${cnpj}`);
 
-        // Nome / Razão social
-        const nome = d.razao_social || d.nome_fantasia || '';
-        if (nome && !document.getElementById('cliente-nome').value) {
-            document.getElementById('cliente-nome').value = nome;
+        // Nome / Razão social e nome fantasia
+        const razaoSocial = d.razao_social || '';
+        const nomeFantasia = d.nome_fantasia || '';
+        if (razaoSocial && !document.getElementById('cliente-nome').value) {
+            document.getElementById('cliente-nome').value = razaoSocial;
         }
+        if (nomeFantasia && !document.getElementById('cliente-nome-fantasia').value) {
+            document.getElementById('cliente-nome-fantasia').value = nomeFantasia;
+        }
+        const nome = razaoSocial || nomeFantasia;
 
         // Endereço
         if (d.logradouro) document.getElementById('cliente-endereco').value = d.logradouro;
@@ -246,6 +261,7 @@ function abrirModalCliente() {
     document.getElementById('form-cliente').reset();
     document.getElementById('cliente-doc-tipo').value = 'cpf';
     document.getElementById('cliente-doc').placeholder = '000.000.000-00';
+    document.getElementById('cliente-nome-fantasia').value = '';
     document.getElementById('modal-cliente-title').textContent = 'Novo Cliente';
     toggleDocTipo();
     openModal('modal-cliente');
@@ -256,17 +272,17 @@ function editarCliente(id) {
     if (!c) return;
     document.getElementById('cliente-id').value = c.id;
     document.getElementById('cliente-nome').value = c.nome || '';
+    document.getElementById('cliente-nome-fantasia').value = c.nome_fantasia || '';
 
     if (c.cnpj) {
         document.getElementById('cliente-doc-tipo').value = 'cnpj';
-        document.getElementById('cliente-doc').value = c.cnpj;
-        document.getElementById('cliente-doc').placeholder = '00.000.000/0001-00';
+        toggleDocTipo();
+        document.getElementById('cliente-doc').value = aplicarMascaraCPFCNPJ(c.cnpj);
     } else {
         document.getElementById('cliente-doc-tipo').value = 'cpf';
-        document.getElementById('cliente-doc').value = c.cpf || '';
-        document.getElementById('cliente-doc').placeholder = '000.000.000-00';
+        toggleDocTipo();
+        document.getElementById('cliente-doc').value = aplicarMascaraCPFCNPJ(c.cpf || '');
     }
-    toggleDocTipo();
 
     document.getElementById('cliente-telefone').value = aplicarMascaraTelefone(c.telefone);
     document.getElementById('cliente-email').value = c.email || '';
@@ -288,6 +304,7 @@ async function salvarCliente() {
     const docVal = document.getElementById('cliente-doc').value.trim();
     const body = {
         nome: document.getElementById('cliente-nome').value.trim(),
+        nome_fantasia: document.getElementById('cliente-nome-fantasia').value.trim(),
         cpf: docTipo === 'cpf' ? docVal : '',
         cnpj: docTipo === 'cnpj' ? docVal : '',
         telefone: document.getElementById('cliente-telefone').value,
@@ -312,7 +329,7 @@ async function salvarCliente() {
 }
 
 async function excluirCliente(id) {
-    if (!confirmDialog('Confirma exclusão do cliente?')) return;
+    if (!await confirmDialog('Confirma exclusão do cliente?')) return;
     try {
         await api('DELETE', `/clientes/${id}`);
         toast('Cliente excluído!');
