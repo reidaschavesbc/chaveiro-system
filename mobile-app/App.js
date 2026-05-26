@@ -42,17 +42,18 @@ export default function App() {
   const notifListener = useRef();
   const responseListener = useRef();
 
+  const atualizacaoMostradaRef = useRef(false);
+
   useEffect(() => {
     verificarLogin();
     configurarNotificacoes();
-    verificarAtualizacao();
 
-    const sub = AppState.addEventListener('change', state => {
-      if (state === 'active') verificarAtualizacao();
-    });
+    const timer = setTimeout(() => verificarAtualizacao(), 3000);
+    const intervalo = setInterval(() => verificarAtualizacao(), 5 * 60 * 1000);
 
     return () => {
-      sub.remove();
+      clearTimeout(timer);
+      clearInterval(intervalo);
       Notifications.removeNotificationSubscription(notifListener.current);
       Notifications.removeNotificationSubscription(responseListener.current);
     };
@@ -62,24 +63,24 @@ export default function App() {
     try {
       const serverUrl = api.defaults.baseURL.replace('/api/app', '');
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       const resp = await fetch(`${serverUrl}/api/apk-version`, { signal: controller.signal });
-      clearTimeout(timer);
+      clearTimeout(timeoutId);
+      if (!resp.ok) return;
       const { version: versaoServidor } = await resp.json();
       const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
-      if (versaoServidor && versaoServidor !== versaoApp) {
+      if (versaoServidor && versaoServidor !== versaoApp && !atualizacaoMostradaRef.current) {
+        atualizacaoMostradaRef.current = true;
         Alert.alert(
           'Atualização disponível',
           `Nova versão ${versaoServidor} disponível. Deseja atualizar agora?`,
           [
-            { text: 'Agora não', style: 'cancel' },
+            { text: 'Agora não', style: 'cancel', onPress: () => { atualizacaoMostradaRef.current = false; } },
             { text: 'Atualizar', onPress: () => Linking.openURL(`${serverUrl}/download-app`) },
           ]
         );
       }
-    } catch (e) {
-      console.warn('verificarAtualizacao:', e.message);
-    }
+    } catch (_) {}
   }
 
   async function verificarLogin() {
