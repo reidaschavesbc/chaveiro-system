@@ -145,13 +145,13 @@ export default function App() {
               title: '👑 ADM',
               headerBackVisible: false,
               headerTintColor: '#7c3aed',
-              headerLeft: () => (
+              headerLeft: () => null,
+              headerRight: () => (
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingRight: 8 }}
+                  style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 }}
                 >
-                  <Text style={{ fontSize: 26, color: '#7c3aed', lineHeight: 28, marginTop: -2 }}>‹</Text>
-                  <Text style={{ fontSize: 15, color: '#7c3aed', fontWeight: '600' }}>Voltar</Text>
+                  <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700' }}>VOLTAR</Text>
                 </TouchableOpacity>
               ),
             })}

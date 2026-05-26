@@ -110,7 +110,7 @@ export default function OSListScreen({ navigation, onLogout }) {
             <Text style={s.buscaBtnText}>🔍</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onLogout} style={s.logoutBtn}>
-            <Text style={s.logoutText}>Sair</Text>
+            <Text style={s.logoutText}>SAIR</Text>
           </TouchableOpacity>
         </View>
       </View>
