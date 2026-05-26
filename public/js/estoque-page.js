@@ -2,7 +2,6 @@
 async function estoquePage(el) {
     const user = getUser();
     const isPrincipal = user && user.principal;
-
     if (isPrincipal) {
         await estoquePrincipalPage(el);
     } else {
@@ -10,51 +9,91 @@ async function estoquePage(el) {
     }
 }
 
-// ─── Página para SUB-USUÁRIO ───────────────────────────────────────────────────
+// ─── SUB-USUÁRIO ──────────────────────────────────────────────────────────────
 async function estoqueSubPage(el) {
     el.innerHTML = `
-        <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="estoqueSubSolicitarModal()">+ Solicitar Estoque</button>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap">
-            <div style="flex:1;min-width:280px">
-                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:#1e293b">Meu Estoque</h3>
-                <div id="sub-estoque-lista">Carregando...</div>
-            </div>
-            <div style="flex:1;min-width:280px">
-                <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:#1e293b">Meus Pedidos</h3>
-                <div id="sub-pedidos-lista">Carregando...</div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+            <div id="sub-estoque-stats" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+                <div style="flex:2;min-width:280px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0">Meu Estoque</h3>
+                        <input id="sub-estoque-busca" type="text" placeholder="Buscar produto..." oninput="estoqueSubFiltrar()"
+                            style="border:1.5px solid #e2e8f0;border-radius:8px;padding:6px 12px;font-size:12px;outline:none;width:160px">
+                    </div>
+                    <div id="sub-estoque-lista">
+                        <div class="empty-state"><p>Carregando...</p></div>
+                    </div>
+                </div>
+                <div style="flex:1;min-width:260px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0">Meus Pedidos</h3>
+                        <button class="btn btn-primary" onclick="estoqueSubSolicitarModal()" style="font-size:12px;padding:6px 14px">+ Solicitar</button>
+                    </div>
+                    <div id="sub-pedidos-lista">
+                        <div class="empty-state"><p>Carregando...</p></div>
+                    </div>
+                </div>
             </div>
         </div>`;
 
     await Promise.all([carregarSubEstoque(), carregarSubPedidos()]);
 }
 
+let _subEstoqueProdutos = [];
+
 async function carregarSubEstoque() {
     const el = document.getElementById('sub-estoque-lista');
+    const statsEl = document.getElementById('sub-estoque-stats');
     if (!el) return;
     try {
-        const produtos = await api('GET', '/estoque');
-        if (!produtos.length) {
-            el.innerHTML = '<div style="color:#94a3b8;font-size:13px">Nenhum produto em estoque</div>';
-            return;
+        _subEstoqueProdutos = await api('GET', '/estoque');
+        const total = _subEstoqueProdutos.length;
+        const zerados = _subEstoqueProdutos.filter(p => p.estoque === 0).length;
+        const baixo = _subEstoqueProdutos.filter(p => p.estoque > 0 && p.estoque <= 5).length;
+
+        if (statsEl) {
+            statsEl.innerHTML = `
+                ${_estatCard('📦', 'Total de Produtos', total, '#2563eb')}
+                ${_estatCard('⚠️', 'Estoque Baixo', baixo, '#f59e0b')}
+                ${_estatCard('🚫', 'Zerados', zerados, '#ef4444')}`;
         }
-        el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
-            <thead><tr style="border-bottom:2px solid #e2e8f0">
-                <th style="text-align:left;padding:8px 6px;color:#64748b;font-weight:600">Produto</th>
-                <th style="text-align:right;padding:8px 6px;color:#64748b;font-weight:600">Qtd</th>
-                <th style="text-align:left;padding:8px 6px;color:#64748b;font-weight:600">Unid.</th>
-            </tr></thead>
-            <tbody>${produtos.map(p => `
-                <tr style="border-bottom:1px solid #f1f5f9">
-                    <td style="padding:8px 6px;font-weight:500">${p.nome}</td>
-                    <td style="padding:8px 6px;text-align:right;font-weight:700;color:${p.estoque === 0 ? '#ef4444' : '#1e293b'}">${p.estoque}</td>
-                    <td style="padding:8px 6px;color:#64748b">${p.unidade || ''}</td>
-                </tr>`).join('')}
-            </tbody></table>`;
+
+        estoqueSubFiltrar();
     } catch (e) {
-        el.innerHTML = '<div style="color:#ef4444;font-size:13px">Erro ao carregar estoque</div>';
+        el.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px">Erro ao carregar estoque</div>';
     }
+}
+
+function estoqueSubFiltrar() {
+    const el = document.getElementById('sub-estoque-lista');
+    if (!el) return;
+    const busca = (document.getElementById('sub-estoque-busca')?.value || '').toLowerCase();
+    const lista = busca ? _subEstoqueProdutos.filter(p => p.nome.toLowerCase().includes(busca)) : _subEstoqueProdutos;
+
+    if (!lista.length) {
+        el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px;text-align:center">Nenhum produto encontrado</div>';
+        return;
+    }
+
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+        ${lista.map(p => {
+            const nivel = p.estoque === 0 ? 'zero' : p.estoque <= 5 ? 'baixo' : 'ok';
+            const cores = { zero: { bg: '#fef2f2', border: '#fecaca', txt: '#ef4444', badge: '#ef4444' }, baixo: { bg: '#fffbeb', border: '#fde68a', txt: '#d97706', badge: '#f59e0b' }, ok: { bg: '#f0fdf4', border: '#bbf7d0', txt: '#16a34a', badge: '#10b981' } };
+            const c = cores[nivel];
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1.5px solid ${c.border};border-radius:10px;background:${c.bg}">
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:13px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>
+                    ${p.categoria ? `<div style="font-size:11px;color:#94a3b8;margin-top:1px">${p.categoria}</div>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                    <span style="font-size:20px;font-weight:800;color:${c.txt}">${p.estoque}</span>
+                    <span style="font-size:11px;color:#94a3b8">${p.unidade || 'un'}</span>
+                    <span style="font-size:10px;font-weight:700;background:${c.badge};color:#fff;padding:2px 7px;border-radius:20px">${nivel === 'ok' ? 'OK' : nivel === 'baixo' ? 'BAIXO' : 'ZERO'}</span>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
 async function carregarSubPedidos() {
@@ -64,22 +103,25 @@ async function carregarSubPedidos() {
         const r = await api('GET', '/estoque/pedidos');
         const pedidos = r.pedidos || [];
         if (!pedidos.length) {
-            el.innerHTML = '<div style="color:#94a3b8;font-size:13px">Nenhum pedido realizado</div>';
+            el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:12px;text-align:center">Nenhum pedido realizado</div>';
             return;
         }
-        const statusLabel = { pendente: 'Pendente', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
+        const statusLabel = { pendente: 'Aguardando', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
+        const statusIcon = { pendente: '⏳', aprovado: '✅', rejeitado: '❌' };
         const statusColor = { pendente: '#f59e0b', aprovado: '#10b981', rejeitado: '#ef4444' };
-        el.innerHTML = pedidos.map(p => `
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:8px">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-                    <span style="font-weight:600;font-size:13px">${p.produto_nome}</span>
-                    <span style="font-size:11px;font-weight:700;color:${statusColor[p.status]};background:${statusColor[p.status]}15;padding:2px 8px;border-radius:20px">${statusLabel[p.status] || p.status}</span>
-                </div>
-                <div style="font-size:12px;color:#64748b">Qtd: ${p.quantidade} ${p.unidade || ''} · ${fmtDt(p.criado_em)}</div>
-                ${p.resposta ? `<div style="font-size:12px;color:#64748b;margin-top:4px">Resposta: ${p.resposta}</div>` : ''}
-            </div>`).join('');
+        el.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+            ${pedidos.map(p => `
+                <div style="border:1.5px solid #e2e8f0;border-radius:12px;padding:12px 14px;background:#fff">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                        <div style="font-weight:600;font-size:13px;color:#1e293b;flex:1">${p.produto_nome}</div>
+                        <span style="font-size:11px;font-weight:700;color:${statusColor[p.status]};background:${statusColor[p.status]}18;padding:2px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0">${statusIcon[p.status]} ${statusLabel[p.status] || p.status}</span>
+                    </div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:5px">${p.quantidade} ${p.unidade || 'un'} · ${fmtDt(p.criado_em)}</div>
+                    ${p.resposta ? `<div style="font-size:11px;color:#64748b;margin-top:5px;padding:5px 8px;background:#f8fafc;border-radius:6px;border-left:3px solid #e2e8f0">${p.resposta}</div>` : ''}
+                </div>`).join('')}
+        </div>`;
     } catch (e) {
-        el.innerHTML = '<div style="color:#ef4444;font-size:13px">Erro ao carregar pedidos</div>';
+        el.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px">Erro ao carregar pedidos</div>';
     }
 }
 
@@ -91,26 +133,27 @@ async function estoqueSubSolicitarModal() {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
     overlay.innerHTML = `
         <div style="background:#fff;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-            <div style="font-size:18px;font-weight:700;margin-bottom:18px">Solicitar Estoque</div>
+            <div style="font-size:18px;font-weight:700;margin-bottom:4px;color:#1e293b">Solicitar Estoque</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">O responsável receberá sua solicitação para aprovação.</div>
             <div style="margin-bottom:14px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Produto</label>
-                <select id="_se-produto" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
-                    <option value="">Selecione...</option>
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Produto</label>
+                <select id="_se-produto" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box;background:#fff">
+                    <option value="">Selecione o produto...</option>
                     ${produtos.map(p => `<option value="${p.id}">${p.nome} (saldo: ${p.estoque} ${p.unidade || ''})</option>`).join('')}
                 </select>
             </div>
             <div style="margin-bottom:14px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Quantidade</label>
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Quantidade</label>
                 <input type="number" id="_se-qtd" min="1" value="1" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
             </div>
-            <div style="margin-bottom:18px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Observação (opcional)</label>
-                <input type="text" id="_se-obs" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
+            <div style="margin-bottom:20px">
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Observação <span style="font-weight:400;color:#94a3b8">(opcional)</span></label>
+                <input type="text" id="_se-obs" placeholder="Ex: urgente, para atendimento X..." style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
             </div>
             <div id="_se-erro" style="color:#ef4444;font-size:12px;margin-bottom:10px;min-height:16px"></div>
             <div style="display:flex;gap:10px">
-                <button id="_se-cancel" style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;cursor:pointer;font-size:13px">Cancelar</button>
-                <button id="_se-ok" style="flex:1;padding:10px;border:none;border-radius:9px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Solicitar</button>
+                <button id="_se-cancel" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
+                <button id="_se-ok" style="flex:1;padding:11px;border:none;border-radius:9px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Enviar Solicitação</button>
             </div>
         </div>`;
     document.body.appendChild(overlay);
@@ -126,7 +169,7 @@ async function estoqueSubSolicitarModal() {
         try {
             await api('POST', '/estoque/pedido', { produto_id, quantidade, observacao: observacao || undefined });
             overlay.remove();
-            showToast('Pedido enviado com sucesso!', 'success');
+            showToast('Pedido enviado!', 'success');
             await carregarSubPedidos();
         } catch (e) {
             err.textContent = e.message || 'Erro ao enviar pedido';
@@ -134,15 +177,30 @@ async function estoqueSubSolicitarModal() {
     };
 }
 
-// ─── Página para PRINCIPAL ─────────────────────────────────────────────────────
+// ─── PRINCIPAL ────────────────────────────────────────────────────────────────
 async function estoquePrincipalPage(el) {
     el.innerHTML = `
-        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="estoquePrincipalEnviarModal()">Enviar Estoque para Sub-usuário</button>
-        </div>
-        <div style="margin-bottom:24px">
-            <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;color:#1e293b">Pedidos Pendentes de Estoque</h3>
-            <div id="principal-pedidos-lista">Carregando...</div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+            <div id="principal-estoque-stats" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
+                <div style="flex:1;min-width:300px">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0">Pedidos de Estoque</h3>
+                        <div style="display:flex;gap:8px">
+                            <select id="filtro-status-pedido" onchange="carregarPrincipalPedidos()" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:12px;outline:none;background:#fff">
+                                <option value="">Todos</option>
+                                <option value="pendente" selected>Pendentes</option>
+                                <option value="aprovado">Aprovados</option>
+                                <option value="rejeitado">Rejeitados</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="estoquePrincipalEnviarModal()" style="font-size:12px;padding:6px 14px">Enviar Estoque</button>
+                        </div>
+                    </div>
+                    <div id="principal-pedidos-lista">
+                        <div class="empty-state"><p>Carregando...</p></div>
+                    </div>
+                </div>
+            </div>
         </div>`;
 
     await carregarPrincipalPedidos();
@@ -151,34 +209,58 @@ async function estoquePrincipalPage(el) {
 
 async function carregarPrincipalPedidos() {
     const el = document.getElementById('principal-pedidos-lista');
+    const statsEl = document.getElementById('principal-estoque-stats');
     if (!el) return;
     try {
         const r = await api('GET', '/estoque/pedidos');
-        const pedidos = r.pedidos || [];
+        const todosPedidos = r.pedidos || [];
+        const filtro = document.getElementById('filtro-status-pedido')?.value || '';
+        const pedidos = filtro ? todosPedidos.filter(p => p.status === filtro) : todosPedidos;
+
+        const pendentes = todosPedidos.filter(p => p.status === 'pendente').length;
+        const aprovados = todosPedidos.filter(p => p.status === 'aprovado').length;
+        const rejeitados = todosPedidos.filter(p => p.status === 'rejeitado').length;
+
+        if (statsEl) {
+            statsEl.innerHTML = `
+                ${_estatCard('⏳', 'Pendentes', pendentes, '#f59e0b')}
+                ${_estatCard('✅', 'Aprovados', aprovados, '#10b981')}
+                ${_estatCard('❌', 'Rejeitados', rejeitados, '#ef4444')}`;
+        }
+
         if (!pedidos.length) {
-            el.innerHTML = '<div style="color:#94a3b8;font-size:13px">Nenhum pedido</div>';
+            el.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center">Nenhum pedido encontrado</div>';
             return;
         }
+
         const statusColor = { pendente: '#f59e0b', aprovado: '#10b981', rejeitado: '#ef4444' };
-        const statusLabel = { pendente: 'Pendente', aprovado: 'Aprovado', rejeitado: 'Rejeitado' };
-        el.innerHTML = pedidos.map(p => `
-            <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:8px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-                <div style="flex:1;min-width:180px">
-                    <div style="font-weight:600;font-size:13px">${p.produto_nome}</div>
-                    <div style="font-size:12px;color:#64748b;margin-top:2px">Solicitado por: ${p.solicitante_nome || '?'} · Qtd: ${p.quantidade} ${p.unidade || ''}</div>
-                    <div style="font-size:12px;color:#94a3b8">${fmtDt(p.criado_em)}</div>
-                    ${p.observacao ? `<div style="font-size:12px;color:#64748b;margin-top:4px">"${p.observacao}"</div>` : ''}
-                </div>
-                <div style="display:flex;gap:6px;align-items:center">
-                    <span style="font-size:11px;font-weight:700;color:${statusColor[p.status]};background:${statusColor[p.status]}15;padding:2px 8px;border-radius:20px">${statusLabel[p.status] || p.status}</span>
-                    ${p.status === 'pendente' ? `
-                        <button onclick="estoquePrincipalAprovar(${p.id})" style="padding:5px 12px;border:none;border-radius:7px;background:#10b981;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Aprovar</button>
-                        <button onclick="estoquePrincipalRejeitar(${p.id})" style="padding:5px 12px;border:none;border-radius:7px;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Rejeitar</button>
-                    ` : ''}
-                </div>
-            </div>`).join('');
+        const statusLabel = { pendente: '⏳ Aguardando', aprovado: '✅ Aprovado', rejeitado: '❌ Rejeitado' };
+
+        el.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px">
+            ${pedidos.map(p => `
+                <div style="border:1.5px solid ${p.status === 'pendente' ? '#fde68a' : '#e2e8f0'};border-radius:12px;padding:14px 16px;background:${p.status === 'pendente' ? '#fffbeb' : '#fff'}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+                        <div style="flex:1;min-width:160px">
+                            <div style="font-weight:700;font-size:14px;color:#1e293b">${p.produto_nome}</div>
+                            <div style="font-size:12px;color:#64748b;margin-top:3px">
+                                <strong>${p.solicitante_nome || '?'}</strong> · ${p.quantidade} ${p.unidade || 'un'} · ${fmtDt(p.criado_em)}
+                            </div>
+                            ${p.observacao ? `<div style="font-size:11px;color:#64748b;margin-top:6px;padding:5px 8px;background:#fff;border-radius:6px;border-left:3px solid #fde68a">"${p.observacao}"</div>` : ''}
+                            ${p.resposta ? `<div style="font-size:11px;color:#64748b;margin-top:6px;padding:5px 8px;background:#f8fafc;border-radius:6px;border-left:3px solid #e2e8f0">Resposta: ${p.resposta}</div>` : ''}
+                        </div>
+                        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+                            <span style="font-size:11px;font-weight:700;color:${statusColor[p.status]};background:${statusColor[p.status]}18;padding:3px 10px;border-radius:20px">${statusLabel[p.status] || p.status}</span>
+                            ${p.status === 'pendente' ? `
+                                <div style="display:flex;gap:6px">
+                                    <button onclick="estoquePrincipalAprovar(${p.id})" style="padding:5px 14px;border:none;border-radius:7px;background:#10b981;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Aprovar</button>
+                                    <button onclick="estoquePrincipalRejeitar(${p.id})" style="padding:5px 14px;border:none;border-radius:7px;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">Rejeitar</button>
+                                </div>` : ''}
+                        </div>
+                    </div>
+                </div>`).join('')}
+        </div>`;
     } catch (e) {
-        el.innerHTML = '<div style="color:#ef4444;font-size:13px">Erro ao carregar pedidos</div>';
+        el.innerHTML = '<div style="color:#ef4444;font-size:13px;padding:12px">Erro ao carregar pedidos</div>';
     }
 }
 
@@ -206,6 +288,73 @@ async function estoquePrincipalRejeitar(pedidoId) {
     } catch (e) {
         showToast(e.message || 'Erro ao rejeitar', 'error');
     }
+}
+
+async function estoquePrincipalEnviarModal() {
+    let subs = [], produtos = [];
+    try { [subs, produtos] = await Promise.all([api('GET', '/estoque/sub-usuarios'), api('GET', '/estoque')]); } catch (_) {}
+    if (!subs.length) { showToast('Nenhum sub-usuário cadastrado', 'error'); return; }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+            <div style="font-size:18px;font-weight:700;margin-bottom:4px;color:#1e293b">Enviar Estoque</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">Transferir produtos para um ponto de venda.</div>
+            <div style="margin-bottom:14px">
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Destino</label>
+                <select id="_ee-sub" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box;background:#fff">
+                    <option value="">Selecione o ponto...</option>
+                    ${subs.map(s => `<option value="${s.id}">${s.nome}</option>`).join('')}
+                </select>
+            </div>
+            <div style="margin-bottom:14px">
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Produto</label>
+                <select id="_ee-prod" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box;background:#fff">
+                    <option value="">Selecione o produto...</option>
+                    ${produtos.map(p => `<option value="${p.id}">${p.nome} (estoque: ${p.estoque} ${p.unidade || ''})</option>`).join('')}
+                </select>
+            </div>
+            <div style="margin-bottom:20px">
+                <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Quantidade</label>
+                <input type="number" id="_ee-qtd" min="1" value="1" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
+            </div>
+            <div id="_ee-erro" style="color:#ef4444;font-size:12px;margin-bottom:10px;min-height:16px"></div>
+            <div style="display:flex;gap:10px">
+                <button id="_ee-cancel" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;cursor:pointer;font-size:13px;font-weight:500">Cancelar</button>
+                <button id="_ee-ok" style="flex:1;padding:11px;border:none;border-radius:9px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Enviar</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#_ee-cancel').onclick = () => overlay.remove();
+    overlay.querySelector('#_ee-ok').onclick = async () => {
+        const sub_usuario_id = overlay.querySelector('#_ee-sub').value;
+        const produto_id = overlay.querySelector('#_ee-prod').value;
+        const quantidade = parseInt(overlay.querySelector('#_ee-qtd').value);
+        const err = overlay.querySelector('#_ee-erro');
+        if (!sub_usuario_id) { err.textContent = 'Selecione o destino'; return; }
+        if (!produto_id) { err.textContent = 'Selecione o produto'; return; }
+        if (!quantidade || quantidade <= 0) { err.textContent = 'Quantidade inválida'; return; }
+        try {
+            await api('POST', '/estoque/enviar', { sub_usuario_id, produto_id, quantidade });
+            overlay.remove();
+            showToast('Estoque enviado com sucesso!', 'success');
+        } catch (e) {
+            err.textContent = e.message || 'Erro ao enviar';
+        }
+    };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function _estatCard(icon, label, value, color) {
+    return `<div style="flex:1;min-width:120px;background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+        <div style="width:38px;height:38px;border-radius:10px;background:${color}18;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>
+        <div>
+            <div style="font-size:22px;font-weight:800;color:${color};line-height:1">${value}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px">${label}</div>
+        </div>
+    </div>`;
 }
 
 function _confirmarEstoque(titulo, mensagem, btnLabel, btnColor) {
@@ -250,63 +399,6 @@ function modalInput(titulo, mensagem) {
     });
 }
 
-async function estoquePrincipalEnviarModal() {
-    let subs = [], produtos = [];
-    try { [subs, produtos] = await Promise.all([api('GET', '/estoque/sub-usuarios'), api('GET', '/estoque')]); } catch (_) {}
-
-    if (!subs.length) { showToast('Nenhum sub-usuário cadastrado', 'error'); return; }
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
-    overlay.innerHTML = `
-        <div style="background:#fff;border-radius:16px;padding:28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-            <div style="font-size:18px;font-weight:700;margin-bottom:18px">Enviar Estoque</div>
-            <div style="margin-bottom:14px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Sub-usuário</label>
-                <select id="_ee-sub" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
-                    <option value="">Selecione...</option>
-                    ${subs.map(s => `<option value="${s.id}">${s.nome}</option>`).join('')}
-                </select>
-            </div>
-            <div style="margin-bottom:14px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Produto</label>
-                <select id="_ee-prod" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
-                    <option value="">Selecione...</option>
-                    ${produtos.map(p => `<option value="${p.id}">${p.nome} (estoque: ${p.estoque} ${p.unidade || ''})</option>`).join('')}
-                </select>
-            </div>
-            <div style="margin-bottom:18px">
-                <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px">Quantidade</label>
-                <input type="number" id="_ee-qtd" min="1" value="1" style="width:100%;border:1.5px solid #e2e8f0;border-radius:9px;padding:10px;font-size:14px;outline:none;box-sizing:border-box">
-            </div>
-            <div id="_ee-erro" style="color:#ef4444;font-size:12px;margin-bottom:10px;min-height:16px"></div>
-            <div style="display:flex;gap:10px">
-                <button id="_ee-cancel" style="flex:1;padding:10px;border:1.5px solid #e2e8f0;border-radius:9px;background:#f8fafc;cursor:pointer;font-size:13px">Cancelar</button>
-                <button id="_ee-ok" style="flex:1;padding:10px;border:none;border-radius:9px;background:#2563eb;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Enviar</button>
-            </div>
-        </div>`;
-    document.body.appendChild(overlay);
-
-    overlay.querySelector('#_ee-cancel').onclick = () => overlay.remove();
-    overlay.querySelector('#_ee-ok').onclick = async () => {
-        const sub_usuario_id = overlay.querySelector('#_ee-sub').value;
-        const produto_id = overlay.querySelector('#_ee-prod').value;
-        const quantidade = parseInt(overlay.querySelector('#_ee-qtd').value);
-        const err = overlay.querySelector('#_ee-erro');
-        if (!sub_usuario_id) { err.textContent = 'Selecione o sub-usuário'; return; }
-        if (!produto_id) { err.textContent = 'Selecione o produto'; return; }
-        if (!quantidade || quantidade <= 0) { err.textContent = 'Quantidade inválida'; return; }
-        try {
-            await api('POST', '/estoque/enviar', { sub_usuario_id, produto_id, quantidade });
-            overlay.remove();
-            showToast('Estoque enviado com sucesso!', 'success');
-        } catch (e) {
-            err.textContent = e.message || 'Erro ao enviar';
-        }
-    };
-}
-
-// Badge sidebar para principal (pedidos pendentes)
 async function atualizarBadgeEstoque() {
     const badge = document.getElementById('badge-estoque');
     if (!badge) return;

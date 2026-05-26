@@ -195,4 +195,13 @@ router.delete('/:id', (req, res) => {
     res.json({ ok: true });
 });
 
+// DELETE /api/pedidos — exclui múltiplos
+router.delete('/', (req, res) => {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'Nenhum id informado' });
+    const placeholders = ids.map(() => '?').join(',');
+    db.prepare(`DELETE FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).run(...ids, req.user.loja_id);
+    res.json({ ok: true, removidos: ids.length });
+});
+
 module.exports = { router, verificarEstoqueBaixo, enviarAvisoPedido, enviarResumoDiario };

@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const db = require('../database/db');
-const { emitirNfse, consultarDanfse, previewNfse } = require('../services/nfse');
+const { emitirNfse, emitirNfseVenda, consultarDanfse, previewNfse, previewNfseVenda } = require('../services/nfse');
 
 const certsDir = path.join(__dirname, '..', 'certs');
 if (!fs.existsSync(certsDir)) fs.mkdirSync(certsDir, { recursive: true });
@@ -32,27 +32,66 @@ router.get('/preview/:osId', (req, res) => {
   }
 });
 
+const nfsePdfsDir = path.join(__dirname, '..', 'database', 'nfse-pdfs');
+if (!fs.existsSync(nfsePdfsDir)) fs.mkdirSync(nfsePdfsDir, { recursive: true });
+
 // POST /api/nfse/emitir/:osId
 router.post('/emitir/:osId', async (req, res) => {
   try {
     const resultado = await emitirNfse(parseInt(req.params.osId));
+    // Salva PDF localmente após emissão para uso futuro (ex: envio WhatsApp)
+    try {
+      const pdfBuffer = await consultarDanfse(resultado.chave_acesso, req.user.loja_id);
+      fs.writeFileSync(path.join(nfsePdfsDir, `${resultado.chave_acesso}.pdf`), Buffer.from(pdfBuffer));
+    } catch (_) {}
     res.json({ ok: true, ...resultado });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
 });
 
-// GET /api/nfse/danfse/:chave — baixar PDF da nota
+// GET /api/nfse/danfse/:chave — visualizar/baixar PDF da nota
 router.get('/danfse/:chave', async (req, res) => {
   try {
-    const pdfBuffer = await consultarDanfse(req.params.chave, req.user.loja_id);
+    const chave = req.params.chave;
+    const localPath = path.join(nfsePdfsDir, `${chave}.pdf`);
+    let pdfBuffer;
+    if (fs.existsSync(localPath)) {
+      pdfBuffer = fs.readFileSync(localPath);
+    } else {
+      pdfBuffer = Buffer.from(await consultarDanfse(chave, req.user.loja_id));
+      fs.writeFileSync(localPath, pdfBuffer);
+    }
     const download = req.query.download === '1';
     res.set('Content-Type', 'application/pdf');
-    res.set('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename="NFS-e-${req.params.chave}.pdf"`);
-    res.send(Buffer.from(pdfBuffer));
+    res.set('Content-Disposition', `${download ? 'attachment' : 'inline'}; filename="NFS-e-${chave}.pdf"`);
+    res.send(pdfBuffer);
   } catch (e) {
-    const status = /indisponível|502|503/.test(e.message) ? 502 : 400;
-    res.status(status).json({ error: e.message });
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// GET /api/nfse/preview-venda/:vendaId
+router.get('/preview-venda/:vendaId', (req, res) => {
+  try {
+    const dados = previewNfseVenda(parseInt(req.params.vendaId));
+    res.json(dados);
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/nfse/emitir-venda/:vendaId
+router.post('/emitir-venda/:vendaId', async (req, res) => {
+  try {
+    const resultado = await emitirNfseVenda(parseInt(req.params.vendaId));
+    try {
+      const pdfBuffer = await consultarDanfse(resultado.chaveAcesso, req.user.loja_id);
+      fs.writeFileSync(path.join(nfsePdfsDir, `${resultado.chaveAcesso}.pdf`), Buffer.from(pdfBuffer));
+    } catch (_) {}
+    res.json({ ok: true, ...resultado });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
   }
 });
 

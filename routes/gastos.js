@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const bcrypt = require('bcryptjs');
+
+function verificarSenhaGerente(senha, hash) {
+    if (!hash) return true;
+    if (hash.startsWith('$2')) return bcrypt.compareSync(senha, hash);
+    return senha === hash;
+}
 
 const CATEGORIAS = ['material', 'combustivel', 'alimentacao', 'manutencao', 'servicos', 'outros'];
 
@@ -67,7 +74,7 @@ router.delete('/:id', (req, res) => {
     const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
     if (cfg && cfg.valor) {
         if (!senha) return res.status(403).json({ error: 'Senha do gerente obrigatória' });
-        if (senha !== cfg.valor) return res.status(403).json({ error: 'Senha incorreta' });
+        if (!verificarSenhaGerente(senha, cfg.valor)) return res.status(403).json({ error: 'Senha incorreta' });
     }
     const g = db.prepare('SELECT id FROM gastos WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!g) return res.status(404).json({ error: 'Gasto não encontrado' });

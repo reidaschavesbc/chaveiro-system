@@ -1,20 +1,70 @@
 let servicosList = [];
 let produtosParaServico = [];
+let servicoProdutoSelecionado = null;
+let _servicoProdDrop = null;
+
+function _servicoProdEnsureDrop() {
+  if (!_servicoProdDrop) {
+    _servicoProdDrop = document.createElement('div');
+    _servicoProdDrop.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_servicoProdDrop);
+  }
+  return _servicoProdDrop;
+}
+
+function filtrarProdutosServico() {
+  const input = document.getElementById('servico-produto-busca');
+  const q = (input.value || '').toLowerCase();
+  if (!q) { servicoProdutoSelecionado = null; document.getElementById('servico-qtd-wrap').style.display = 'none'; }
+  const drop = _servicoProdEnsureDrop();
+  const rect = input.getBoundingClientRect();
+  drop.style.left = rect.left + 'px';
+  drop.style.top = rect.bottom + 'px';
+  drop.style.width = rect.width + 'px';
+  const lista = produtosParaServico.filter(p => !q || p.nome.toLowerCase().includes(q));
+  if (!lista.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = lista.map(p =>
+    `<div onmousedown="escolherProdutoServico(${p.id})"
+       style="padding:9px 14px;cursor:pointer;font-size:14px;border-bottom:1px solid #f1f5f9"
+       onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background=''"
+    >${p.nome} <span style="color:#94a3b8;font-size:12px">(estq: ${p.estoque} ${p.unidade || 'un'})</span></div>`
+  ).join('');
+  drop.style.display = 'block';
+}
+
+function escolherProdutoServico(id) {
+  const p = produtosParaServico.find(x => x.id === id);
+  if (!p) return;
+  servicoProdutoSelecionado = p;
+  document.getElementById('servico-produto-busca').value = p.nome;
+  document.getElementById('servico-qtd-wrap').style.display = '';
+  document.getElementById('servico-produto-unidade').textContent = p.unidade || 'un';
+  if (_servicoProdDrop) _servicoProdDrop.style.display = 'none';
+}
+
+function fecharDropdownServico() {
+  setTimeout(() => { if (_servicoProdDrop) _servicoProdDrop.style.display = 'none'; }, 150);
+}
 
 async function servicos(el) {
     produtosParaServico = await api('GET', '/produtos');
 
-    const prodOpts = `<option value="">-- Nenhum (não consome estoque) --</option>` +
-        produtosParaServico.map(p => `<option value="${p.id}" data-unidade="${p.unidade || 'un'}">${p.nome} (estq: ${p.estoque} ${p.unidade || 'un'})</option>`).join('');
 
     el.innerHTML = `
   <div class="card">
     <div class="card-header">
       <span class="card-title">Tipos de Serviço</span>
-      <button class="btn btn-primary" onclick="abrirModalServico()">
-        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        Novo Serviço
-      </button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="position:relative">
+          <svg viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;fill:#94a3b8;pointer-events:none"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+          <input type="text" id="servico-busca" placeholder="Pesquisar serviço..." oninput="filtrarServicos()"
+            style="padding:8px 12px 8px 34px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;width:220px">
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalServico()">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Novo Serviço
+        </button>
+      </div>
     </div>
     <div id="tabela-servicos"></div>
   </div>
@@ -49,7 +99,9 @@ async function servicos(el) {
           <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">Produto consumido no estoque</div>
           <div class="form-group" style="margin-bottom:10px">
             <label>Produto vinculado</label>
-            <select id="servico-produto" onchange="servicoProdutoChange(this)">${prodOpts}</select>
+            <input type="text" id="servico-produto-busca" placeholder="🔍 Buscar produto..." autocomplete="off"
+              oninput="filtrarProdutosServico()" onfocus="filtrarProdutosServico()" onblur="fecharDropdownServico()"
+              style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
           </div>
           <div class="form-group" id="servico-qtd-wrap" style="display:none">
             <label>Quantidade consumida por execução</label>
@@ -69,25 +121,13 @@ async function servicos(el) {
     await carregarServicos();
 }
 
-function servicoProdutoChange(sel) {
-    const wrap = document.getElementById('servico-qtd-wrap');
-    const unidade = document.getElementById('servico-produto-unidade');
-    if (sel.value) {
-        wrap.style.display = '';
-        const opt = sel.options[sel.selectedIndex];
-        unidade.textContent = opt.dataset.unidade || 'un';
-    } else {
-        wrap.style.display = 'none';
-    }
-}
 
-async function carregarServicos() {
-    servicosList = await api('GET', '/servicos');
+function _renderServicos(lista) {
     const el = document.getElementById('tabela-servicos');
-    if (!servicosList.length) { el.innerHTML = '<div class="empty-state"><h3>Nenhum serviço cadastrado</h3></div>'; return; }
+    if (!lista.length) { el.innerHTML = '<div class="empty-state"><h3>Nenhum serviço encontrado</h3></div>'; return; }
     el.innerHTML = `<table>
     <thead><tr><th>Serviço</th><th>Descrição</th><th>Preço Base</th><th>Produto vinculado</th><th style="width:100px">Ações</th></tr></thead>
-    <tbody>${servicosList.map(s => `
+    <tbody>${lista.map(s => `
       <tr>
         <td><strong>${s.nome}</strong></td>
         <td>${s.descricao || '<span class="text-muted">-</span>'}</td>
@@ -105,12 +145,26 @@ async function carregarServicos() {
   </table>`;
 }
 
+function filtrarServicos() {
+    const q = (document.getElementById('servico-busca')?.value || '').toLowerCase().trim();
+    const lista = !q ? servicosList : servicosList.filter(s =>
+        s.nome.toLowerCase().includes(q) || (s.descricao || '').toLowerCase().includes(q)
+    );
+    _renderServicos(lista);
+}
+
+async function carregarServicos() {
+    servicosList = await api('GET', '/servicos');
+    filtrarServicos();
+}
+
 function abrirModalServico() {
     document.getElementById('servico-id').value = '';
     document.getElementById('servico-nome').value = '';
     document.getElementById('servico-preco').value = 0;
     document.getElementById('servico-desc').value = '';
-    document.getElementById('servico-produto').value = '';
+    document.getElementById('servico-produto-busca').value = '';
+    servicoProdutoSelecionado = null;
     document.getElementById('servico-produto-qtd').value = 1;
     document.getElementById('servico-qtd-wrap').style.display = 'none';
     document.getElementById('modal-servico-title').textContent = 'Novo Serviço';
@@ -124,26 +178,30 @@ function editarServico(id) {
     document.getElementById('servico-nome').value = s.nome;
     document.getElementById('servico-preco').value = s.preco_base;
     document.getElementById('servico-desc').value = s.descricao || '';
-    document.getElementById('servico-produto').value = s.produto_id || '';
+    if (s.produto_id) {
+        const p = produtosParaServico.find(x => x.id === s.produto_id);
+        document.getElementById('servico-produto-busca').value = p ? p.nome : (s.produto_nome || '');
+        servicoProdutoSelecionado = p || { id: s.produto_id, nome: s.produto_nome || '', unidade: s.produto_unidade || 'un' };
+        document.getElementById('servico-produto-unidade').textContent = s.produto_unidade || 'un';
+    } else {
+        document.getElementById('servico-produto-busca').value = '';
+        servicoProdutoSelecionado = null;
+    }
     document.getElementById('servico-produto-qtd').value = s.produto_quantidade || 1;
     document.getElementById('servico-perguntar-estoque').checked = !!s.perguntar_estoque;
-    const wrap = document.getElementById('servico-qtd-wrap');
-    wrap.style.display = s.produto_id ? '' : 'none';
-    if (s.produto_id) {
-        document.getElementById('servico-produto-unidade').textContent = s.produto_unidade || 'un';
-    }
+    document.getElementById('servico-qtd-wrap').style.display = s.produto_id ? '' : 'none';
     document.getElementById('modal-servico-title').textContent = 'Editar Serviço';
     openModal('modal-servico');
 }
 
 async function salvarServico() {
     const id = document.getElementById('servico-id').value;
-    const produto_id = document.getElementById('servico-produto').value || null;
+    const produto_id = servicoProdutoSelecionado?.id || null;
     const body = {
         nome: document.getElementById('servico-nome').value,
         preco_base: parseFloat(document.getElementById('servico-preco').value) || 0,
         descricao: document.getElementById('servico-desc').value,
-        produto_id: produto_id ? parseInt(produto_id) : null,
+        produto_id: produto_id || null,
         produto_quantidade: produto_id ? (parseFloat(document.getElementById('servico-produto-qtd').value) || 1) : 1,
         perguntar_estoque: document.getElementById('servico-perguntar-estoque').checked ? 1 : 0,
     };
@@ -158,7 +216,7 @@ async function salvarServico() {
 }
 
 async function excluirServico(id) {
-    if (!confirmDialog('Confirma exclusão do serviço?')) return;
+    if (!await confirmDialog('Confirma exclusão do serviço?')) return;
     await api('DELETE', `/servicos/${id}`);
     toast('Serviço excluído!');
     await carregarServicos();

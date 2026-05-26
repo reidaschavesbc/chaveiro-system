@@ -524,6 +524,12 @@ tbody tr:hover {
     background: #f0f2f5;
 }
 
+.form-group input:not([type="password"]):not([type="email"]):not([type="number"]):not([type="date"]):not([type="time"]):not([type="month"]):not([type="color"]):not([type="file"]),
+.form-group textarea,
+.search-input {
+    text-transform: uppercase;
+}
+
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus,
@@ -604,6 +610,11 @@ tbody tr:hover {
     color: #991b1b;
 }
 
+.badge-reagendar {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
 .badge-baixo {
     background: #fee2e2;
     color: #991b1b;
@@ -632,6 +643,16 @@ tbody tr:hover {
 .badge-debito {
     background: #fff7ed;
     color: #c2410c;
+}
+
+.badge-cartao1 {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.badge-cartao2 {
+    background: #ecfdf5;
+    color: #065f46;
 }
 
 .badge-blue {

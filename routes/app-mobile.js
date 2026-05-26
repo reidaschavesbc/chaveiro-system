@@ -234,8 +234,9 @@ router.get('/os/:id', authFuncionario, (req, res) => {
 
 // PUT /api/app/os/:id — atualiza campos gerais
 router.put('/os/:id', authFuncionario, (req, res) => {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
-    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  const os = req.funcionario.is_admin
+    ? db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?`).get(req.params.id, req.funcionario.loja_id)
+    : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
 
   const { status, observacoes, descricao, desconto, pagamentos, a_receber, data_vencimento } = req.body;
@@ -345,8 +346,9 @@ router.post('/os/:id/item', authFuncionario, (req, res) => {
 
 // PUT /api/app/os/:id/item/:itemId
 router.put('/os/:id/item/:itemId', authFuncionario, (req, res) => {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
-    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  const os = req.funcionario.is_admin
+    ? db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?`).get(req.params.id, req.funcionario.loja_id)
+    : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
   if (['concluida', 'cancelada'].includes(os.status)) return res.status(400).json({ error: 'OS já finalizada' });
 
@@ -361,8 +363,9 @@ router.put('/os/:id/item/:itemId', authFuncionario, (req, res) => {
 
 // DELETE /api/app/os/:id/item/:itemId
 router.delete('/os/:id/item/:itemId', authFuncionario, (req, res) => {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
-    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  const os = req.funcionario.is_admin
+    ? db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?`).get(req.params.id, req.funcionario.loja_id)
+    : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
   if (['concluida', 'cancelada'].includes(os.status)) return res.status(400).json({ error: 'OS já finalizada' });
 
@@ -373,8 +376,9 @@ router.delete('/os/:id/item/:itemId', authFuncionario, (req, res) => {
 
 // POST /api/app/os/:id/consumo-estoque
 router.post('/os/:id/consumo-estoque', authFuncionario, (req, res) => {
-  const os = db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`)
-    .get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
+  const os = req.funcionario.is_admin
+    ? db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?`).get(req.params.id, req.funcionario.loja_id)
+    : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
   const { itens } = req.body;
   if (!itens || !itens.length) return res.json({ ok: true });

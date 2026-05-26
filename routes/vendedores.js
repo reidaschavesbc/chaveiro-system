@@ -47,7 +47,7 @@ router.put('/:id', (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
-    db.prepare('UPDATE vendedores SET ativo = 0 WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
+    db.prepare('UPDATE vendedores SET ativo = 0, email = NULL, senha = NULL, expo_push_token = NULL WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 

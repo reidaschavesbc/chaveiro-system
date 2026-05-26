@@ -1,6 +1,8 @@
 // === LISTA DE PEDIDOS DE COMPRA ===
 
 let pedidosData = [];
+let pedidosSelecionando = false;
+let pedidosSelecionados = new Set();
 
 const fmtDatePedido = s => s ? s.slice(0, 10).split('-').reverse().join('/') : '—';
 
@@ -31,7 +33,9 @@ async function pedidos(el) {
           <option value="baixa">🟢 Baixa</option>
         </select>
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="btn-pedidos-selecionar" class="btn btn-secondary" onclick="pedidosToggleSelecao()">☑ Selecionar</button>
+        <button id="btn-pedidos-excluir-sel" class="btn btn-danger" onclick="pedidosExcluirSelecionados()" style="display:none">🗑️ Excluir (<span id="p-sel-count">0</span>)</button>
         <button class="btn btn-secondary" onclick="pedidosVerificarEstoque()" title="Escaneia todos os produtos e adiciona os que estão com estoque baixo">
           <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:4px"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
           Verificar Estoque
@@ -132,18 +136,21 @@ function pedidosRenderLista() {
     <table>
       <thead>
         <tr>
+          ${pedidosSelecionando ? `<th style="width:36px;text-align:center"><input type="checkbox" id="p-sel-todos" onchange="pedidosToggleTodos(this.checked)" style="cursor:pointer;width:15px;height:15px"></th>` : ''}
           <th>Produto / Item</th>
           <th style="width:70px;text-align:center">Qtd</th>
           <th style="width:95px;text-align:center">Prioridade</th>
           <th style="width:85px;text-align:center">Origem</th>
           <th style="width:85px;text-align:center">Status</th>
           <th style="width:90px">Data</th>
-          <th style="width:170px"></th>
+          ${pedidosSelecionando ? '' : '<th style="width:170px"></th>'}
         </tr>
       </thead>
       <tbody>
         ${pedidosData.map(p => `
-          <tr style="${p.status === 'comprado' ? 'opacity:.55' : ''}${p.status === 'pendente' && !p.confirmado ? ';border-left:3px solid ' + (PRI_CFG[p.prioridade]||PRI_CFG.media).color : ''}">
+          <tr style="cursor:${pedidosSelecionando ? 'pointer' : 'default'};${pedidosSelecionados.has(p.id) ? 'background:#eff6ff;' : ''}${p.status === 'comprado' ? 'opacity:.55' : ''}${p.status === 'pendente' && !p.confirmado && !pedidosSelecionando ? ';border-left:3px solid ' + (PRI_CFG[p.prioridade]||PRI_CFG.media).color : ''}"
+            ${pedidosSelecionando ? `onclick="pedidosToggleItem(${p.id})"` : ''}>
+            ${pedidosSelecionando ? `<td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" data-id="${p.id}" ${pedidosSelecionados.has(p.id) ? 'checked' : ''} onchange="pedidosToggleItem(${p.id})" style="cursor:pointer;width:15px;height:15px"></td>` : ''}
             <td>
               <div style="font-weight:600;font-size:13px">${p.descricao}</div>
               ${p.produto_nome && p.produto_nome !== p.descricao
@@ -167,7 +174,7 @@ function pedidosRenderLista() {
                 : `<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">Comprado</span>`}
             </td>
             <td style="font-size:12px;color:#64748b">${fmtDatePedido(p.criado_em)}</td>
-            <td>
+            ${!pedidosSelecionando ? `<td>
               <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;white-space:nowrap">
                 ${p.status === 'pendente' ? `
                   <button title="Marcar como comprado" onclick="pedidosMarcarComprado(${p.id})"
@@ -183,7 +190,7 @@ function pedidosRenderLista() {
                 <button title="Excluir" onclick="pedidosExcluir(${p.id})"
                   style="padding:4px 7px;border:none;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:13px;cursor:pointer">🗑️</button>
               </div>
-            </td>
+            </td>` : ''}
           </tr>`).join('')}
       </tbody>
     </table>`;
@@ -339,6 +346,72 @@ async function pedidosExcluir(id) {
     toast('Pedido removido');
     await pedidosCarregar();
   } catch (e) { toast(e.message, 'error'); }
+}
+
+function pedidosToggleSelecao() {
+  pedidosSelecionando = !pedidosSelecionando;
+  pedidosSelecionados.clear();
+  const btnSel = document.getElementById('btn-pedidos-selecionar');
+  const btnExc = document.getElementById('btn-pedidos-excluir-sel');
+  if (btnSel) btnSel.textContent = pedidosSelecionando ? '✕ Cancelar' : '☑ Selecionar';
+  if (btnExc) btnExc.style.display = 'none';
+  pedidosRenderLista();
+}
+
+function pedidosToggleTodos(checked) {
+  if (checked) {
+    pedidosData.forEach(p => pedidosSelecionados.add(p.id));
+  } else {
+    pedidosSelecionados.clear();
+  }
+  pedidosAtualizarContador();
+  pedidosRenderLista();
+  if (checked) {
+    const chk = document.getElementById('p-sel-todos');
+    if (chk) chk.checked = true;
+  }
+}
+
+function pedidosToggleItem(id) {
+  if (pedidosSelecionados.has(id)) {
+    pedidosSelecionados.delete(id);
+  } else {
+    pedidosSelecionados.add(id);
+  }
+  pedidosAtualizarContador();
+  pedidosRenderLista();
+  const todosChk = document.getElementById('p-sel-todos');
+  if (todosChk) todosChk.checked = pedidosSelecionados.size === pedidosData.length;
+}
+
+function pedidosAtualizarContador() {
+  const count = document.getElementById('p-sel-count');
+  const btnExc = document.getElementById('btn-pedidos-excluir-sel');
+  if (count) count.textContent = pedidosSelecionados.size;
+  if (btnExc) btnExc.style.display = pedidosSelecionados.size > 0 ? 'inline-flex' : 'none';
+}
+
+async function pedidosExcluirSelecionados() {
+  if (!pedidosSelecionados.size) return;
+  const ok = await modalConfirmar({
+    titulo: 'Excluir Pedidos',
+    mensagem: `Excluir <strong>${pedidosSelecionados.size} pedido(s)</strong> selecionado(s)? Esta ação não pode ser desfeita.`,
+    icone: '🗑️',
+    corBotao: '#dc2626',
+    textoBotao: 'Excluir'
+  });
+  if (!ok) return;
+  try {
+    await api('DELETE', '/pedidos', { ids: [...pedidosSelecionados] });
+    toast(`${pedidosSelecionados.size} pedido(s) removido(s)`);
+    pedidosSelecionando = false;
+    pedidosSelecionados.clear();
+    const btnSel = document.getElementById('btn-pedidos-selecionar');
+    if (btnSel) btnSel.textContent = '☑ Selecionar';
+    await pedidosCarregar();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
 }
 
 // Badge sidebar — chamada pelo app.js e pelo pedidosCarregar

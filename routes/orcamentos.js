@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const wa = require('../services/whatsapp');
+const { fmtVal, fmtDate } = require('../utils/formatters');
 
 function gerarNumero() {
     const now = new Date();
@@ -11,12 +12,6 @@ function gerarNumero() {
     return `ORC${yy}${mm}${String(count.c + 1).padStart(4, '0')}`;
 }
 
-function fmtVal(v) { return 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ','); }
-function fmtData(dt) {
-    if (!dt) return '-';
-    const [y, m, d] = String(dt).slice(0, 10).split('-');
-    return `${d}/${m}/${y}`;
-}
 function dataValidade(criadoEm, dias) {
     const d = new Date(criadoEm);
     d.setDate(d.getDate() + parseInt(dias || 7));
@@ -137,7 +132,7 @@ router.post('/:id/enviar', async (req, res) => {
         `${cfg.empresa_nome || 'Chaveiro'}`,
         ``,
         `👤 *Cliente:* ${nomeCliente}`,
-        `📅 *Válido até:* ${fmtData(validade)}`,
+        `📅 *Válido até:* ${fmtDate(validade)}`,
         ``,
         `*Itens:*`,
         itensTexto,

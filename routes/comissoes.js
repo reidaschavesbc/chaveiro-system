@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const { fmtVal } = require('../utils/formatters');
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -102,7 +103,6 @@ function executarFechamento(mes, ano, loja_id) {
 }
 
 function montarMensagemWhatsapp(mes, ano, fechamento_id) {
-    const fmtVal = v => 'R$ ' + parseFloat(v || 0).toFixed(2).replace('.', ',');
     const itens = db.prepare(`
         SELECT * FROM comissoes_itens WHERE fechamento_id = ? ORDER BY vendedor_nome, data_conclusao
     `).all(fechamento_id);
@@ -156,7 +156,7 @@ router.get('/parcial', (req, res) => {
     const ordens = db.prepare(`
         SELECT os.id, os.numero, os.valor, os.data_conclusao,
                v.id as vendedor_id, v.nome as vendedor_nome, v.percentual_comissao,
-               v.salario_base, v.meta, v.bonus_meta
+               v.salario_base, v.meta, v.bonus_meta, v.telefone
         FROM ordens_servico os
         JOIN vendedores v ON os.vendedor_id = v.id
         WHERE os.status = 'concluida'
@@ -167,7 +167,7 @@ router.get('/parcial', (req, res) => {
     `).all(inicio, fim, lojaId);
 
     // Inclui vendedores com salário mesmo sem OS no período (filtrado por loja)
-    const todosVendedores = db.prepare(`SELECT id as vendedor_id, nome as vendedor_nome, percentual_comissao, salario_base, meta, bonus_meta FROM vendedores WHERE ativo = 1 AND loja_id = ?`).all(lojaId);
+    const todosVendedores = db.prepare(`SELECT id as vendedor_id, nome as vendedor_nome, percentual_comissao, salario_base, meta, bonus_meta, telefone FROM vendedores WHERE ativo = 1 AND loja_id = ?`).all(lojaId);
 
     const jaFechado = !!db.prepare('SELECT id FROM fechamentos_comissao WHERE mes = ? AND ano = ? AND loja_id = ?').get(mes, ano, lojaId);
 
@@ -178,7 +178,7 @@ router.get('/parcial', (req, res) => {
             porVendedor[v.vendedor_id] = {
                 vendedor_id: v.vendedor_id, vendedor_nome: v.vendedor_nome,
                 percentual: v.percentual_comissao, salario_base: v.salario_base,
-                meta: v.meta, bonus_meta: v.bonus_meta,
+                meta: v.meta, bonus_meta: v.bonus_meta, telefone: v.telefone || null,
                 ordens: [], total_os: 0, total_comissao: 0
             };
         }
@@ -188,7 +188,7 @@ router.get('/parcial', (req, res) => {
             porVendedor[o.vendedor_id] = {
                 vendedor_id: o.vendedor_id, vendedor_nome: o.vendedor_nome,
                 percentual: o.percentual_comissao, salario_base: o.salario_base || 0,
-                meta: o.meta || 0, bonus_meta: o.bonus_meta || 0,
+                meta: o.meta || 0, bonus_meta: o.bonus_meta || 0, telefone: o.telefone || null,
                 ordens: [], total_os: 0, total_comissao: 0
             };
         }
@@ -282,8 +282,106 @@ router.delete('/:id', (req, res) => {
     res.json({ ok: true });
 });
 
+// POST /api/comissoes/enviar-whatsapp — envia resumo de comissões via WhatsApp
+// body: { mes, ano, vendedor_id? } — sem vendedor_id envia para o número configurado; com vendedor_id envia para o telefone do funcionário
+router.post('/enviar-whatsapp', async (req, res) => {
+    const lojaId = req.user.loja_id;
+    let { mes, ano, vendedor_id } = req.body;
+    mes = parseInt(mes); ano = parseInt(ano);
+    if (!mes || !ano) return res.status(400).json({ error: 'mes e ano são obrigatórios' });
+
+    const wa = require('../services/whatsapp');
+    const inicio = `${ano}-${String(mes).padStart(2,'0')}-01 00:00:00`;
+    const fim    = `${ano}-${String(mes).padStart(2,'0')}-31 23:59:59`;
+    const inicioD = inicio.slice(0, 10);
+    const fimD    = fim.slice(0, 10);
+    const mesNome = MESES[mes - 1];
+
+    // Busca dados de comissão
+    const ordens = db.prepare(`
+        SELECT os.numero, os.valor, os.data_conclusao,
+               v.id as vendedor_id, v.nome as vendedor_nome, v.percentual_comissao,
+               v.salario_base, v.meta, v.bonus_meta, v.telefone
+        FROM ordens_servico os
+        JOIN vendedores v ON os.vendedor_id = v.id
+        WHERE os.status = 'concluida'
+          AND os.data_conclusao >= ? AND os.data_conclusao <= ?
+          AND v.ativo = 1 AND os.loja_id = ?
+          ${vendedor_id ? 'AND v.id = ?' : ''}
+        ORDER BY v.nome, os.data_conclusao
+    `).all(...[inicio, fim, lojaId, ...(vendedor_id ? [vendedor_id] : [])]);
+
+    const todosVend = vendedor_id
+        ? db.prepare(`SELECT id as vendedor_id, nome as vendedor_nome, percentual_comissao, salario_base, meta, bonus_meta, telefone FROM vendedores WHERE id = ? AND loja_id = ?`).all(vendedor_id, lojaId)
+        : db.prepare(`SELECT id as vendedor_id, nome as vendedor_nome, percentual_comissao, salario_base, meta, bonus_meta, telefone FROM vendedores WHERE ativo = 1 AND loja_id = ?`).all(lojaId);
+
+    const porVendedor = {};
+    for (const v of todosVend) {
+        if (v.salario_base > 0 || !vendedor_id) {
+            porVendedor[v.vendedor_id] = { ...v, ordens: [], total_os: 0, total_comissao: 0, total_vales: 0, bonus_aplicado: 0 };
+        }
+    }
+    for (const o of ordens) {
+        if (!porVendedor[o.vendedor_id]) porVendedor[o.vendedor_id] = { ...o, ordens: [], total_os: 0, total_comissao: 0, total_vales: 0, bonus_aplicado: 0 };
+        const vc = o.valor * o.percentual_comissao / 100;
+        porVendedor[o.vendedor_id].ordens.push({ numero: o.numero, valor: o.valor, comissao: vc });
+        porVendedor[o.vendedor_id].total_os += o.valor;
+        porVendedor[o.vendedor_id].total_comissao += vc;
+    }
+    const valesResumo = db.prepare(`SELECT vl.vendedor_id, SUM(vl.valor) as total FROM vales vl JOIN vendedores vd ON vd.id = vl.vendedor_id WHERE vl.data >= ? AND vl.data <= ? AND vd.loja_id = ? ${vendedor_id ? 'AND vl.vendedor_id = ?' : ''} GROUP BY vl.vendedor_id`).all(...[inicioD, fimD, lojaId, ...(vendedor_id ? [vendedor_id] : [])]);
+    valesResumo.forEach(v => { if (porVendedor[v.vendedor_id]) porVendedor[v.vendedor_id].total_vales = v.total; });
+    Object.values(porVendedor).forEach(v => {
+        v.bonus_aplicado = (v.meta > 0 && v.total_os >= v.meta) ? (v.bonus_meta || 0) : 0;
+        v.total_a_pagar = Math.max(0, (v.salario_base || 0) + v.total_comissao + v.bonus_aplicado - v.total_vales);
+    });
+
+    const lista = Object.values(porVendedor);
+    if (!lista.length) return res.status(400).json({ error: 'Nenhum dado encontrado para o período' });
+
+    const montar = (v) => {
+        let m = `📊 *Comissões ${mesNome}/${ano}*\n\n`;
+        m += `👷 *${v.vendedor_nome}*\n\n`;
+        m += `🔧 ${v.ordens.length} OS | ${fmtVal(v.total_os)}\n`;
+        if (v.salario_base > 0) m += `💼 Salário base: ${fmtVal(v.salario_base)}\n`;
+        if (v.total_comissao > 0) m += `💰 Comissão (${v.percentual_comissao||0}%): ${fmtVal(v.total_comissao)}\n`;
+        if (v.bonus_aplicado > 0) m += `🏆 Bônus meta: ${fmtVal(v.bonus_aplicado)}\n`;
+        if (v.total_vales > 0) m += `➖ Vales: ${fmtVal(v.total_vales)}\n`;
+        m += `\n✅ *Total a receber: ${fmtVal(v.total_a_pagar)}*`;
+        return m;
+    };
+
+    try {
+        if (vendedor_id) {
+            // Envia para o telefone do funcionário
+            const v = lista[0];
+            if (!v.telefone) return res.status(400).json({ error: `${v.vendedor_nome} não tem telefone cadastrado` });
+            await wa.enviarMensagem(v.telefone, montar(v));
+            res.json({ ok: true, enviado_para: v.vendedor_nome });
+        } else {
+            // Envia resumo de todos para o número configurado
+            const cfgWa = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_comissao'").get();
+            if (!cfgWa || !cfgWa.valor) return res.status(400).json({ error: 'Número de WhatsApp não configurado em Configurações' });
+            let msg = `📊 *Comissões ${mesNome}/${ano}*\n\n`;
+            lista.forEach(v => {
+                msg += `👷 *${v.vendedor_nome}*`;
+                msg += ` — ${v.ordens.length} OS`;
+                if (v.salario_base > 0) msg += ` | Salário: ${fmtVal(v.salario_base)}`;
+                if (v.total_comissao > 0) msg += ` | Comissão: ${fmtVal(v.total_comissao)}`;
+                if (v.total_vales > 0) msg += ` | Vales: -${fmtVal(v.total_vales)}`;
+                msg += `\n✅ *${fmtVal(v.total_a_pagar)}*\n\n`;
+            });
+            const totalGeral = lista.reduce((s, v) => s + v.total_a_pagar, 0);
+            msg += `💵 *Total a pagar: ${fmtVal(totalGeral)}*`;
+            await wa.enviarMensagem(cfgWa.valor, msg);
+            res.json({ ok: true, enviado_para: 'número configurado' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/comissoes/fechar — fechamento manual (body: { mes, ano }), usa loja_id do usuário
-router.post('/fechar', (req, res) => {
+router.post('/fechar', async (req, res) => {
     let { mes, ano } = req.body;
     if (!mes || !ano) return res.status(400).json({ error: 'mes e ano são obrigatórios' });
     mes = parseInt(mes); ano = parseInt(ano);
@@ -302,12 +400,13 @@ router.post('/fechar', (req, res) => {
         if (cfgWa && cfgWa.valor) {
             const wa = require('../services/whatsapp');
             const msg = montarMensagemWhatsapp(mes, ano, resultado.fechamento_id);
-            wa.enviarMensagem(cfgWa.valor, msg)
-                .then(() => {
-                    db.prepare('UPDATE fechamentos_comissao SET enviado_whatsapp = 1 WHERE id = ?').run(resultado.fechamento_id);
-                })
-                .catch(e => console.error('WhatsApp comissao:', e.message));
-            whatsappEnviado = true;
+            try {
+                await wa.enviarMensagem(cfgWa.valor, msg);
+                db.prepare('UPDATE fechamentos_comissao SET enviado_whatsapp = 1 WHERE id = ?').run(resultado.fechamento_id);
+                whatsappEnviado = true;
+            } catch (e) {
+                console.error('WhatsApp comissao:', e.message);
+            }
         }
 
         res.json({ ...resultado, whatsapp_enviado: whatsappEnviado });

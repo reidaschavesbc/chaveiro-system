@@ -8,7 +8,7 @@ DESTINO="${1:-/root/backups}"
 DATA=$(date +"%Y-%m-%d_%H-%M-%S")
 NOME="chaveiro_backup_$DATA"
 PASTA_BACKUP="$DESTINO/$NOME"
-APP_DIR="/root/chaveiro-system"
+APP_DIR="/home/chaveiro/chaveiro-system"
 
 mkdir -p "$PASTA_BACKUP"
 

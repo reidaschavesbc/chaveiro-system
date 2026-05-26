@@ -3,6 +3,7 @@ let vendaClientes = [];
 let vendaProdutos = [];
 let vendaServicos = [];
 let vendaVendedores = [];
+let vendaProdutoSelecionado = null;
 
 async function vendasNova(el) {
   [vendaClientes, vendaProdutos, vendaServicos, vendaVendedores] = await Promise.all([
@@ -12,11 +13,13 @@ async function vendasNova(el) {
     api('GET', '/vendedores')
   ]);
   vendaItens = [];
+  vendaProdutoSelecionado = null;
   const isMobile = window.innerWidth <= 768;
-  el.innerHTML = `
-  <div style="${isMobile ? 'display:flex;flex-direction:column;gap:16px' : 'display:grid;grid-template-columns:1fr 380px;gap:24px'}">
-    <div>
-      <div class="card" style="margin-bottom:20px">
+
+  if (isMobile) {
+    el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card" style="overflow:visible">
         <div class="card-header"><span class="card-title">Adicionar Item</span></div>
         <div class="card-body">
           <div class="tabs" id="tabs-tipo">
@@ -24,42 +27,27 @@ async function vendasNova(el) {
             <button class="tab" onclick="setTabVenda('manual', this)">Manual</button>
           </div>
           <div id="tab-produto">
+            <div class="form-group form-full" style="margin-bottom:10px">
+              <label>Produto</label>
+              <div style="position:relative">
+                <input type="text" id="venda-produto-busca" placeholder="🔍 Buscar produto..." autocomplete="off"
+                       oninput="filtrarProdutos()" onfocus="filtrarProdutos()" onblur="fecharListaProdutos()"
+                       style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+                <div id="venda-produto-lista" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.12)"></div>
+              </div>
+              <button type="button" id="btn-ver-foto-venda" onclick="verFotoProdutoVenda()" style="display:none;margin-top:6px;width:100%;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;font-weight:500">📷 Ver Foto do Produto</button>
+            </div>
             <div class="form-grid">
-              <div class="form-group form-full">
-                <label>Produto</label>
-                <select id="venda-produto-sel" onchange="selecionarProduto()">
-                  <option value="">-- Selecione o produto --</option>
-                  ${vendaProdutos.map(p => `<option value="${p.id}" data-preco="${p.preco_venda}" data-nome="${p.nome}" data-estoque="${p.estoque}" data-imagem="${p.imagem || ''}">${p.nome} - ${formatCurrency(p.preco_venda)}</option>`).join('')}
-                </select>
-                <button type="button" id="btn-ver-foto-venda" onclick="verFotoProdutoVenda()" style="display:none;margin-top:6px;width:100%;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;font-weight:500">
-                  📷 Ver Foto do Produto
-                </button>
-              </div>
-              <div class="form-group">
-                <label>Quantidade</label>
-                <input type="number" id="venda-produto-qtd" min="1" value="1">
-              </div>
-              <div class="form-group">
-                <label>Preço Unitário (R$)</label>
-                <input type="number" id="venda-produto-preco" step="0.01" min="0" value="0">
-              </div>
+              <div class="form-group"><label>Quantidade</label><input type="number" id="venda-produto-qtd" min="1" value="1"></div>
+              <div class="form-group"><label>Preço (R$)</label><input type="number" id="venda-produto-preco" step="0.01" min="0" value="0"></div>
             </div>
             <button class="btn btn-primary" onclick="adicionarItemProduto()">+ Adicionar</button>
           </div>
           <div id="tab-manual" style="display:none">
+            <div class="form-group form-full" style="margin-bottom:10px"><label>Descrição</label><input type="text" id="venda-manual-desc"></div>
             <div class="form-grid">
-              <div class="form-group form-full">
-                <label>Descrição do Item</label>
-                <input type="text" id="venda-manual-desc">
-              </div>
-              <div class="form-group">
-                <label>Quantidade</label>
-                <input type="number" id="venda-manual-qtd" min="1" value="1">
-              </div>
-              <div class="form-group">
-                <label>Valor Unitário (R$)</label>
-                <input type="number" id="venda-manual-preco" step="0.01" min="0" value="0">
-              </div>
+              <div class="form-group"><label>Qtd</label><input type="number" id="venda-manual-qtd" min="1" value="1"></div>
+              <div class="form-group"><label>Valor (R$)</label><input type="number" id="venda-manual-preco" step="0.01" min="0" value="0"></div>
             </div>
             <button class="btn btn-primary" onclick="adicionarItemManual()">+ Adicionar</button>
           </div>
@@ -67,85 +55,165 @@ async function vendasNova(el) {
       </div>
       <div class="card">
         <div class="card-header"><span class="card-title">Itens da Venda</span></div>
-        <div id="lista-itens-venda">
-          <div class="empty-state"><h3>Nenhum item adicionado</h3><p>Selecione produtos ou serviços acima</p></div>
-        </div>
+        <div id="lista-itens-venda"><div class="empty-state"><h3>Nenhum item adicionado</h3></div></div>
       </div>
-    </div>
-    <div>
-      <div class="card" style="${isMobile ? '' : 'position:sticky;top:80px'}">
+      <div class="card">
         <div class="card-header"><span class="card-title">Resumo</span></div>
         <div class="card-body">
-          <div class="form-group" style="margin-bottom:14px">
+          <div class="form-group" style="margin-bottom:12px">
             <label>Cliente (opcional)</label>
             <select id="venda-cliente" onchange="toggleClienteAvulso('venda')">
               <option value="">-- Sem cliente --</option>
-              ${vendaClientes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')}
+              ${vendaClientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome}</option>`).join('')}
             </select>
             <input type="text" id="venda-cliente-avulso" style="margin-top:6px;padding:8px 12px;border:2px solid #e5e7eb;border-radius:9px;font-size:13px;width:100%">
           </div>
-          <div class="form-group" style="margin-bottom:14px">
+          <div class="form-group" style="margin-bottom:12px">
             <label>Funcionário</label>
-            <select id="venda-vendedor">
-              <option value="">-- Selecione o Funcionário --</option>
-              ${vendaVendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('')}
-            </select>
+            <select id="venda-vendedor"><option value="">-- Selecione --</option>${vendaVendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('')}</select>
           </div>
-          <div class="form-group" style="margin-bottom:14px">
+          <div class="form-group" style="margin-bottom:12px">
             <label>Pagamentos</label>
-            <div style="background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0">
-              <div class="grid-2" style="gap:8px;margin-bottom:8px">
-                <div class="pay-item">
-                   <label style="font-size:10px;color:#64748b">💵 Dinheiro</label>
-                   <input type="number" id="pay-dinheiro" step="0.01" min="0" value="0" style="padding:6px;width:100%" oninput="calcularCheckout()">
-                </div>
-                <div class="pay-item">
-                   <label style="font-size:10px;color:#64748b">📱 PIX</label>
-                   <input type="number" id="pay-pix" step="0.01" min="0" value="0" style="padding:6px;width:100%" oninput="calcularCheckout()">
-                </div>
-              </div>
-              <div class="grid-2" style="gap:8px">
-                <div class="pay-item">
-                   <label style="font-size:10px;color:#64748b">💳 Cartão 1</label>
-                   <input type="number" id="pay-cartao1" step="0.01" min="0" value="0" style="padding:6px;width:100%" oninput="calcularCheckout()">
-                </div>
-                <div class="pay-item">
-                   <label style="font-size:10px;color:#64748b">💳 Cartão 2</label>
-                   <input type="number" id="pay-cartao2" step="0.01" min="0" value="0" style="padding:6px;width:100%" oninput="calcularCheckout()">
-                </div>
-              </div>
+            <div style="background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <div><label style="font-size:10px;color:#64748b">💵 Dinheiro</label><input type="number" id="pay-dinheiro" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
+              <div><label style="font-size:10px;color:#64748b">📱 PIX</label><input type="number" id="pay-pix" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
+              <div><label style="font-size:10px;color:#64748b">💳 Cartão 1</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
+              <div><label style="font-size:10px;color:#64748b">💳 Cartão 2</label><input type="number" id="pay-cartao2" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:20px">
-            <label>Desconto (R$)</label>
-            <input type="number" id="venda-desconto" step="0.01" min="0" value="0" oninput="calcularTotal()">
-          </div>
+          <div class="form-group" style="margin-bottom:12px"><label>Desconto (R$)</label><input type="number" id="venda-desconto" step="0.01" min="0" value="0" oninput="calcularTotal()"></div>
           <div class="divider"></div>
-          <div style="margin-bottom:8px;display:flex;justify-content:space-between;color:#64748b;font-size:13px">
-            <span>Subtotal</span><span id="resumo-subtotal">R$ 0,00</span>
+          <div style="display:flex;justify-content:space-between;color:#64748b;font-size:13px;margin-bottom:4px"><span>Subtotal</span><span id="resumo-subtotal">R$ 0,00</span></div>
+          <div style="display:flex;justify-content:space-between;color:#ef4444;font-size:13px;margin-bottom:4px"><span>Desconto</span><span id="resumo-desconto">- R$ 0,00</span></div>
+          <div style="display:flex;justify-content:space-between;color:#f97316;font-size:14px;font-weight:600;margin:6px 0;padding:4px 8px;background:#fff7ed;border-radius:6px"><span>RESTANTE</span><span id="resumo-faltante">R$ 0,00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:#1a56db;margin-bottom:6px"><span>TOTAL</span><span id="resumo-total">R$ 0,00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:600;color:#16a34a;background:#f0fdf4;padding:7px 8px;border-radius:8px;margin-bottom:14px"><span>TROCO</span><span id="resumo-troco">R$ 0,00</span></div>
+          <div class="form-group" style="margin-bottom:12px"><label>Observações</label><textarea id="venda-obs" style="min-height:50px"></textarea></div>
+          <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="finalizarVenda()">✓ Finalizar Venda</button>
+        </div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+  <div style="display:grid;grid-template-columns:1fr 640px;gap:16px;height:calc(100vh - 110px)">
+
+    <!-- ESQUERDA: adicionar + lista -->
+    <div style="display:flex;flex-direction:column;gap:12px;min-height:0">
+
+      <!-- Adicionar item (compacto, uma linha) -->
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;flex-shrink:0;overflow:visible">
+        <div class="tabs" id="tabs-tipo" style="margin-bottom:10px">
+          <button class="tab active" onclick="setTabVenda('produto', this)">Produto</button>
+          <button class="tab" onclick="setTabVenda('manual', this)">Manual</button>
+        </div>
+        <div id="tab-produto">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+            <div style="flex:1;min-width:200px;position:relative">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Produto</label>
+              <input type="text" id="venda-produto-busca" placeholder="🔍 Buscar produto..." autocomplete="off"
+                     oninput="filtrarProdutos()" onfocus="filtrarProdutos()" onblur="fecharListaProdutos()"
+                     style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+              <div id="venda-produto-lista" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.12)"></div>
+            </div>
+            <div style="width:72px;flex-shrink:0">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Qtd</label>
+              <input type="number" id="venda-produto-qtd" min="1" value="1" style="width:100%;padding:9px 8px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="width:120px;flex-shrink:0">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Preço (R$)</label>
+              <input type="number" id="venda-produto-preco" step="0.01" min="0" value="0" style="width:100%;padding:9px 8px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="flex-shrink:0">
+              <label style="font-size:12px;display:block;margin-bottom:4px">&nbsp;</label>
+              <button class="btn btn-primary" onclick="adicionarItemProduto()" style="padding:9px 18px;white-space:nowrap;border:2px solid transparent">+ Adicionar</button>
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;color:#ef4444;font-size:13px">
-            <span>Desconto</span><span id="resumo-desconto">- R$ 0,00</span>
+          <button type="button" id="btn-ver-foto-venda" onclick="verFotoProdutoVenda()" style="display:none;margin-top:8px;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:500">📷 Ver Foto do Produto</button>
+        </div>
+        <div id="tab-manual" style="display:none">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1;min-width:0">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Descrição</label>
+              <input type="text" id="venda-manual-desc" style="width:100%;padding:9px 12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="width:72px;flex-shrink:0">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Qtd</label>
+              <input type="number" id="venda-manual-qtd" min="1" value="1" style="width:100%;padding:9px 8px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="width:120px;flex-shrink:0">
+              <label style="font-size:12px;color:#64748b;display:block;margin-bottom:4px">Valor (R$)</label>
+              <input type="number" id="venda-manual-preco" step="0.01" min="0" value="0" style="width:100%;padding:9px 8px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+            </div>
+            <div style="flex-shrink:0">
+              <label style="font-size:12px;display:block;margin-bottom:4px">&nbsp;</label>
+              <button class="btn btn-primary" onclick="adicionarItemManual()" style="padding:9px 18px;white-space:nowrap;border:2px solid transparent">+ Adicionar</button>
+            </div>
           </div>
-          <div style="display:flex;justify-content:space-between;color:#f97316;font-size:14px;font-weight:600;margin:8px 0;padding:4px 8px;background:#fff7ed;border-radius:6px">
-            <span>RESTANTE</span><span id="resumo-faltante">R$ 0,00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:#1a56db;margin-bottom:8px">
-            <span>TOTAL</span><span id="resumo-total">R$ 0,00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:600;color:#16a34a;margin-bottom:20px;background:#f0fdf4;padding:8px;border-radius:8px">
-            <span>TROCO</span><span id="resumo-troco">R$ 0,00</span>
-          </div>
-          <div class="form-group" style="margin-bottom:14px">
-            <label>Observações</label>
-            <textarea id="venda-obs" style="min-height:50px"></textarea>
-          </div>
-          <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px" onclick="finalizarVenda()">
-            ✓ Finalizar Venda
-          </button>
+        </div>
+      </div>
+
+      <!-- Lista de itens (scroll interno) -->
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;font-weight:600;font-size:14px;color:#1e293b;flex-shrink:0">Itens da Venda</div>
+        <div id="lista-itens-venda" style="flex:1;overflow-y:auto">
+          <div class="empty-state"><h3>Nenhum item adicionado</h3><p>Busque e adicione produtos acima</p></div>
         </div>
       </div>
     </div>
+
+    <!-- DIREITA: resumo com botão fixo no rodapé -->
+    <div style="display:flex;flex-direction:column;min-height:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+      <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;font-weight:600;font-size:14px;color:#1e293b;flex-shrink:0">Resumo</div>
+
+      <!-- Campos roláveis -->
+      <div style="flex:1;overflow-y:auto;padding:12px 14px;min-height:0;display:flex;flex-direction:column;gap:10px">
+        <div class="form-group" style="margin:0">
+          <label>Cliente (opcional)</label>
+          <select id="venda-cliente" onchange="toggleClienteAvulso('venda')">
+            <option value="">-- Sem cliente --</option>
+            ${vendaClientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome}</option>`).join('')}
+          </select>
+          <input type="text" id="venda-cliente-avulso" placeholder="Nome do cliente" style="margin-top:6px">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Funcionário</label>
+          <select id="venda-vendedor">
+            <option value="">-- Selecione --</option>
+            ${vendaVendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Pagamento</label>
+          <div style="background:#f8fafc;padding:8px;border-radius:10px;border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💵 Dinheiro</label><input type="number" id="pay-dinheiro" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
+            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">📱 PIX</label><input type="number" id="pay-pix" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
+            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💳 Cartão 1</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
+            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💳 Cartão 2</label><input type="number" id="pay-cartao2" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
+          </div>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Desconto (R$)</label>
+          <input type="number" id="venda-desconto" step="0.01" min="0" value="0" oninput="calcularTotal()">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label>Observações</label>
+          <textarea id="venda-obs" style="min-height:48px;resize:vertical"></textarea>
+        </div>
+      </div>
+
+      <!-- Totais + botão sempre visíveis no rodapé -->
+      <div style="flex-shrink:0;border-top:1px solid #e2e8f0;padding:16px 18px;background:#f8fafc">
+        <div style="display:flex;justify-content:space-between;color:#64748b;font-size:15px;margin-bottom:6px"><span>Subtotal</span><span id="resumo-subtotal">R$ 0,00</span></div>
+        <div style="display:flex;justify-content:space-between;color:#ef4444;font-size:15px;margin-bottom:6px"><span>Desconto</span><span id="resumo-desconto">- R$ 0,00</span></div>
+        <div style="display:flex;justify-content:space-between;color:#f97316;font-size:15px;font-weight:600;padding:6px 10px;background:#fff7ed;border-radius:8px;margin-bottom:6px"><span>RESTANTE</span><span id="resumo-faltante">R$ 0,00</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:24px;font-weight:700;color:#1a56db;margin-bottom:6px"><span>TOTAL</span><span id="resumo-total">R$ 0,00</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:600;color:#16a34a;background:#f0fdf4;padding:7px 10px;border-radius:8px;margin-bottom:14px"><span>TROCO</span><span id="resumo-troco">R$ 0,00</span></div>
+        <button class="btn btn-primary" style="width:100%;padding:14px;font-size:16px;font-weight:700" onclick="finalizarVenda()">✓ Finalizar Venda</button>
+      </div>
+    </div>
+
   </div>`;
 }
 
@@ -157,18 +225,42 @@ function setTabVenda(tab, btn) {
   btn.classList.add('active');
 }
 
-function selecionarProduto() {
-  const sel = document.getElementById('venda-produto-sel');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt.dataset.preco) document.getElementById('venda-produto-preco').value = opt.dataset.preco;
+function filtrarProdutos() {
+  const busca = document.getElementById('venda-produto-busca').value.toLowerCase().trim();
+  const lista = document.getElementById('venda-produto-lista');
+  const filtrados = busca ? vendaProdutos.filter(p => p.nome.toLowerCase().includes(busca)) : vendaProdutos;
+  lista.style.display = 'block';
+  lista.innerHTML = filtrados.length
+    ? filtrados.map(p => `
+        <div onmousedown="event.preventDefault()" onclick="escolherProduto(${p.id})"
+             onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+             style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+          <span>${p.nome}</span>
+          <span style="color:#1a56db;font-weight:600;white-space:nowrap;margin-left:8px">${formatCurrency(p.preco_venda)}</span>
+        </div>`).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum produto encontrado</div>';
+}
+
+function escolherProduto(id) {
+  vendaProdutoSelecionado = vendaProdutos.find(p => p.id === id) || null;
+  if (!vendaProdutoSelecionado) return;
+  document.getElementById('venda-produto-busca').value = vendaProdutoSelecionado.nome;
+  document.getElementById('venda-produto-lista').style.display = 'none';
+  document.getElementById('venda-produto-preco').value = vendaProdutoSelecionado.preco_venda;
   const btnFoto = document.getElementById('btn-ver-foto-venda');
-  if (btnFoto) btnFoto.style.display = opt.dataset.imagem ? 'block' : 'none';
+  if (btnFoto) btnFoto.style.display = vendaProdutoSelecionado.imagem ? 'block' : 'none';
+}
+
+function fecharListaProdutos() {
+  setTimeout(() => {
+    const lista = document.getElementById('venda-produto-lista');
+    if (lista) lista.style.display = 'none';
+  }, 150);
 }
 
 function verFotoProdutoVenda() {
-  const sel = document.getElementById('venda-produto-sel');
-  const opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.imagem) abrirVisualizadorImagem(opt.dataset.imagem, opt.dataset.nome);
+  if (vendaProdutoSelecionado && vendaProdutoSelecionado.imagem)
+    abrirVisualizadorImagem(vendaProdutoSelecionado.imagem, vendaProdutoSelecionado.nome);
 }
 function selecionarServico() {
   const sel = document.getElementById('venda-servico-sel');
@@ -177,12 +269,16 @@ function selecionarServico() {
 }
 
 function adicionarItemProduto() {
-  const sel = document.getElementById('venda-produto-sel');
-  const opt = sel.options[sel.selectedIndex];
-  if (!sel.value) { toast('Selecione um produto', 'warning'); return; }
+  if (!vendaProdutoSelecionado) { toast('Selecione um produto', 'warning'); return; }
   const qtd = parseFloat(document.getElementById('venda-produto-qtd').value) || 1;
   const preco = parseFloat(document.getElementById('venda-produto-preco').value) || 0;
-  vendaItens.push({ produto_id: parseInt(sel.value), descricao: opt.dataset.nome, quantidade: qtd, preco_unitario: preco });
+  vendaItens.push({ produto_id: vendaProdutoSelecionado.id, descricao: vendaProdutoSelecionado.nome, quantidade: qtd, preco_unitario: preco });
+  vendaProdutoSelecionado = null;
+  document.getElementById('venda-produto-busca').value = '';
+  document.getElementById('venda-produto-preco').value = '0';
+  document.getElementById('venda-produto-qtd').value = '1';
+  const btnFoto = document.getElementById('btn-ver-foto-venda');
+  if (btnFoto) btnFoto.style.display = 'none';
   renderItensVenda(); calcularTotal();
 }
 function adicionarItemServico() {
@@ -409,6 +505,7 @@ async function carregarVendas() {
         <td class="flex gap-1">
           <button class="btn btn-sm btn-secondary btn-icon" onclick="visualizarVenda(${v.id})" title="Ver Detalhes">👁️</button>
           <a class="btn btn-sm btn-secondary btn-icon" href="/api/pdf/venda/${v.id}?t=${getToken()}" target="_blank" title="PDF">📄</a>
+          ${v.status === 'concluida' ? (v.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${v.nfse_numero}" onclick="verNfseVenda('${v.nfse_chave_acesso}')">📄 NF ${v.nfse_numero}</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfseVenda(${v.id},'${v.numero}')">📄 NFS-e</button>`) : ''}
           ${v.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" onclick="cancelarVenda(${v.id}, '${v.numero}')" title="Cancelar">✕</button>` : ''}
           <button class="btn btn-sm btn-danger btn-icon" onclick="excluirVenda(${v.id}, '${v.numero}')" title="Excluir permanentemente"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </td>
@@ -538,4 +635,119 @@ async function visualizarVenda(id) {
   } catch (e) {
     toast(e.message, 'error');
   }
+}
+
+async function emitirNfseVenda(vendaId, vendaNumero) {
+  try {
+    toast('Carregando dados...', 'info');
+    const dados = await api('GET', `/nfse/preview-venda/${vendaId}`);
+    if (!dados) return;
+    const confirmar = await _modalPreviewNfseVenda(dados, vendaNumero);
+    if (!confirmar) return;
+    toast('Emitindo NFS-e... aguarde', 'info');
+    const r = await api('POST', `/nfse/emitir-venda/${vendaId}`, null, 60000);
+    if (r && r.numeroNota) {
+      toast(`NFS-e ${r.numeroNota} emitida com sucesso!`);
+      if (r.aviso) toast(r.aviso, 'warning');
+    } else {
+      toast('NFS-e enviada! Verifique o número no sistema.', 'info');
+    }
+    await carregarVendas();
+  } catch (e) {
+    toast('Erro: ' + e.message, 'error');
+    await carregarVendas();
+  }
+}
+
+function verNfseVenda(chaveAcesso) {
+  if (!chaveAcesso) { toast('Chave de acesso não disponível', 'error'); return; }
+  window.open(`/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`, '_blank');
+}
+
+function _modalPreviewNfseVenda(dados, vendaNumero) {
+  return new Promise(resolve => {
+    let overlay = document.getElementById('modal-preview-nfse-venda');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'modal-preview-nfse-venda';
+      overlay.className = 'modal-overlay';
+      document.body.appendChild(overlay);
+    }
+
+    const { prestador, tomador, servico, itens, os, ambiente } = dados;
+    const ambienteBadge = ambiente === 'Produção'
+      ? `<span style="background:#16a34a;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">PRODUÇÃO</span>`
+      : `<span style="background:#d97706;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px">HOMOLOGAÇÃO</span>`;
+
+    const itensHtml = itens && itens.length > 0 ? `
+      <div style="margin-top:8px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <thead><tr style="background:#f1f5f9">
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #e2e8f0">Item</th>
+            <th style="padding:5px 8px;text-align:center;border-bottom:1px solid #e2e8f0">Qtd</th>
+            <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Unit.</th>
+            <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #e2e8f0">Total</th>
+          </tr></thead>
+          <tbody>${(itens || []).map(i => `<tr>
+            <td style="padding:4px 8px">${i.produto_nome || i.servico_nome || i.descricao || '-'}</td>
+            <td style="padding:4px 8px;text-align:center">${i.quantidade}</td>
+            <td style="padding:4px 8px;text-align:right">${formatCurrency(i.preco_unitario)}</td>
+            <td style="padding:4px 8px;text-align:right">${formatCurrency(i.subtotal)}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+      </div>` : '';
+
+    const row = (label, val) => val ? `<div style="display:flex;gap:8px;margin-bottom:4px;font-size:13px"><span style="color:#64748b;min-width:130px">${label}:</span><span style="color:#1e293b;font-weight:500">${val}</span></div>` : '';
+
+    overlay.innerHTML = `
+    <div class="modal" style="max-width:580px;width:100%" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <span class="modal-title">📄 Pré-visualização NFS-e — Venda ${vendaNumero} ${ambienteBadge}</span>
+        <button class="modal-close" id="btn-pnfv-fechar">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto;padding:16px 20px">
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Prestador</div>
+          ${row('CNPJ', prestador.cnpj)}
+          ${row('Insc. Municipal', prestador.inscricaoMunicipal)}
+          ${row('Regime', prestador.regime)}
+          ${row('Cód. Tributação', prestador.codTribNac)}
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Tomador</div>
+          ${row('Nome', tomador.nome)}
+          ${row(tomador.tipo, tomador.doc || '<span style="color:#dc2626">Não informado</span>')}
+          ${row('Email', tomador.email)}
+          ${row('Telefone', tomador.fone)}
+          ${row('Endereço', tomador.endereco)}
+          ${row('Bairro', tomador.bairro)}
+          ${row('Cidade / CEP', [tomador.cidade, tomador.cep].filter(Boolean).join(' — '))}
+        </div>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Serviço / Itens</div>
+          ${itensHtml}
+          <div style="margin-top:10px">
+            <div style="font-size:11px;color:#64748b;margin-bottom:4px">Descrição que será enviada:</div>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;font-size:12px;color:#374151;white-space:pre-wrap;max-height:120px;overflow-y:auto">${servico.descricao}</div>
+          </div>
+        </div>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;color:#15803d;font-weight:600">Valor Total</span>
+          <span style="font-size:22px;font-weight:800;color:#15803d">${formatCurrency(os.valor)}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-pnfv-cancelar">Cancelar</button>
+        <button class="btn btn-primary" id="btn-pnfv-emitir" style="background:#7c3aed;border:none">📤 Confirmar Emissão</button>
+      </div>
+    </div>`;
+
+    openModal('modal-preview-nfse-venda');
+    const fechar = val => { closeModal('modal-preview-nfse-venda'); resolve(val); };
+    overlay.onclick = () => fechar(false);
+    overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+    document.getElementById('btn-pnfv-fechar').onclick   = () => fechar(false);
+    document.getElementById('btn-pnfv-cancelar').onclick = () => fechar(false);
+    document.getElementById('btn-pnfv-emitir').onclick   = () => fechar(true);
+  });
 }

@@ -4,6 +4,9 @@ let servicosForOS = [];
 let produtosForOS = [];
 let vendedoresForOS = [];
 let osItens = [];
+let osServicoSelecionado = null;
+let osProdutoSelecionado = null;
+let _osDropdown = null;
 
 async function ordens(el) {
   [clientesForOS, servicosForOS, produtosForOS, vendedoresForOS] = await Promise.all([
@@ -13,7 +16,7 @@ async function ordens(el) {
     api('GET', '/vendedores?tecnico=1')
   ]);
 
-  const clienteOptions = clientesForOS.map(c => `<option value="${c.id}">${c.nome}</option>`).join('');
+  const clienteOptions = clientesForOS.map(c => `<option value="${c.id}" data-rua="${c.endereco||''}" data-numero="${c.numero||''}" data-complemento="${c.complemento||''}" data-cidade="${c.cidade||''}" data-ref="${c.referencia||''}">${c.nome_fantasia || c.nome}</option>`).join('');
   const vendedorOptions = vendedoresForOS.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
 
   el.innerHTML = `
@@ -25,6 +28,7 @@ async function ordens(el) {
           <option value="">Todos os status</option>
           <option value="aberta">Aberta</option>
           <option value="em_andamento">Em Andamento</option>
+          <option value="reagendar">Reagendar</option>
           <option value="concluida">Concluída</option>
           <option value="cancelada">Cancelada</option>
           <option value="a_receber">Cobranças (pendente)</option>
@@ -63,15 +67,16 @@ async function ordens(el) {
             <div id="os-avulso-endereco" style="margin-top:8px;padding:10px;background:#f8f9fa;border-radius:6px;border:1px solid #e5e7eb">
               <div style="font-size:11px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Endereço do Cliente</div>
               <div style="display:flex;gap:6px;margin-bottom:6px">
-                <input type="text" id="os-avulso-rua" style="flex:1">
-                <input type="text" id="os-avulso-numero" style="width:68px">
+                <input type="text" id="os-avulso-rua" style="flex:1" placeholder="Rua / Av.">
+                <input type="text" id="os-avulso-numero" style="width:68px" placeholder="Nº">
               </div>
               <div style="display:flex;gap:6px;margin-bottom:6px">
-                <input type="text" id="os-avulso-complemento" style="flex:1">
-                <input type="text" id="os-avulso-cidade" style="flex:1">
+                <input type="text" id="os-avulso-complemento" style="flex:1" placeholder="Complemento (ap, bloco...)">
+                <input type="text" id="os-avulso-cidade" style="flex:1" placeholder="Cidade">
               </div>
-              <input type="text" id="os-avulso-referencia" style="width:100%;box-sizing:border-box">
+              <input type="text" id="os-avulso-referencia" style="width:100%;box-sizing:border-box" placeholder="Referência (perto de, cor da casa...)">
             </div>
+            <input type="text" id="os-contato-cliente" style="margin-top:8px" placeholder="📞 Contato desta OS (tel/WhatsApp — opcional)">
           </div>
           <div class="form-group">
             <label>Funcionário / Técnico</label>
@@ -92,6 +97,7 @@ async function ordens(el) {
             <select id="os-status">
               <option value="aberta">Aberta</option>
               <option value="em_andamento">Em Andamento</option>
+              <option value="reagendar">Reagendar</option>
               <option value="concluida">Concluída</option>
               <option value="cancelada">Cancelada</option>
             </select>
@@ -120,7 +126,7 @@ async function ordens(el) {
           <div class="form-group form-full">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
               <input type="checkbox" id="os-a-receber" onchange="toggleVencimento()">
-              <span style="font-weight:600;color:#dc2626">Cobrança</span>
+              <span style="font-weight:600;color:#dc2626">💰 Cobrança</span>
             </label>
             <div id="os-vencimento-wrap" style="display:none;margin-top:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px">
               <label style="font-size:12px;font-weight:600;color:#991b1b;margin-bottom:6px;display:block">Data de Vencimento</label>
@@ -132,7 +138,7 @@ async function ordens(el) {
           <div class="form-group form-full" style="display:flex;gap:24px;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
               <input type="checkbox" id="os-chave-auto" onchange="toggleChaveAuto()">
-              <span style="font-weight:600">Chave Auto</span>
+              <span style="font-weight:600">🔑 Chave Auto</span>
             </label>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
               <input type="checkbox" id="os-plantao" onchange="togglePlantao()">
@@ -152,9 +158,9 @@ async function ordens(el) {
             <div id="tab-os-servico">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <select id="os-item-servico-sel" onchange="atualizarPrecoItemOS('servico', this)">
-                    <option value="">-- Selecione o serviço --</option>
-                  </select>
+                  <input type="text" id="os-item-servico-busca" placeholder="🔍 Buscar serviço..." autocomplete="off"
+                         oninput="filtrarItensOS('servico')" onfocus="filtrarItensOS('servico')" onblur="fecharListaOS()"
+                         style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
                 <div class="form-group">
                   <input type="number" id="os-item-servico-qtd" min="1" value="1">
@@ -169,9 +175,9 @@ async function ordens(el) {
             <div id="tab-os-produto" style="display:none">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <select id="os-item-produto-sel" onchange="atualizarPrecoItemOS('produto', this)">
-                    <option value="">-- Selecione o produto --</option>
-                  </select>
+                  <input type="text" id="os-item-produto-busca" placeholder="🔍 Buscar produto..." autocomplete="off"
+                         oninput="filtrarItensOS('produto')" onfocus="filtrarItensOS('produto')" onblur="fecharListaOS()"
+                         style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
                 <div class="form-group">
                   <input type="number" id="os-item-produto-qtd" min="1" value="1">
@@ -268,10 +274,10 @@ function renderOrdens(list) {
         <td>${osStatusSelect(o.id, o.status)}${o.status === 'em_andamento' && o.vendedor_nome ? `<br><span style="font-size:10px;color:#1e40af;background:#dbeafe;padding:1px 7px;border-radius:4px;font-weight:600">👷 ${o.vendedor_nome}</span>` : ''}</td>
         <td class="currency">${formatCurrency(o.valor)}</td>
         <td><div class="actions-cell" style="flex-wrap:nowrap;align-items:center">
-          <a class="btn btn-sm btn-secondary" href="/api/pdf/os/${o.id}?token=${getToken()}" target="_blank" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></a>
+          <button class="btn btn-sm btn-secondary" onclick="abrirPDF(${o.id})" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></button>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Marcar como Recebido" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
-          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NF ${o.nfse_numero}</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 NFS-e</button>`) : ''}
+          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NF ${o.nfse_numero}</button><button class="btn btn-sm" style="background:#25d366;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Enviar NF via WhatsApp" onclick="enviarNfseWhatsapp(${o.id})">📱 NF WA</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 NFS-e</button>`) : ''}
           ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
           <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id},'${o.numero}','${o.nfse_status||''}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </div></td>
@@ -286,9 +292,21 @@ function filtrarOS() {
   renderOrdens(ordensData.filter(o => o.numero.toLowerCase().includes(q) || (o.cliente_nome || '').toLowerCase().includes(q) || (o.descricao || '').toLowerCase().includes(q)));
 }
 
+async function abrirPDF(id) {
+  try {
+    const r = await fetch(`/api/pdf/os/${id}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!r.ok) { alert('Erro ao gerar PDF'); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  } catch { alert('Erro ao gerar PDF'); }
+}
+
 const OS_STATUS_CFG = {
   aberta:       { bg: '#fef3c7', color: '#92400e', label: 'Aberta' },
   em_andamento: { bg: '#dbeafe', color: '#1e40af', label: 'Em Andamento' },
+  reagendar:    { bg: '#f3e8ff', color: '#6b21a8', label: 'Reagendar' },
   concluida:    { bg: '#d1fae5', color: '#065f46', label: 'Concluída' },
   cancelada:    { bg: '#fee2e2', color: '#991b1b', label: 'Cancelada' },
 };
@@ -516,6 +534,109 @@ async function _esFechar(confirmar) {
   _estoqueResolve = null;
 }
 
+// modo: 'custo' = abate estoque + lucro | 'estoque' = abate só estoque
+let _esPlantaoModo = 'custo';
+async function osModalEstoquePlantao(osId, modo) {
+  _esPlantaoModo = modo || 'custo';
+  try { _estoqueProdutos = await api('GET', '/produtos'); } catch { _estoqueProdutos = []; }
+  _estoqueItens = [];
+  _estoqueBusca = '';
+  return new Promise(resolve => {
+    _estoqueResolve = resolve;
+    const el = document.createElement('div');
+    el.id = 'es-modal-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(el);
+    _esPlantaoRender();
+  });
+}
+
+function _esPlantaoRender() {
+  const el = document.getElementById('es-modal-overlay');
+  if (!el) return;
+  const fmtV = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
+  const comCusto = _esPlantaoModo === 'custo';
+  const cor = comCusto ? '#7c3aed' : '#475569';
+  const bgItem = comCusto ? '#faf5ff' : '#f8fafc';
+  const bdItem = comCusto ? '#d8b4fe' : '#cbd5e1';
+  const titulo = comCusto ? '💰 Material com custo' : '📦 Retirada de estoque';
+  const subtitulo = comCusto
+    ? 'Material usado no plantão — abate do estoque e do lucro.'
+    : 'Material retirado do estoque — sem impacto financeiro.';
+  const btnLabel = comCusto ? 'Registrar com custo' : 'Registrar retirada';
+  const prodsFiltrados = _estoqueProdutos.filter(p => p.nome.toLowerCase().includes(_estoqueBusca.toLowerCase()));
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:22px 24px;width:420px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+      <div style="font-size:15px;font-weight:700;color:${cor};margin-bottom:4px">${titulo}</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px">${subtitulo}</div>
+
+      ${_estoqueItens.length ? `
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Itens adicionados</div>
+        ${_estoqueItens.map((it, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:${bgItem};border:1px solid ${bdItem};border-radius:8px;margin-bottom:6px;font-size:13px">
+          <div>
+            <div style="font-weight:600;color:#1e293b">${it.nome}</div>
+            <div style="color:#64748b;font-size:12px">${it.quantidade} ${it.unidade || 'un'}${comCusto ? ` · custo ${fmtV((it.preco_custo||0) * it.quantidade)}` : ''}</div>
+          </div>
+          <button onclick="_esPlantaoRemoverItem(${i})" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:16px;padding:0 4px">✕</button>
+        </div>`).join('')}
+        ${comCusto ? `<div style="text-align:right;font-size:12px;color:${cor};font-weight:600;margin-bottom:4px">
+          Total custo: ${fmtV(_estoqueItens.reduce((s,it) => s + (it.preco_custo||0)*it.quantidade, 0))}
+        </div>` : ''}
+      </div>` : ''}
+
+      <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;color:#64748b;margin-bottom:8px">Adicionar produto</div>
+        <input type="text" id="es-busca" value="${_estoqueBusca}" oninput="_esPlantaoBuscar(this.value)" placeholder="Buscar produto..." style="width:100%;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:8px">
+        <div style="max-height:150px;overflow-y:auto">
+          ${prodsFiltrados.slice(0,20).map(p => `
+          <div onclick="_esPlantaoAbrirQtd(${p.id},'${p.nome.replace(/'/g,"\\'")}','${p.unidade||'un'}',${p.preco_custo||0})" style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:13px;color:#1e293b;display:flex;justify-content:space-between" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+            <span>${p.nome}</span>
+            <span style="color:#94a3b8;font-size:12px">${p.estoque} ${p.unidade||'un'}${comCusto ? ` · ${fmtV(p.preco_custo||0)}/un` : ''}</span>
+          </div>`).join('') || '<div style="color:#94a3b8;font-size:13px;padding:8px">Nenhum produto encontrado</div>'}
+        </div>
+        <div id="es-qtd-form" style="display:none;margin-top:10px;border-top:1px solid #f1f5f9;padding-top:10px">
+          <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:6px" id="es-qtd-nome"></div>
+          <div style="display:flex;gap:8px">
+            <input type="number" id="es-qtd-inp" value="1" min="0.01" step="0.01" style="flex:1;padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">
+            <button onclick="_esPlantaoAddItem()" style="padding:7px 16px;background:${cor};color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">+ Add</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button onclick="_esFechar(false)" style="flex:1;padding:9px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;color:#64748b;background:#fff">Não houve</button>
+        <button onclick="_esFechar(true)" style="flex:1;padding:9px;background:${cor};color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" ${!_estoqueItens.length?'disabled style="opacity:.4;cursor:default;padding:9px"':''}>
+          ${btnLabel}
+        </button>
+      </div>
+    </div>`;
+}
+
+let _esPlantaoProdSel = null;
+function _esPlantaoAbrirQtd(id, nome, unidade, preco_custo) {
+  _esPlantaoProdSel = { id, nome, unidade, preco_custo };
+  const form = document.getElementById('es-qtd-form');
+  const label = _esPlantaoModo === 'custo'
+    ? `${nome} · custo R$ ${parseFloat(preco_custo||0).toFixed(2).replace('.', ',')} /un`
+    : nome;
+  document.getElementById('es-qtd-nome').textContent = label;
+  if (form) form.style.display = '';
+}
+function _esPlantaoBuscar(v) { _estoqueBusca = v; _esPlantaoRender(); setTimeout(() => { const el = document.getElementById('es-busca'); if (el) { el.focus(); el.value = v; el.selectionStart = el.selectionEnd = v.length; } }, 0); }
+function _esPlantaoAddItem() {
+  if (!_esPlantaoProdSel) return;
+  const qtd = parseFloat(document.getElementById('es-qtd-inp')?.value) || 0;
+  if (qtd <= 0) { toast('Informe uma quantidade válida', 'warning'); return; }
+  const existente = _estoqueItens.findIndex(i => i.produto_id === _esPlantaoProdSel.id);
+  if (existente >= 0) _estoqueItens[existente].quantidade += qtd;
+  else _estoqueItens.push({ produto_id: _esPlantaoProdSel.id, nome: _esPlantaoProdSel.nome, unidade: _esPlantaoProdSel.unidade, preco_custo: _esPlantaoProdSel.preco_custo, quantidade: qtd });
+  _esPlantaoProdSel = null; _estoqueBusca = '';
+  _esPlantaoRender();
+}
+function _esPlantaoRemoverItem(i) { _estoqueItens.splice(i, 1); _esPlantaoRender(); }
+
 async function mudarStatusOS(sel) {
   const id = parseInt(sel.dataset.id);
   const novoStatus = sel.value;
@@ -540,7 +661,22 @@ async function mudarStatusOS(sel) {
     const item = ordensData.find(o => o.id === id);
     if (item) item.status = novoStatus;
     toast(`Status atualizado: ${OS_STATUS_CFG[novoStatus]?.label}`);
-    if (resp.tem_pergunta_estoque) {
+    const osData = ordensData.find(o => o.id === id);
+    const isPlantao = osData?.is_plantao;
+    if (novoStatus === 'concluida' && isPlantao) {
+      // 1º: material com custo (abate estoque + lucro)
+      const consumoCusto = await osModalEstoquePlantao(id, 'custo');
+      if (consumoCusto) {
+        try { await api('POST', `/ordens/${id}/consumo-estoque`, { itens: consumoCusto, registrar_custo: true }); toast('Material com custo registrado!'); }
+        catch { toast('Erro ao registrar material', 'error'); }
+      }
+      // 2º: retirada de estoque sem custo financeiro
+      const consumoEst = await osModalEstoquePlantao(id, 'estoque');
+      if (consumoEst) {
+        try { await api('POST', `/ordens/${id}/consumo-estoque`, { itens: consumoEst, registrar_custo: false }); toast('Retirada de estoque registrada!'); }
+        catch { toast('Erro ao registrar retirada', 'error'); }
+      }
+    } else if (resp.tem_pergunta_estoque) {
       const consumo = await osModalEstoque(id);
       if (consumo) {
         try { await api('POST', `/ordens/${id}/consumo-estoque`, { itens: consumo }); toast('Consumo de estoque registrado!'); }
@@ -559,13 +695,17 @@ function toggleClienteAvulso(prefix) {
   const addr = document.getElementById(`${prefix}-avulso-endereco`);
   const sem = !sel.value;
   inp.style.display = sem ? '' : 'none';
-  if (addr) addr.style.display = sem ? '' : 'none';
+  if (addr) addr.style.display = '';
   if (!sem) {
     inp.value = '';
-    if (addr) ['rua','numero','complemento','cidade','referencia'].forEach(f => {
-      const el = document.getElementById(`${prefix}-avulso-${f}`);
-      if (el) el.value = '';
-    });
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      const map = { rua: 'rua', numero: 'numero', complemento: 'complemento', cidade: 'cidade', referencia: 'ref' };
+      Object.entries(map).forEach(([field, attr]) => {
+        const el = document.getElementById(`${prefix}-avulso-${field}`);
+        if (el) el.value = opt.dataset[attr] || '';
+      });
+    }
   }
 }
 
@@ -618,6 +758,7 @@ function abrirModalOS() {
   document.getElementById('os-data-prevista-hora').value = '';
   document.getElementById('os-pagamento').value = '';
   document.getElementById('os-obs').value = '';
+  document.getElementById('os-contato-cliente').value = '';
   document.getElementById('os-a-receber').checked = false;
   document.getElementById('os-data-vencimento').value = '';
   document.getElementById('os-vencimento-wrap').style.display = 'none';
@@ -633,13 +774,67 @@ function abrirModalOS() {
 }
 
 function preencherSelectsOS() {
-  document.getElementById('os-item-produto-sel').innerHTML =
-    '<option value="">-- Selecione o produto --</option>' +
-    produtosForOS.map(p => `<option value="${p.id}" data-nome="${p.nome}" data-preco="${p.preco_venda}">${p.nome}</option>`).join('');
+  ['servico', 'produto'].forEach(tipo => {
+    const b = document.getElementById(`os-item-${tipo}-busca`);
+    if (b) b.value = '';
+    const p = document.getElementById(`os-item-${tipo}-preco`);
+    if (p) p.value = '0';
+    const q = document.getElementById(`os-item-${tipo}-qtd`);
+    if (q) q.value = '1';
+  });
+  osServicoSelecionado = null;
+  osProdutoSelecionado = null;
+}
 
-  document.getElementById('os-item-servico-sel').innerHTML =
-    '<option value="">-- Selecione o serviço --</option>' +
-    servicosForOS.map(s => `<option value="${s.id}" data-nome="${s.nome}" data-preco="${s.preco_base}">${s.nome}</option>`).join('');
+function _osEnsureDropdown() {
+  if (!_osDropdown) {
+    _osDropdown = document.createElement('div');
+    _osDropdown.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_osDropdown);
+  }
+  return _osDropdown;
+}
+
+function filtrarItensOS(tipo) {
+  const input = document.getElementById(`os-item-${tipo}-busca`);
+  const busca = input.value.toLowerCase().trim();
+  const data = tipo === 'servico' ? servicosForOS : produtosForOS;
+  const filtrados = busca ? data.filter(i => i.nome.toLowerCase().includes(busca)) : data;
+
+  const dd = _osEnsureDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top = rect.bottom + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  dd.innerHTML = filtrados.length
+    ? filtrados.map(i => {
+        const preco = tipo === 'servico' ? i.preco_base : i.preco_venda;
+        return `<div onmousedown="event.preventDefault()" onclick="escolherItemOS('${tipo}',${i.id})"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+                  <span>${i.nome}</span>
+                  <span style="color:#1a56db;font-weight:600;white-space:nowrap;margin-left:8px">${formatCurrency(preco)}</span>
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum encontrado</div>';
+}
+
+function escolherItemOS(tipo, id) {
+  const data = tipo === 'servico' ? servicosForOS : produtosForOS;
+  const item = data.find(i => i.id === id);
+  if (!item) return;
+  if (tipo === 'servico') osServicoSelecionado = item;
+  else osProdutoSelecionado = item;
+  const preco = tipo === 'servico' ? item.preco_base : item.preco_venda;
+  document.getElementById(`os-item-${tipo}-busca`).value = item.nome;
+  document.getElementById(`os-item-${tipo}-preco`).value = preco;
+  if (_osDropdown) _osDropdown.style.display = 'none';
+}
+
+function fecharListaOS() {
+  setTimeout(() => { if (_osDropdown) _osDropdown.style.display = 'none'; }, 150);
 }
 
 function setTabOS(tab, btn) {
@@ -650,20 +845,25 @@ function setTabOS(tab, btn) {
 }
 
 function adicionarItemOS(tipo) {
-  const sel = document.getElementById(`os-item-${tipo}-sel`);
-  const opt = sel.options[sel.selectedIndex];
-  if (!sel.value) return toast('Selecione um item', 'warning');
+  const selecionado = tipo === 'servico' ? osServicoSelecionado : osProdutoSelecionado;
+  if (!selecionado) return toast('Selecione um item', 'warning');
 
   const qtd = parseFloat(document.getElementById(`os-item-${tipo}-qtd`).value) || 1;
   const preco = parseFloat(document.getElementById(`os-item-${tipo}-preco`).value) || 0;
 
   osItens.push({
-    produto_id: tipo === 'produto' ? parseInt(sel.value) : null,
-    servico_id: tipo === 'servico' ? parseInt(sel.value) : null,
-    descricao: opt.dataset.nome,
+    produto_id: tipo === 'produto' ? selecionado.id : null,
+    servico_id: tipo === 'servico' ? selecionado.id : null,
+    descricao: selecionado.nome,
     quantidade: qtd,
     preco_unitario: preco
   });
+
+  if (tipo === 'servico') osServicoSelecionado = null;
+  else osProdutoSelecionado = null;
+  document.getElementById(`os-item-${tipo}-busca`).value = '';
+  document.getElementById(`os-item-${tipo}-preco`).value = '0';
+  document.getElementById(`os-item-${tipo}-qtd`).value = '1';
 
   renderItensOS();
   calcularTotalOS();
@@ -697,12 +897,6 @@ function calcularTotalOS() {
   document.getElementById('os-valor').value = total.toFixed(2);
 }
 
-function atualizarPrecoItemOS(tipo, sel) {
-  const opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.preco) {
-    document.getElementById(`os-item-${tipo}-preco`).value = opt.dataset.preco;
-  }
-}
 
 async function editarOS(id) {
   const o = await api('GET', `/ordens/${id}`);
@@ -712,11 +906,13 @@ async function editarOS(id) {
   document.getElementById('os-cliente-avulso').value = o.cliente_nome_avulso || '';
   toggleClienteAvulso('os');
   await carregarAutorizadosOS(o.solicitado_por || '');
-  document.getElementById('os-avulso-rua').value = o.cliente_avulso_rua || '';
-  document.getElementById('os-avulso-numero').value = o.cliente_avulso_numero || '';
-  document.getElementById('os-avulso-complemento').value = o.cliente_avulso_complemento || '';
-  document.getElementById('os-avulso-cidade').value = o.cliente_avulso_cidade || '';
-  document.getElementById('os-avulso-referencia').value = o.cliente_avulso_referencia || '';
+  if (o.cliente_avulso_rua || !o.cliente_id) {
+    document.getElementById('os-avulso-rua').value = o.cliente_avulso_rua || '';
+    document.getElementById('os-avulso-numero').value = o.cliente_avulso_numero || '';
+    document.getElementById('os-avulso-complemento').value = o.cliente_avulso_complemento || '';
+    document.getElementById('os-avulso-cidade').value = o.cliente_avulso_cidade || '';
+    document.getElementById('os-avulso-referencia').value = o.cliente_avulso_referencia || '';
+  }
   document.getElementById('os-descricao').value = o.descricao;
   document.getElementById('os-vendedor').value = o.vendedor_id || '';
   document.getElementById('os-valor').value = o.valor;
@@ -726,6 +922,7 @@ async function editarOS(id) {
   document.getElementById('os-data-prevista-hora').value = dp.slice(11, 16);
   document.getElementById('os-pagamento').value = o.forma_pagamento || '';
   document.getElementById('os-obs').value = o.observacoes || '';
+  document.getElementById('os-contato-cliente').value = o.contato_cliente || '';
   document.getElementById('os-a-receber').checked = !!o.a_receber;
   document.getElementById('os-data-vencimento').value = (o.data_vencimento || '').slice(0, 10);
   document.getElementById('os-vencimento-wrap').style.display = o.a_receber ? 'block' : 'none';
@@ -758,6 +955,7 @@ async function salvarOS() {
     data_prevista: (() => { const d = document.getElementById('os-data-prevista-data').value; const h = document.getElementById('os-data-prevista-hora').value; return d ? `${d} ${h || '00:00'}` : null; })(),
     forma_pagamento: document.getElementById('os-pagamento').value || null,
     observacoes: document.getElementById('os-obs').value,
+    contato_cliente: document.getElementById('os-contato-cliente').value.trim() || null,
     a_receber: document.getElementById('os-a-receber').checked ? 1 : 0,
     data_vencimento: document.getElementById('os-data-vencimento').value || null,
     solicitado_por: document.getElementById('os-solicitado-por')?.value || null,
@@ -892,15 +1090,17 @@ async function emitirNfse(osId, osNumero) {
     const confirmar = await modalPreviewNfse(dados, osNumero);
     if (!confirmar) return;
     toast('Emitindo NFS-e... aguarde', 'info');
-    const r = await api('POST', `/nfse/emitir/${osId}`);
+    const r = await api('POST', `/nfse/emitir/${osId}`, null, 60000);
     if (r && r.numeroNota) {
       toast(`NFS-e ${r.numeroNota} emitida com sucesso!`);
+      if (r.aviso) toast(r.aviso, 'warning');
     } else {
       toast('NFS-e enviada! Verifique o número no sistema.', 'info');
     }
     await carregarOrdens();
   } catch (e) {
     toast('Erro: ' + e.message, 'error');
+    await carregarOrdens();
   }
 }
 
@@ -999,5 +1199,19 @@ function modalPreviewNfse(dados, osNumero) {
 
 function verNfse(osId, chaveAcesso) {
   if (!chaveAcesso) { toast('Chave de acesso não disponível', 'error'); return; }
-  window.open(`/api/nfse/danfse/${chaveAcesso}?token=${getToken()}`, '_blank');
+  window.open(`/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`, '_blank');
+}
+
+async function enviarNfseWhatsapp(osId) {
+  const o = ordensData.find(x => x.id === osId);
+  if (!o || !o.nfse_chave_acesso) { toast('Chave de acesso não disponível', 'error'); return; }
+  const telefone = o.cliente_telefone || o.contato_cliente || '';
+  const numeroConfirmado = await modalConfirmarEnvioWA({ telefone, titulo: `Enviar NFS-e Nº ${o.nfse_numero}` });
+  if (!numeroConfirmado) return;
+  try {
+    await api('POST', '/whatsapp/enviar-nfse', { telefone: numeroConfirmado, chave_acesso: o.nfse_chave_acesso, numero_nf: o.nfse_numero, valor: o.valor, descricao: o.descricao, data_emissao: o.nfse_emitida_em });
+    toast('NF enviada via WhatsApp!', 'success');
+  } catch (e) {
+    toast('Erro ao enviar: ' + e.message, 'error');
+  }
 }

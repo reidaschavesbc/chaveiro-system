@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
     let rows;
     if (q) {
         const like = `%${q}%`;
-        rows = db.prepare(`SELECT * FROM clientes WHERE ativo = 1 AND loja_id = ? AND (nome LIKE ? OR cpf LIKE ? OR telefone LIKE ? OR email LIKE ?) ORDER BY nome`).all(loja_id, like, like, like, like);
+        rows = db.prepare(`SELECT * FROM clientes WHERE ativo = 1 AND loja_id = ? AND (nome LIKE ? OR nome_fantasia LIKE ? OR cpf LIKE ? OR telefone LIKE ? OR email LIKE ?) ORDER BY nome`).all(loja_id, like, like, like, like, like);
     } else {
         rows = db.prepare('SELECT * FROM clientes WHERE ativo = 1 AND loja_id = ? ORDER BY nome').all(loja_id);
     }
@@ -31,25 +31,25 @@ router.get('/:id', (req, res) => {
 
 router.post('/', (req, res) => {
     const loja_id = req.user.loja_id;
-    const { nome, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes } = req.body;
+    const { nome, nome_fantasia, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes } = req.body;
     if (!nome) return res.status(400).json({ error: 'Nome é obrigatório' });
 
     const result = db.prepare(`
-        INSERT INTO clientes (nome, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes, loja_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(nome, cpf||null, cnpj||null, telefone||null, email||null, cep||null, endereco||null, numero||null, complemento||null, bairro||null, cidade||null, referencia||null, observacoes||null, loja_id);
+        INSERT INTO clientes (nome, nome_fantasia, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes, loja_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(nome, nome_fantasia||null, cpf||null, cnpj||null, telefone||null, email||null, cep||null, endereco||null, numero||null, complemento||null, bairro||null, cidade||null, referencia||null, observacoes||null, loja_id);
 
     res.status(201).json({ id: result.lastInsertRowid, nome });
 });
 
 router.put('/:id', (req, res) => {
     const loja_id = req.user.loja_id;
-    const { nome, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes } = req.body;
+    const { nome, nome_fantasia, cpf, cnpj, telefone, email, cep, endereco, numero, complemento, bairro, cidade, referencia, observacoes } = req.body;
     const exists = db.prepare('SELECT id FROM clientes WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!exists) return res.status(404).json({ error: 'Cliente não encontrado' });
 
-    db.prepare(`UPDATE clientes SET nome=?,cpf=?,cnpj=?,telefone=?,email=?,cep=?,endereco=?,numero=?,complemento=?,bairro=?,cidade=?,referencia=?,observacoes=? WHERE id=? AND loja_id=?`)
-        .run(nome, cpf||null, cnpj||null, telefone||null, email||null, cep||null, endereco||null, numero||null, complemento||null, bairro||null, cidade||null, referencia||null, observacoes||null, req.params.id, loja_id);
+    db.prepare(`UPDATE clientes SET nome=?,nome_fantasia=?,cpf=?,cnpj=?,telefone=?,email=?,cep=?,endereco=?,numero=?,complemento=?,bairro=?,cidade=?,referencia=?,observacoes=? WHERE id=? AND loja_id=?`)
+        .run(nome, nome_fantasia||null, cpf||null, cnpj||null, telefone||null, email||null, cep||null, endereco||null, numero||null, complemento||null, bairro||null, cidade||null, referencia||null, observacoes||null, req.params.id, loja_id);
 
     res.json({ ok: true });
 });

@@ -212,6 +212,17 @@ function signXml(xmlStr, privateKey, certificate, dpsId) {
   return sig.getSignedXml();
 }
 
+async function buscarNomeOficial(tipo, doc, nomeFallback) {
+  try {
+    if (tipo === 'CNPJ' && doc) {
+      const cnpjLimpo = doc.replace(/\D/g, '');
+      const res = await axios.get(`https://brasilapi.com.br/api/cnpj/v1/${cnpjLimpo}`, { timeout: 5000 });
+      if (res.data?.razao_social) return res.data.razao_social;
+    }
+  } catch (_) {}
+  return nomeFallback;
+}
+
 async function emitirNfse(osId) {
   // Buscar loja_id da OS antes de qualquer coisa
   const osBase = db.prepare(`SELECT loja_id FROM ordens_servico WHERE id = ?`).get(osId);
@@ -311,11 +322,13 @@ async function emitirNfse(osId) {
 
   const cert = loadCertificate(lojaId);
 
+  const tomadorNome = await buscarNomeOficial(tomadorTipo, tomadorDoc, os.cliente_nome);
+
   const { xml: dpsXml, dpsId } = buildDpsXml({
     cnpj, cpf: cert.cpf, inscricaoMunicipal, serie, numeroDps,
     dhEmi, dCompet,
     tomadorTipo, tomadorDoc,
-    tomadorNome: os.cliente_nome,
+    tomadorNome,
     tomadorEmail: os.cliente_email,
     tomadorFone:  os.cliente_telefone,
     tomadorEndereco:    os.cliente_avulso_rua    || os.cliente_endereco,
@@ -376,6 +389,10 @@ async function emitirNfse(osId) {
     || (nfseXmlDecoded ? extrairNumeroNota(nfseXmlDecoded) : null)
     || extrairNumeroNota(JSON.stringify(resposta));
 
+  // Extrair mensagem/aviso do SEFIN (se houver)
+  const aviso = resposta?.mensagem || resposta?.xMsg || resposta?.descricao
+    || (nfseXmlDecoded ? (nfseXmlDecoded.match(/<xMsg>([^<]+)<\/xMsg>/)?.[1] || null) : null);
+
   // Salvar no banco
   db.prepare(`
     UPDATE ordens_servico SET
@@ -389,7 +406,7 @@ async function emitirNfse(osId) {
     WHERE id = ?
   `).run(chaveAcesso, numeroNota, numeroDps, xmlAssinado, tpAmb, osId);
 
-  return { chaveAcesso, numeroNota, xml: resposta };
+  return { chaveAcesso, numeroNota, aviso, xml: resposta };
 }
 
 function extrairChaveAcesso(xmlResp) {
@@ -405,41 +422,38 @@ function extrairNumeroNota(xmlResp) {
 }
 
 async function consultarDanfse(chaveAcesso, lojaId) {
-  const cfg = getConfig(lojaId);
-  const tpAmb = cfg.ambiente || '2';
   const cert = loadCertificate(lojaId);
-  const agent = new https.Agent({
-    pfx: cert.pfxBuffer,
-    passphrase: cert.pfxSenha,
-    rejectUnauthorized: true,
+  const agent = new https.Agent({ pfx: cert.pfxBuffer, passphrase: cert.pfxSenha, rejectUnauthorized: false });
+  const headers = { 'User-Agent': 'Mozilla/5.0' };
+
+  // Passo 1: autenticar com certificado e obter cookies de sessão
+  const authRes = await axios.get('https://www.nfse.gov.br/EmissorNacional/Certificado', {
+    httpsAgent: agent, maxRedirects: 0, timeout: 20000, headers, validateStatus: s => true,
   });
+  if (authRes.status !== 302 && authRes.status !== 200) {
+    throw new Error(`Falha na autenticação com o certificado no portal NFS-e (status ${authRes.status})`);
+  }
+  const cookies = (authRes.headers['set-cookie'] || []).map(c => c.split(';')[0]).join('; ');
+  if (!cookies) throw new Error('Portal NFS-e não retornou cookies de sessão — certificado inválido ou expirado');
 
-  const baseUrl = tpAmb === '1' ? URL_DANFSE_PROD : URL_DANFSE_HOMOLOG;
-  const url = `${baseUrl}/nfse/${chaveAcesso}`;
-  const ambiente = tpAmb === '1' ? 'produção' : 'homologação';
-
+  // Passo 2: baixar o PDF da DANFSE
+  const url = `https://www.nfse.gov.br/EmissorNacional/Notas/Download/DANFSe/${chaveAcesso}`;
   try {
     const res = await axios.get(url, {
-      httpsAgent: agent,
-      responseType: 'arraybuffer',
-      timeout: 30000,
+      httpsAgent: agent, responseType: 'arraybuffer', timeout: 30000,
+      headers: { ...headers, 'Cookie': cookies },
     });
+    if (!res.headers['content-type']?.includes('pdf')) {
+      throw new Error('Resposta não é um PDF. Verifique se a nota foi emitida corretamente.');
+    }
     return res.data;
   } catch (err) {
+    if (err.message.startsWith('Resposta')) throw err;
     const status = err.response?.status;
-    if (status === 502 || status === 503) {
-      throw new Error(`Servidor do governo indisponível (${status}) no ambiente de ${ambiente}. Tente novamente em alguns minutos.`);
-    }
-    if (status === 404) {
-      throw new Error(`Nota não encontrada no servidor do governo (ambiente: ${ambiente}). Verifique se a emissão foi concluída.`);
-    }
-    if (status === 401 || status === 403) {
-      throw new Error(`Sem autorização para acessar esta nota (${status}). Verifique o certificado digital.`);
-    }
-    const detalhe = err.response?.data
-      ? Buffer.from(err.response.data).toString('utf-8').substring(0, 300)
-      : err.message;
-    throw new Error(`Erro ao buscar DANFSE (${status || 'sem resposta'}): ${detalhe}`);
+    if (status === 404) throw new Error('Nota não encontrada no portal NFS-e. Verifique se a emissão foi concluída.');
+    if (status === 401 || status === 403) throw new Error(`Acesso negado ao PDF (${status}). Verifique o certificado digital.`);
+    const detalhe = err.response?.data ? Buffer.from(err.response.data).toString('utf-8').substring(0, 200) : err.message;
+    throw new Error(`Erro ao baixar DANFSE (${status || 'sem resposta'}): ${detalhe}`);
   }
 }
 
@@ -523,4 +537,212 @@ function previewNfse(osId) {
   };
 }
 
-module.exports = { emitirNfse, consultarDanfse, loadCertificate, previewNfse };
+async function emitirNfseVenda(vendaId) {
+  const vendaBase = db.prepare('SELECT loja_id FROM vendas WHERE id = ?').get(vendaId);
+  if (!vendaBase) throw new Error('Venda não encontrada');
+  if (!vendaBase.loja_id) throw new Error('Venda sem loja associada');
+  const lojaId = vendaBase.loja_id;
+
+  const cfg = getConfig(lojaId);
+  const cnpj = cfg.cnpj || '41370832000187';
+  const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
+  const aliquotaIss = cfg.aliquota_iss || '2.00';
+  const codTribNac = cfg.cod_trib_nac || '14.01';
+  const codTribMun = cfg.cod_trib_mun || '';
+  const cnae = cfg.cnae || '';
+  const regimeTributario = cfg.regime_tributario || 'simples';
+  const tpAmb = cfg.ambiente || '2';
+
+  const venda = db.prepare(`
+    SELECT v.*,
+           COALESCE(c.nome, v.cliente_nome_avulso, 'Avulso') as cliente_nome,
+           c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
+           c.email as cliente_email, c.telefone as cliente_telefone,
+           c.endereco as cliente_endereco, c.numero as cliente_numero,
+           c.complemento as cliente_complemento, c.bairro as cliente_bairro,
+           c.cidade as cliente_cidade, c.cep as cliente_cep
+    FROM vendas v
+    LEFT JOIN clientes c ON v.cliente_id = c.id
+    WHERE v.id = ?
+  `).get(vendaId);
+
+  if (!venda) throw new Error('Venda não encontrada');
+  if (venda.nfse_numero) throw new Error(`NFS-e já emitida para esta venda: ${venda.nfse_numero}`);
+
+  const itens = db.prepare(`
+    SELECT iv.*, p.nome as produto_nome, ts.nome as servico_nome
+    FROM itens_venda iv
+    LEFT JOIN produtos p ON iv.produto_id = p.id
+    LEFT JOIN tipos_servico ts ON iv.servico_id = ts.id
+    WHERE iv.venda_id = ?
+  `).all(vendaId);
+
+  // Número sequencial — considera OS e Vendas para não duplicar
+  const ultimaOs    = db.prepare('SELECT MAX(nfse_numero_seq) as u FROM ordens_servico WHERE nfse_numero_seq IS NOT NULL AND loja_id = ?').get(lojaId);
+  const ultimaVenda = db.prepare('SELECT MAX(nfse_numero_seq) as u FROM vendas WHERE nfse_numero_seq IS NOT NULL AND loja_id = ?').get(lojaId);
+  const cfgUltimo   = db.prepare("SELECT valor FROM nfse_config WHERE loja_id = ? AND chave = 'ultimo_seq'").get(lojaId);
+  const ultimoSeq   = Math.max(ultimaOs?.u || 0, ultimaVenda?.u || 0, parseInt(cfgUltimo?.valor || '0'));
+  const numeroDps   = ultimoSeq + 1;
+  const serie = '00001';
+
+  db.prepare('UPDATE vendas SET nfse_numero_seq = ?, nfse_status = ? WHERE id = ?').run(numeroDps, 'pendente', vendaId);
+  db.prepare("INSERT OR REPLACE INTO nfse_config (loja_id, chave, valor) VALUES (?, 'ultimo_seq', ?)").run(lojaId, String(numeroDps));
+
+  const agora = new Date();
+  const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  const dhEmi = brt.toISOString().substring(0, 19) + '-03:00';
+  const dCompet = brt.toISOString().substring(0, 10);
+
+  let tomadorTipo = 'NENHUM';
+  let tomadorDoc = null;
+  if (venda.cliente_cpf)  { tomadorTipo = 'CPF';  tomadorDoc = venda.cliente_cpf; }
+  else if (venda.cliente_cnpj) { tomadorTipo = 'CNPJ'; tomadorDoc = venda.cliente_cnpj; }
+
+  let tomadorCMun = null;
+  let tomadorUF   = null;
+  const cepCliente = venda.cliente_cep ? venda.cliente_cep.replace(/\D/g, '') : null;
+  if (cepCliente && cepCliente.length === 8) {
+    try {
+      const viacep = await axios.get(`https://viacep.com.br/ws/${cepCliente}/json/`, { timeout: 5000 });
+      if (viacep.data && viacep.data.ibge) { tomadorCMun = viacep.data.ibge; tomadorUF = viacep.data.uf; }
+    } catch (_) {}
+  }
+  if (!tomadorCMun && venda.cliente_cidade) {
+    try {
+      const ibgeRes = await axios.get(`https://servicodados.ibge.gov.br/api/v1/localidades/municipios?nome=${encodeURIComponent(venda.cliente_cidade)}`, { timeout: 5000 });
+      if (ibgeRes.data && ibgeRes.data.length >= 1) {
+        const match = ibgeRes.data.find(m => m.nome.toLowerCase() === venda.cliente_cidade.toLowerCase()) || ibgeRes.data[0];
+        tomadorCMun = String(match.id);
+        tomadorUF   = match.microrregiao?.mesorregiao?.UF?.sigla || null;
+      }
+    } catch (_) {}
+  }
+
+  const cert = loadCertificate(lojaId);
+  const tomadorNome = await buscarNomeOficial(tomadorTipo, tomadorDoc, venda.cliente_nome);
+
+  const descricaoServico = buildDescricaoDetalhada({ descricao: venda.observacoes || '' }, itens);
+
+  const { xml: dpsXml, dpsId } = buildDpsXml({
+    cnpj, cpf: cert.cpf, inscricaoMunicipal, serie, numeroDps,
+    dhEmi, dCompet,
+    tomadorTipo, tomadorDoc, tomadorNome,
+    tomadorEmail: venda.cliente_email,
+    tomadorFone:  venda.cliente_telefone,
+    tomadorEndereco:    venda.cliente_endereco,
+    tomadorNumero:      venda.cliente_numero,
+    tomadorComplemento: venda.cliente_complemento,
+    tomadorBairro:      venda.cliente_bairro,
+    tomadorCidade:      venda.cliente_cidade,
+    tomadorCep:         venda.cliente_cep,
+    tomadorCMun, tomadorUF,
+    descricaoServico,
+    valor: venda.total_final,
+    aliquotaIss, codTribNac, codTribMun, cnae,
+    tpAmb, regimeTributario,
+  });
+
+  const xmlAssinado = signXml(dpsXml, cert.privateKey, cert.certificate, dpsId);
+
+  const xmlBuffer = Buffer.from(xmlAssinado, 'utf-8');
+  const xmlGzip   = zlib.gzipSync(xmlBuffer);
+  const dpsXmlGZipB64 = xmlGzip.toString('base64');
+
+  const url   = tpAmb === '1' ? URL_PROD : URL_HOMOLOG;
+  const agent = new https.Agent({ pfx: cert.pfxBuffer, passphrase: cert.pfxSenha, rejectUnauthorized: true });
+
+  let resposta;
+  try {
+    const res = await axios.post(url, { dpsXmlGZipB64 }, {
+      httpsAgent: agent, headers: { 'Content-Type': 'application/json' }, timeout: 30000,
+    });
+    resposta = res.data;
+  } catch (err) {
+    const msg = err.response?.data || err.message;
+    throw new Error(`Erro na comunicação com SEFIN: ${typeof msg === 'string' ? msg.substring(0, 500) : JSON.stringify(msg).substring(0, 500)}`);
+  }
+
+  let nfseXmlDecoded = null;
+  if (resposta?.nfseXmlGZipB64) {
+    try { nfseXmlDecoded = zlib.gunzipSync(Buffer.from(resposta.nfseXmlGZipB64, 'base64')).toString('utf-8'); } catch (_) {}
+  }
+  const chaveAcesso = resposta?.chNFSe || resposta?.chaveAcesso || extrairChaveAcesso(JSON.stringify(resposta));
+  const numeroNota  = resposta?.nNFSe  || resposta?.numero
+    || (nfseXmlDecoded ? extrairNumeroNota(nfseXmlDecoded) : null)
+    || extrairNumeroNota(JSON.stringify(resposta));
+  const aviso = resposta?.mensagem || resposta?.xMsg || resposta?.descricao
+    || (nfseXmlDecoded ? (nfseXmlDecoded.match(/<xMsg>([^<]+)<\/xMsg>/)?.[1] || null) : null);
+
+  db.prepare(`
+    UPDATE vendas SET
+      nfse_chave_acesso = ?, nfse_numero = ?, nfse_numero_seq = ?,
+      nfse_status = 'autorizada', nfse_xml_dps = ?,
+      nfse_emitida_em = datetime('now','localtime'), nfse_ambiente = ?
+    WHERE id = ?
+  `).run(chaveAcesso, numeroNota, numeroDps, xmlAssinado, tpAmb, vendaId);
+
+  return { chaveAcesso, numeroNota, aviso, xml: resposta };
+}
+
+function previewNfseVenda(vendaId) {
+  const vendaBase = db.prepare('SELECT loja_id FROM vendas WHERE id = ?').get(vendaId);
+  if (!vendaBase) throw new Error('Venda não encontrada');
+  const lojaId = vendaBase.loja_id;
+
+  const cfg = getConfig(lojaId || 0);
+  const cnpj = cfg.cnpj || '41370832000187';
+  const inscricaoMunicipal = cfg.inscricao_municipal || '184784';
+  const aliquotaIss = cfg.aliquota_iss || '2.00';
+  const codTribNac  = cfg.cod_trib_nac || '14.01';
+  const regimeTributario = cfg.regime_tributario || 'simples';
+  const tpAmb = cfg.ambiente || '2';
+
+  const venda = db.prepare(`
+    SELECT v.*,
+           COALESCE(c.nome, v.cliente_nome_avulso, 'Avulso') as cliente_nome,
+           c.cpf as cliente_cpf, c.cnpj as cliente_cnpj,
+           c.email as cliente_email, c.telefone as cliente_telefone,
+           c.endereco as cliente_endereco, c.numero as cliente_numero,
+           c.complemento as cliente_complemento, c.bairro as cliente_bairro,
+           c.cidade as cliente_cidade, c.cep as cliente_cep
+    FROM vendas v
+    LEFT JOIN clientes c ON v.cliente_id = c.id
+    WHERE v.id = ?
+  `).get(vendaId);
+
+  if (!venda) throw new Error('Venda não encontrada');
+  if (venda.nfse_status === 'autorizada') throw new Error('NFS-e já emitida para esta venda');
+
+  const itens = db.prepare(`
+    SELECT iv.*, p.nome as produto_nome, ts.nome as servico_nome
+    FROM itens_venda iv
+    LEFT JOIN produtos p ON iv.produto_id = p.id
+    LEFT JOIN tipos_servico ts ON iv.servico_id = ts.id
+    WHERE iv.venda_id = ?
+  `).all(vendaId);
+
+  const descricao = buildDescricaoDetalhada({ descricao: venda.observacoes || '' }, itens);
+
+  let tomadorTipo = 'Não informado';
+  let tomadorDoc  = null;
+  if (venda.cliente_cpf)       { tomadorTipo = 'CPF';  tomadorDoc = venda.cliente_cpf; }
+  else if (venda.cliente_cnpj) { tomadorTipo = 'CNPJ'; tomadorDoc = venda.cliente_cnpj; }
+
+  const regimes = { mei: 'MEI', simples: 'Simples Nacional', normal: 'Regime Normal' };
+
+  return {
+    os: { numero: venda.numero, valor: venda.total_final },
+    prestador: { cnpj, inscricaoMunicipal, regime: regimes[regimeTributario] || regimeTributario, aliquotaIss, codTribNac },
+    tomador: {
+      nome: venda.cliente_nome, tipo: tomadorTipo, doc: tomadorDoc,
+      email: venda.cliente_email, fone: venda.cliente_telefone,
+      endereco: [venda.cliente_endereco, venda.cliente_numero, venda.cliente_complemento].filter(Boolean).join(', '),
+      bairro: venda.cliente_bairro, cidade: venda.cliente_cidade, cep: venda.cliente_cep,
+    },
+    servico: { descricao },
+    itens,
+    ambiente: tpAmb === '1' ? 'Produção' : 'Homologação',
+  };
+}
+
+module.exports = { emitirNfse, emitirNfseVenda, consultarDanfse, loadCertificate, previewNfse, previewNfseVenda };

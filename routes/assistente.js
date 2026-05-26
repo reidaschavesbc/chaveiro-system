@@ -452,7 +452,7 @@ function executarBuscarOS({ numero, cliente_nome, status, limite = 10 } = {}, lo
   const params = [lojaId]
 
   if (numero) { sql += ` AND os.numero LIKE ?`; params.push(`%${numero}%`) }
-  if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`) }
+  if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(COALESCE(c.nome_fantasia,'')) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`, `%${cliente_nome}%`) }
   if (status) { sql += ` AND os.status = ?`; params.push(status) }
 
   sql += ` ORDER BY os.data_entrada DESC LIMIT ?`
@@ -472,7 +472,7 @@ function executarCobrancasAbertas({ cliente_nome } = {}, lojaId) {
     LEFT JOIN vendedores v ON os.vendedor_id = v.id
     WHERE os.status IN ('aberta', 'em_andamento') AND os.loja_id = ?`
   const params = [lojaId]
-  if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`) }
+  if (cliente_nome) { sql += ` AND (norm(c.nome) LIKE norm(?) OR norm(COALESCE(c.nome_fantasia,'')) LIKE norm(?) OR norm(os.cliente_nome_avulso) LIKE norm(?))`; params.push(`%${cliente_nome}%`, `%${cliente_nome}%`, `%${cliente_nome}%`) }
   sql += ` ORDER BY os.data_prevista ASC, os.data_entrada DESC LIMIT 50`
 
   const rows = db.prepare(sql).all(...params)
@@ -480,7 +480,7 @@ function executarCobrancasAbertas({ cliente_nome } = {}, lojaId) {
 }
 
 function executarHistoricoCliente({ cliente_nome }, lojaId) {
-  const cliente = db.prepare(`SELECT * FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, lojaId)
+  const cliente = db.prepare(`SELECT * FROM clientes WHERE (norm(nome) LIKE norm(?) OR norm(COALESCE(nome_fantasia,'')) LIKE norm(?)) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, `%${cliente_nome}%`, lojaId)
   if (!cliente) return { encontrado: false, mensagem: `Nenhum cliente encontrado com "${cliente_nome}"` }
 
   const ordens = db.prepare(`SELECT numero, descricao, valor, valor_pago, status, data_entrada, data_conclusao, forma_pagamento FROM ordens_servico WHERE cliente_id = ? AND loja_id = ? ORDER BY data_entrada DESC LIMIT 20`).all(cliente.id, lojaId)
@@ -764,7 +764,7 @@ function executarCriarOS({ cliente_nome, cliente_avulso_nome, descricao, valor, 
   let cliente_id = null
   let clienteEncontrado = null
   if (cliente_nome) {
-    clienteEncontrado = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, ctx.loja_id)
+    clienteEncontrado = db.prepare(`SELECT id, nome, nome_fantasia FROM clientes WHERE (norm(nome) LIKE norm(?) OR norm(COALESCE(nome_fantasia,'')) LIKE norm(?)) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, `%${cliente_nome}%`, ctx.loja_id)
     if (!clienteEncontrado) return { error: `Cliente "${cliente_nome}" não encontrado no cadastro. Se for avulso, use o campo cliente_avulso_nome.` }
     cliente_id = clienteEncontrado.id
   }
@@ -883,7 +883,7 @@ function executarEditarOS({ numero_os, descricao, valor, cliente_nome, cliente_a
   let novo_cliente_id = os.cliente_id
   let novo_avulso = os.cliente_nome_avulso
   if (cliente_nome) {
-    const cli = db.prepare(`SELECT id, nome FROM clientes WHERE norm(nome) LIKE norm(?) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, ctx.loja_id)
+    const cli = db.prepare(`SELECT id, nome, nome_fantasia FROM clientes WHERE (norm(nome) LIKE norm(?) OR norm(COALESCE(nome_fantasia,'')) LIKE norm(?)) AND ativo = 1 AND loja_id = ? LIMIT 1`).get(`%${cliente_nome}%`, `%${cliente_nome}%`, ctx.loja_id)
     if (!cli) return { error: `Cliente "${cliente_nome}" não encontrado no cadastro` }
     novo_cliente_id = cli.id
     novo_avulso = null

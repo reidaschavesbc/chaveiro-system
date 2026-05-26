@@ -56,7 +56,7 @@ async function dashboard(el) {
         action: data.produtos_baixo_estoque > 0 ? () => navigateTo('produtos') : null
       },
       {
-        label: ar.vencidos > 0 ? `A Receber (${ar.vencidos} vencido${ar.vencidos>1?'s':''})` : 'A Receber',
+        label: ar.vencidos > 0 ? `Cobranças (${ar.vencidos} vencida${ar.vencidos>1?'s':''})` : 'Cobranças',
         value: fmtVal(ar.total),
         sub: `${ar.qtd} OS pendente${ar.qtd !== 1 ? 's' : ''}`,
         grad: arAlerta ? 'linear-gradient(135deg,#dc2626,#f87171)' : 'linear-gradient(135deg,#d97706,#fbbf24)',

@@ -4,6 +4,60 @@ let orcClientes = [];
 let orcServicos = [];
 let orcProdutos = [];
 let orcVendedores = [];
+let orcServicoSelecionado = null;
+let orcProdutoSelecionado = null;
+let _orcDropdown = null;
+
+function _orcEnsureDropdown() {
+  if (!_orcDropdown) {
+    _orcDropdown = document.createElement('div');
+    _orcDropdown.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:240px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_orcDropdown);
+  }
+  return _orcDropdown;
+}
+
+function filtrarItensOrc(tipo) {
+  const input = document.getElementById(`orc-item-${tipo}-busca`);
+  const busca = input.value.toLowerCase().trim();
+  const data = tipo === 'servico' ? orcServicos : orcProdutos;
+  const filtrados = busca ? data.filter(i => i.nome.toLowerCase().includes(busca)) : data;
+
+  const dd = _orcEnsureDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top = rect.bottom + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  dd.innerHTML = filtrados.length
+    ? filtrados.map(i => {
+        const preco = tipo === 'servico' ? i.preco_base : i.preco_venda;
+        return `<div onmousedown="event.preventDefault()" onclick="escolherItemOrc('${tipo}',${i.id})"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+                  <span>${i.nome}</span>
+                  <span style="color:#1a56db;font-weight:600;white-space:nowrap;margin-left:8px">${formatCurrency(preco)}</span>
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum encontrado</div>';
+}
+
+function escolherItemOrc(tipo, id) {
+  const data = tipo === 'servico' ? orcServicos : orcProdutos;
+  const item = data.find(i => i.id === id);
+  if (!item) return;
+  if (tipo === 'servico') orcServicoSelecionado = item;
+  else orcProdutoSelecionado = item;
+  const preco = tipo === 'servico' ? item.preco_base : item.preco_venda;
+  document.getElementById(`orc-item-${tipo}-busca`).value = item.nome;
+  document.getElementById(`orc-item-${tipo}-preco`).value = preco;
+  if (_orcDropdown) _orcDropdown.style.display = 'none';
+}
+
+function fecharListaOrc() {
+  setTimeout(() => { if (_orcDropdown) _orcDropdown.style.display = 'none'; }, 150);
+}
 
 const ORC_STATUS = {
     pendente:  { bg: '#fef3c7', color: '#92400e', label: 'Pendente' },
@@ -87,7 +141,7 @@ async function orcamentos(el) {
               <label>Cliente</label>
               <select id="orc-cliente" onchange="orcToggleAvulso()">
                 <option value="">-- Sem cliente --</option>
-                ${orcClientes.map(c => `<option value="${c.id}" data-tel="${c.telefone || ''}">${c.nome}</option>`).join('')}
+                ${orcClientes.map(c => `<option value="${c.id}" data-tel="${c.telefone || ''}">${c.nome_fantasia || c.nome}</option>`).join('')}
               </select>
               <input type="text" id="orc-cliente-avulso" style="margin-top:6px">
               <input type="text" id="orc-cliente-tel-avulso" style="margin-top:6px" oninput="mascaraTelefone(this)">
@@ -134,23 +188,21 @@ async function orcamentos(el) {
             <div id="tab-orc-servico">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <select id="orc-item-serv-sel" onchange="orcAtualizarPreco('servico', this)">
-                    <option value="">-- Selecione o serviço --</option>
-                    ${orcServicos.map(s => `<option value="${s.id}" data-nome="${s.nome}" data-preco="${s.preco_base}">${s.nome} — ${formatCurrency(s.preco_base)}</option>`).join('')}
-                  </select>
+                  <input type="text" id="orc-item-servico-busca" placeholder="🔍 Buscar serviço..." autocomplete="off"
+                         oninput="filtrarItensOrc('servico')" onfocus="filtrarItensOrc('servico')" onblur="fecharListaOrc()"
+                         style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-serv-qtd" min="1" value="1"></div>
-                <div class="form-group"><input type="number" id="orc-item-serv-preco" step="0.01" min="0" value="0"></div>
+                <div class="form-group"><input type="number" id="orc-item-servico-qtd" min="1" value="1"></div>
+                <div class="form-group"><input type="number" id="orc-item-servico-preco" step="0.01" min="0" value="0"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('servico')">Adicionar Serviço</button>
             </div>
             <div id="tab-orc-produto" style="display:none">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <select id="orc-item-prod-sel" onchange="orcAtualizarPreco('produto', this)">
-                    <option value="">-- Selecione o produto --</option>
-                    ${orcProdutos.map(p => `<option value="${p.id}" data-nome="${p.nome}" data-preco="${p.preco_venda}">${p.nome} — ${formatCurrency(p.preco_venda)}</option>`).join('')}
-                  </select>
+                  <input type="text" id="orc-item-produto-busca" placeholder="🔍 Buscar produto..." autocomplete="off"
+                         oninput="filtrarItensOrc('produto')" onfocus="filtrarItensOrc('produto')" onblur="fecharListaOrc()"
+                         style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
                 <div class="form-group"><input type="number" id="orc-item-prod-qtd" min="1" value="1"></div>
                 <div class="form-group"><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0"></div>
@@ -255,6 +307,7 @@ function renderOrc(list) {
           <td style="font-size:12px;color:#64748b">${validade}</td>
           <td>${orcStatusSelect(o.id, o.status)}</td>
           <td><div class="actions-cell">
+            <button class="btn btn-sm btn-secondary btn-icon" title="Visualizar" onclick="visualizarOrc(${o.id})">👁️</button>
             <a class="btn btn-sm btn-secondary btn-icon" href="/api/pdf/orcamento/${o.id}?t=${getToken()}" target="_blank" title="PDF">📄</a>
             <button class="btn btn-sm" style="background:#25d366;color:#fff;font-size:11px;padding:4px 8px" title="Enviar WhatsApp" onclick="abrirEnvioOrc(${o.id})">
               <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:#fff;display:inline;vertical-align:middle"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.43 1.27 4.87L2 22l5.26-1.25A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm4.93 13.07c-.21.58-1.22 1.11-1.68 1.18-.43.06-.97.09-1.57-.1-.36-.12-.83-.28-1.42-.55-2.49-1.08-4.12-3.6-4.24-3.76-.13-.17-1.02-1.36-1.02-2.59 0-1.24.64-1.85.87-2.1.23-.25.5-.31.67-.31.17 0 .33 0 .48.01.15.01.36-.06.56.43.21.5.71 1.73.77 1.86.06.13.1.28.02.45-.08.17-.12.28-.24.43-.12.15-.25.33-.36.45-.12.12-.24.25-.1.49.14.24.61 1.01 1.31 1.64.9.8 1.66 1.05 1.9 1.17.24.12.38.1.52-.06.14-.16.59-.69.75-.93.16-.24.32-.2.54-.12.22.08 1.39.66 1.63.78.24.12.4.18.46.28.06.1.06.57-.15 1.15z"/></svg>
@@ -300,19 +353,25 @@ function orcAtualizarPreco(tipo, sel) {
 function orcAdicionarItem(tipo) {
     let descricao, quantidade, preco, produto_id = null, servico_id = null;
     if (tipo === 'servico') {
-        const sel = document.getElementById('orc-item-serv-sel');
-        if (!sel.value) return toast('Selecione um serviço', 'warning');
-        descricao = sel.options[sel.selectedIndex].dataset.nome;
-        servico_id = parseInt(sel.value);
-        quantidade = parseFloat(document.getElementById('orc-item-serv-qtd').value) || 1;
-        preco = parseFloat(document.getElementById('orc-item-serv-preco').value) || 0;
+        if (!orcServicoSelecionado) return toast('Selecione um serviço', 'warning');
+        descricao = orcServicoSelecionado.nome;
+        servico_id = orcServicoSelecionado.id;
+        quantidade = parseFloat(document.getElementById('orc-item-servico-qtd').value) || 1;
+        preco = parseFloat(document.getElementById('orc-item-servico-preco').value) || 0;
+        orcServicoSelecionado = null;
+        document.getElementById('orc-item-servico-busca').value = '';
+        document.getElementById('orc-item-servico-preco').value = 0;
+        document.getElementById('orc-item-servico-qtd').value = 1;
     } else if (tipo === 'produto') {
-        const sel = document.getElementById('orc-item-prod-sel');
-        if (!sel.value) return toast('Selecione um produto', 'warning');
-        descricao = sel.options[sel.selectedIndex].dataset.nome;
-        produto_id = parseInt(sel.value);
+        if (!orcProdutoSelecionado) return toast('Selecione um produto', 'warning');
+        descricao = orcProdutoSelecionado.nome;
+        produto_id = orcProdutoSelecionado.id;
         quantidade = parseFloat(document.getElementById('orc-item-prod-qtd').value) || 1;
         preco = parseFloat(document.getElementById('orc-item-prod-preco').value) || 0;
+        orcProdutoSelecionado = null;
+        document.getElementById('orc-item-produto-busca').value = '';
+        document.getElementById('orc-item-prod-preco').value = 0;
+        document.getElementById('orc-item-prod-qtd').value = 1;
     } else {
         descricao = document.getElementById('orc-item-man-desc').value.trim();
         if (!descricao) return toast('Informe a descrição do item', 'warning');
@@ -361,6 +420,10 @@ function abrirModalOrc() {
     document.getElementById('orc-obs').value = '';
     document.getElementById('modal-orc-title').textContent = 'Novo Orçamento';
     orcItens = [];
+    orcServicoSelecionado = null;
+    orcProdutoSelecionado = null;
+    const bS = document.getElementById('orc-item-servico-busca'); if (bS) bS.value = '';
+    const bP = document.getElementById('orc-item-produto-busca'); if (bP) bP.value = '';
     orcRenderItens();
     openModal('modal-orc');
 }
@@ -432,6 +495,91 @@ async function mudarStatusOrcSelect(sel) {
         sel.value = statusAnterior;
         toast(e.message, 'error');
     }
+}
+
+async function visualizarOrc(id) {
+    try {
+        const o = await api('GET', `/orcamentos/${id}`);
+        if (!o) return;
+
+        let overlay = document.getElementById('modal-view-orc');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-view-orc';
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+        }
+
+        const cli = o.cliente_nome || o.cliente_nome_avulso || 'Cliente Avulso';
+        const tel = o.cliente_telefone || o.cliente_telefone_avulso || '';
+        const validade = dataValidadeOrc(o.criado_em, o.validade_dias);
+        const s = ORC_STATUS[o.status] || ORC_STATUS.pendente;
+
+        const itensHtml = (o.itens || []).length
+            ? `<table style="margin:0">
+                <thead><tr><th>Descrição</th><th style="text-align:center">Qtd</th><th style="text-align:right">Unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
+                <tbody>${(o.itens || []).map(it => `
+                  <tr>
+                    <td>${it.descricao}${it.servico_id ? ' <span style="font-size:10px;color:#1a56db;background:#eff6ff;padding:1px 5px;border-radius:4px">serv.</span>' : ''}</td>
+                    <td style="text-align:center">${it.quantidade}</td>
+                    <td style="text-align:right">${formatCurrency(it.preco_unitario)}</td>
+                    <td style="text-align:right;font-weight:600">${formatCurrency(it.quantidade * it.preco_unitario)}</td>
+                  </tr>`).join('')}
+                </tbody>
+               </table>`
+            : '<p style="color:#94a3b8;font-size:13px;margin:0">Nenhum item cadastrado.</p>';
+
+        overlay.innerHTML = `
+        <div class="modal modal-lg">
+          <div class="modal-header">
+            <span class="modal-title">Orçamento ${o.numero}</span>
+            <button class="modal-close" onclick="closeModal('modal-view-orc')">&times;</button>
+          </div>
+          <div class="modal-body">
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+              <div style="background:#f8fafc;border-radius:12px;padding:16px">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Cliente</div>
+                <div style="font-weight:700;font-size:15px;color:#1e293b;margin-bottom:4px">${cli}</div>
+                ${tel ? `<div style="font-size:13px;margin-top:4px">📞 ${tel}</div>` : ''}
+              </div>
+              <div style="background:#f8fafc;border-radius:12px;padding:16px">
+                <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:10px">Informações</div>
+                <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Data:</span> <strong>${formatDate(o.criado_em)}</strong></div>
+                <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Válido até:</span> <strong>${validade}</strong></div>
+                <div style="font-size:13px;margin-bottom:6px"><span style="color:#64748b">Status:</span> <span style="font-size:12px;font-weight:700;color:${s.color};background:${s.bg};padding:2px 10px;border-radius:10px">${s.label}</span></div>
+                ${o.vendedor_nome ? `<div style="font-size:13px"><span style="color:#64748b">Funcionário:</span> <strong>${o.vendedor_nome}</strong></div>` : ''}
+              </div>
+            </div>
+
+            ${o.descricao ? `<div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:16px">
+              <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:6px">Descrição</div>
+              <div style="font-size:13px;color:#1e293b;white-space:pre-wrap">${o.descricao}</div>
+            </div>` : ''}
+
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px">Itens</div>
+            <div style="max-height:240px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:16px">
+              ${itensHtml}
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+              ${o.observacoes ? `<div style="font-size:12px;color:#64748b;flex:1"><strong>Obs:</strong> ${o.observacoes}</div>` : '<div></div>'}
+              <div style="font-size:22px;font-weight:800;color:#1a56db">Total: ${formatCurrency(o.total)}</div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('modal-view-orc')">Fechar</button>
+            <button class="btn btn-secondary" onclick="closeModal('modal-view-orc');abrirEnvioOrc(${o.id})">
+              <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.77.46 3.43 1.27 4.87L2 22l5.26-1.25A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/></svg>
+              WhatsApp
+            </button>
+            <a class="btn btn-primary" href="/api/pdf/orcamento/${o.id}?t=${getToken()}" target="_blank">📄 Gerar PDF</a>
+          </div>
+        </div>`;
+
+        openModal('modal-view-orc');
+    } catch (e) { toast(e.message, 'error'); }
 }
 
 async function excluirOrc(id, numero) {

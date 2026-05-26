@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const bcrypt = require('bcryptjs');
 const { ajustarEstoqueUsuario, getQtdUsuario } = require('./estoque');
 const { verificarEstoqueBaixo } = require('./pedidos');
+
+function verificarSenhaGerente(senha, hash) {
+    if (!hash) return true;
+    if (hash.startsWith('$2')) return bcrypt.compareSync(senha, hash);
+    return senha === hash;
+}
 
 function gerarNumeroVenda() {
     const now = new Date();
@@ -17,13 +24,17 @@ function gerarNumeroVenda() {
 // GET /api/vendas
 router.get('/', (req, res) => {
     const { data_inicio, data_fim, cliente_id } = req.query;
-    const { loja_id: lojaId, id: userId, principal } = req.user;
+    const { loja_id: lojaId, id: userId, principal, perfil } = req.user;
     let query = `SELECT v.*, c.nome as cliente_nome, ven.nome as vendedor_nome FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
     LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
     WHERE v.loja_id = ?`;
     const params = [lojaId];
-    query += ' AND v.usuario_id = ?'; params.push(userId);
+    if (!principal && perfil !== 'admin') {
+        query += ' AND v.usuario_id = ?'; params.push(userId);
+    } else if (req.query.usuario_id && req.query.usuario_id !== 'all') {
+        query += ' AND v.usuario_id = ?'; params.push(parseInt(req.query.usuario_id));
+    }
     if (data_inicio) { query += ' AND date(v.data) >= ?'; params.push(data_inicio); }
     if (data_fim) { query += ' AND date(v.data) <= ?'; params.push(data_fim); }
     if (cliente_id) { query += ' AND v.cliente_id = ?'; params.push(cliente_id); }
@@ -62,7 +73,6 @@ router.post('/', (req, res) => {
     const { cliente_id, cliente_nome_avulso, vendedor_id, itens, desconto, pagamentos, observacoes } = req.body;
     if (!itens || itens.length === 0) return res.status(400).json({ error: 'Itens são obrigatórios' });
 
-    const numero = gerarNumeroVenda();
     const lojaId = req.user.loja_id;
     let total = 0;
 
@@ -73,6 +83,7 @@ router.post('/', (req, res) => {
     const totalFinal = total - (desconto || 0);
 
     const insertVenda = db.transaction(() => {
+        const numero = gerarNumeroVenda(); // dentro da transação para garantir unicidade
         // Use primary payment method as principal if provided, otherwise 'dinheiro'
         const formaPagamentoPrincipal = pagamentos && pagamentos.length > 0 ? pagamentos[0].metodo : 'dinheiro';
 
@@ -118,25 +129,30 @@ router.post('/', (req, res) => {
             });
         }
 
-        return vendaId;
+        return { vendaId, numero };
     });
 
     try {
-        const vendaId = insertVenda();
+        const { vendaId, numero } = insertVenda();
         res.status(201).json({ id: vendaId, numero, total: totalFinal });
     } catch (e) {
         res.status(500).json({ error: e.message || 'Erro ao salvar venda' });
     }
 });
 
-// DELETE /api/vendas/:id/excluir (exclusão física com senha)
+// DELETE /api/vendas/:id/excluir (exclusão física com senha — somente usuário principal)
 router.delete('/:id/excluir', (req, res) => {
+    if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode excluir vendas permanentemente' });
+
     const { senha } = req.body;
     if (!senha) return res.status(400).json({ error: 'Senha é obrigatória' });
 
     const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
     if (!cfg || !cfg.valor) return res.status(400).json({ error: 'Senha do gerente não configurada. Acesse Configurações para definir.' });
-    if (senha !== cfg.valor) return res.status(422).json({ error: 'Senha incorreta' });
+    const senhaCorreta = cfg.valor.startsWith('$2')
+        ? bcrypt.compareSync(senha, cfg.valor)
+        : senha === cfg.valor;
+    if (!senhaCorreta) return res.status(422).json({ error: 'Senha incorreta' });
 
     const excluirVenda = db.transaction(() => {
         const venda = db.prepare('SELECT * FROM vendas WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
