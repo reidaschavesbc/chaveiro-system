@@ -29,4 +29,28 @@ git tag "$TAG"
 git push "$REMOTE" "$TAG"
 
 echo ""
-echo "Tag $TAG enviada! Build do APK iniciado no GitHub Actions (~18 min)."
+echo "Tag $TAG enviada! Aguardando build do GitHub Actions (~18 min)..."
+
+REPO="reidaschavesbc/chaveiro-system"
+DOWNLOADS="/home/chaveiro/chaveiro-system/public/downloads"
+
+echo "Verificando build a cada 30 segundos..."
+for i in $(seq 1 50); do
+  sleep 30
+  STATUS=$(GH_TOKEN="$TOKEN" gh release view "$TAG" --repo "$REPO" --json assets --jq '.assets | length' 2>/dev/null)
+  if [ "$STATUS" -ge 1 ] 2>/dev/null; then
+    echo "Build concluído! Baixando APK..."
+    GH_TOKEN="$TOKEN" gh release download "$TAG" --repo "$REPO" \
+      --pattern "*.apk" \
+      --dir "$DOWNLOADS" --clobber
+    # Renomeia para o nome padrão
+    find "$DOWNLOADS" -name "*.apk" ! -name "ChaveiroOS.apk" -exec mv {} "$DOWNLOADS/ChaveiroOS.apk" \;
+    echo "$VERSION" | xargs -I{} echo "{}" > "$DOWNLOADS/version-apk.json" 2>/dev/null || echo "{\"version\":\"$VERSION\"}" > "$DOWNLOADS/version-apk.json"
+    echo "Pronto! APK $VERSION disponível para download."
+    exit 0
+  fi
+  echo "  Aguardando... (${i}/50)"
+done
+
+echo "Timeout — baixe manualmente com:"
+echo "  GH_TOKEN=\"$TOKEN\" gh release download $TAG --repo $REPO --pattern \"*.apk\" --dir $DOWNLOADS --clobber"
