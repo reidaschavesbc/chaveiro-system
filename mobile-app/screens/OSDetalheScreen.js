@@ -754,7 +754,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Adicionar Item ─────────────────────────────────────────── */}
         <Modal visible={modalItem} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
             <View style={s.modalOverlay}>
             <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.88, minHeight: Dimensions.get('window').height * 0.55 }]}>
               <View style={s.modalHeader}>
@@ -854,7 +854,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Finalizar ──────────────────────────────────────────────── */}
         <Modal visible={modalFinalizar} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
             <View style={s.modalOverlay}>
               <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.92 }]}>
                 <View style={s.modalHeader}>
@@ -961,7 +961,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Editar Item ────────────────────────────────────────── */}
         <Modal visible={modalEditItem} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
             <View style={s.modalOverlay}>
               <View style={s.modalCard}>
                 <View style={s.modalHeader}>
@@ -1004,8 +1004,8 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Consumo de Estoque ─────────────────────────────────── */}
         <Modal visible={modalEstoque} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-            <View style={s.modalOverlay}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+            <View style={[s.modalOverlay, { justifyContent: 'flex-end' }]}>
             <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.85 }]}>
               <View style={s.modalHeader}>
                 <Text style={[s.modalTitle, estoqueModo === 'custo' ? { color: '#7c3aed' } : estoqueModo === 'estoque' ? { color: '#475569' } : {}]}>
