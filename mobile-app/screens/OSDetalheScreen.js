@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions, Linking
+  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions, Linking, Animated
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
@@ -54,6 +54,20 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [os, setOs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  // Toast customizado
+  const [toast, setToast] = useState(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef(null);
+
+  function showToast({ icon, title, subtitle, color }) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ icon, title, subtitle, color });
+    Animated.spring(toastAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 10 }).start();
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setToast(null));
+    }, 5000);
+  }
 
   // Edição descrição
   const [desc, setDesc] = useState('');
@@ -205,7 +219,7 @@ export default function OSDetalheScreen({ route, navigation }) {
     try {
       await api.put(`/os/${osId}`, { status: novoStatus });
       setOs(prev => ({ ...prev, status: novoStatus }));
-      Alert.alert('✅ Atualizado!', `OS marcada como ${STATUS_LABEL[novoStatus]?.label}`);
+      showToast({ icon: '✅', title: 'OS Atualizada', subtitle: `Marcada como ${STATUS_LABEL[novoStatus]?.label}`, color: STATUS_LABEL[novoStatus]?.color || '#3b82f6' });
     } catch (e) {
       Alert.alert('Erro', e.response?.data?.error || 'Falha ao atualizar');
     } finally { setSalvando(false); }
@@ -336,7 +350,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         await api.put(`/os/${osId}`, { status: 'concluida', a_receber: true, data_vencimento: dvEnvio });
         setModalFinalizar(false);
         await carregarOS();
-        Alert.alert('✅ OS finalizada!', 'Marcada como A Receber.');
+        showToast({ icon: '✅', title: 'OS Finalizada!', subtitle: 'Marcada como A Receber.', color: '#10b981' });
         await verificarEAbrirEstoque(osId, os?.is_plantao);
       } catch (e) {
         Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
@@ -362,7 +376,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       await api.put(`/os/${osId}`, { status: 'concluida', pagamentos: pags });
       setModalFinalizar(false);
       await carregarOS();
-      Alert.alert('✅ OS finalizada!', 'Pagamento registrado.');
+      showToast({ icon: '✅', title: 'OS Finalizada!', subtitle: 'Pagamento registrado.', color: '#10b981' });
       await verificarEAbrirEstoque(osId, os?.is_plantao);
     } catch (e) {
       Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
@@ -1096,6 +1110,30 @@ export default function OSDetalheScreen({ route, navigation }) {
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* ── Toast customizado ─────────────────────────────────────────── */}
+        {toast && (
+          <Animated.View style={{
+            position: 'absolute', top: insets.top + 16, left: 16, right: 16, zIndex: 9999,
+            opacity: toastAnim,
+            transform: [{ translateY: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] }) }],
+          }}>
+            <View style={{
+              backgroundColor: '#fff', borderRadius: 16, padding: 16,
+              flexDirection: 'row', alignItems: 'center', gap: 14,
+              borderLeftWidth: 5, borderLeftColor: toast.color,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+            }}>
+              <Text style={{ fontSize: 28 }}>{toast.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#1e293b' }}>{toast.title}</Text>
+                {toast.subtitle ? <Text style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{toast.subtitle}</Text> : null}
+              </View>
+            </View>
+          </Animated.View>
+        )}
+
       </View>
     </KeyboardAvoidingView>
   );
