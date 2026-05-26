@@ -66,7 +66,12 @@ app.get('/download', (req, res) => {
 
 // Download do app Android
 app.get('/download-app', (req, res) => {
-  res.download(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'), 'ChaveiroOS.apk');
+  const versionFile = path.join(__dirname, 'public/downloads/version-apk.json');
+  const version = fs.existsSync(versionFile) ? JSON.parse(fs.readFileSync(versionFile, 'utf8')).version : 'latest';
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.download(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'), `ChaveiroOS-${version}.apk`);
 });
 
 app.get('/api/version', (req, res) => {

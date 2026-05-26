@@ -83,7 +83,7 @@ export default function OSListScreen({ navigation, onLogout }) {
             <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
           </View>
         </View>
-        <Text style={s.cliente}>{item.cliente_nome}</Text>
+        <Text style={s.cliente}>{item.cliente_nome_fantasia || item.cliente_nome}</Text>
         <Text style={s.descricao} numberOfLines={2}>{item.descricao}</Text>
         <View style={s.cardBottom}>
           <Text style={s.valor}>{fmtVal(item.valor)}</Text>

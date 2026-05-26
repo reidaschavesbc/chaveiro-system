@@ -508,7 +508,8 @@ export default function OSDetalheScreen({ route, navigation }) {
           {/* Cliente */}
           <View style={s.card}>
             <Text style={s.secLabel}>Cliente</Text>
-            <Text style={s.secValue}>{os.cliente_nome}</Text>
+            <Text style={s.secValue}>{os.cliente_nome_fantasia || os.cliente_nome}</Text>
+            {os.cliente_nome_fantasia ? <Text style={s.secSub}>{os.cliente_nome}</Text> : null}
             {os.cliente_telefone ? <Text style={s.secSub}>📞 {os.cliente_telefone}</Text> : null}
 
             {/* Contato da OS */}
@@ -663,7 +664,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                     placeholderTextColor="#999"
                     onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
                   />
-                  <TouchableOpacity style={[s.saveBtn, { paddingHorizontal: 12, paddingVertical: 6 }]} onPress={salvarDesconto} disabled={salvando}>
+                  <TouchableOpacity style={[s.saveBtn, { flex: 0, paddingHorizontal: 16, paddingVertical: 6 }]} onPress={salvarDesconto} disabled={salvando}>
                     <Text style={s.saveBtnText}>OK</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setEditandoDesconto(false)}>

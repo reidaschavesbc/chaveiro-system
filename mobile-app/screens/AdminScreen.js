@@ -260,7 +260,7 @@ export default function AdminScreen({ navigation }) {
                         <Text style={[s.statusText, { color: st.color }]}>{st.label}</Text>
                       </View>
                     </View>
-                    <Text style={s.osCliente}>{o.cliente_nome || '—'}</Text>
+                    <Text style={s.osCliente}>{o.cliente_nome_fantasia || o.cliente_nome || '—'}</Text>
                     {o.vendedor_nome ? <Text style={s.osVendedor}>👤 {o.vendedor_nome}</Text> : null}
                     <View style={s.osFooter}>
                       <Text style={s.osData}>{fmtData(o.data_entrada)}</Text>

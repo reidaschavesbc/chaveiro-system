@@ -85,6 +85,7 @@ router.get('/os', authFuncionario, (req, res) => {
              os.data_entrada, os.data_prevista, os.data_conclusao,
              os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
              COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+             c.nome_fantasia as cliente_nome_fantasia,
              c.telefone as cliente_telefone,
              v.nome as vendedor_nome
       FROM ordens_servico os
@@ -121,6 +122,7 @@ router.get('/os', authFuncionario, (req, res) => {
            os.data_entrada, os.data_prevista, os.data_conclusao,
            os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+           c.nome_fantasia as cliente_nome_fantasia,
            c.telefone as cliente_telefone
     FROM ordens_servico os
     LEFT JOIN clientes c ON os.cliente_id = c.id
@@ -218,6 +220,7 @@ router.get('/os/:id', authFuncionario, (req, res) => {
   const os = db.prepare(`
     SELECT os.*,
            COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+           c.nome_fantasia as cliente_nome_fantasia,
            c.telefone as cliente_telefone,
            c.endereco as cliente_endereco
     FROM ordens_servico os
