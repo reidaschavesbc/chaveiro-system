@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform, Alert, Linking, TouchableOpacity, Text } from 'react-native';
+import { Platform, Alert, Linking, TouchableOpacity, Text, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,7 +46,13 @@ export default function App() {
     verificarLogin();
     configurarNotificacoes();
     verificarAtualizacao();
+
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') verificarAtualizacao();
+    });
+
     return () => {
+      sub.remove();
       Notifications.removeNotificationSubscription(notifListener.current);
       Notifications.removeNotificationSubscription(responseListener.current);
     };
@@ -71,7 +77,9 @@ export default function App() {
           ]
         );
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn('verificarAtualizacao:', e.message);
+    }
   }
 
   async function verificarLogin() {

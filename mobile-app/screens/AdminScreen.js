@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Dimensions, Modal, FlatList,
+  ActivityIndicator, RefreshControl, Dimensions, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,12 +22,15 @@ const STATUS_LABEL = {
 };
 
 const CARDS = [
-  { key: 'em_andamento',    label: 'Em andamento',   color: '#3b82f6', status: 'em_andamento' },
-  { key: 'abertas',         label: 'Abertas',         color: '#f59e0b', status: 'aberta'       },
-  { key: 'finalizadas_hoje',label: 'Finalizadas hoje',color: '#10b981', status: 'concluida'    },
-  { key: 'canceladas_hoje', label: 'Canceladas hoje', color: '#ef4444', status: 'cancelada'    },
+  { key: 'em_andamento', label: 'Em andamento', color: '#3b82f6', status: 'em_andamento' },
+  { key: 'abertas',      label: 'Abertas',      color: '#f59e0b', status: 'aberta'       },
+  { key: 'finalizadas',  label: 'Finalizadas',  color: '#10b981', status: 'concluida',  hasPeriodo: true },
+  { key: 'canceladas',   label: 'Canceladas',   color: '#ef4444', status: 'cancelada',  hasPeriodo: true },
 ];
-const CARD_VALOR = { key: 'valor_hoje', label: 'Valor do dia', color: '#7c3aed', status: 'concluida' };
+const CARD_VALOR     = { key: 'valor_hoje',     label: 'Valor do dia',          color: '#7c3aed', status: 'concluida',  hasPeriodo: false };
+const CARD_COBRANCAS = { key: 'cobrancas_hoje', label: 'Cobranças recebidas',   color: '#0891b2', status: 'cobrancas',  hasPeriodo: true  };
+
+const PERIODO_LABELS = { 1: 'Hoje', 2: '2 dias', 3: '3 dias' };
 
 function fmtVal(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -41,14 +44,15 @@ function fmtData(d) {
 
 export default function AdminScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const [stats, setStats]         = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const [stats, setStats]           = useState(null);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [cardSel, setCardSel]     = useState(null);
-  const [osList, setOsList]       = useState([]);
-  const [loadingOS, setLoadingOS] = useState(false);
+  const [cardSel, setCardSel]       = useState(null);
+  const [osList, setOsList]         = useState([]);
+  const [loadingOS, setLoadingOS]   = useState(false);
   const [funcFiltro, setFuncFiltro] = useState(null);
   const [modalFunc, setModalFunc]   = useState(false);
+  const [periodoFiltro, setPeriodoFiltro] = useState(1);
 
   useFocusEffect(useCallback(() => { carregar(); }, []));
 
@@ -65,34 +69,37 @@ export default function AdminScreen({ navigation }) {
     }
   }
 
-  async function selecionarCard(card) {
-    if (cardSel?.key === card.key) {
-      setCardSel(null);
-      setOsList([]);
-      setFuncFiltro(null);
-      return;
-    }
-    setCardSel(card);
-    setFuncFiltro(null);
+  async function buscarOS(card, dias, func) {
     setLoadingOS(true);
     try {
-      const { data } = await api.get('/os', { params: { adm: '1', status: card.status } });
-      setOsList(data);
-    } catch {}
-    finally { setLoadingOS(false); }
-  }
-
-  async function selecionarFuncionario(func) {
-    setModalFunc(false);
-    setFuncFiltro(func);
-    setLoadingOS(true);
-    try {
-      const params = { adm: '1', status: cardSel.status };
+      const params = { adm: '1', status: card.status, dias };
       if (func) params.funcionario_id = func.id;
       const { data } = await api.get('/os', { params });
       setOsList(data);
     } catch {}
     finally { setLoadingOS(false); }
+  }
+
+  async function selecionarCard(card) {
+    if (cardSel?.key === card.key) {
+      setCardSel(null); setOsList([]); setFuncFiltro(null); setPeriodoFiltro(1);
+      return;
+    }
+    setCardSel(card);
+    setFuncFiltro(null);
+    setPeriodoFiltro(1);
+    await buscarOS(card, 1, null);
+  }
+
+  async function selecionarFuncionario(func) {
+    setModalFunc(false);
+    setFuncFiltro(func);
+    await buscarOS(cardSel, periodoFiltro, func);
+  }
+
+  async function selecionarPeriodo(dias) {
+    setPeriodoFiltro(dias);
+    await buscarOS(cardSel, dias, funcFiltro);
   }
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#7c3aed" />;
@@ -154,6 +161,27 @@ export default function AdminScreen({ navigation }) {
           );
         })()}
 
+        {/* Card largo — Cobranças recebidas */}
+        {(() => {
+          const sel = cardSel?.key === CARD_COBRANCAS.key;
+          return (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={[
+                s.cardWide,
+                { borderLeftColor: CARD_COBRANCAS.color },
+                sel && { backgroundColor: CARD_COBRANCAS.color + '18', borderColor: CARD_COBRANCAS.color, borderWidth: 1.5 },
+              ]}
+              onPress={() => selecionarCard(CARD_COBRANCAS)}
+            >
+              <Text style={[s.cardWideNum, { color: sel ? CARD_COBRANCAS.color : '#1e293b' }]}>
+                {fmtVal(stats?.cobrancas_hoje)}
+              </Text>
+              <Text style={s.cardLabel}>{CARD_COBRANCAS.label}</Text>
+            </TouchableOpacity>
+          );
+        })()}
+
         {/* Conteúdo dinâmico */}
         {cardSel ? (
           <>
@@ -163,19 +191,38 @@ export default function AdminScreen({ navigation }) {
                 {!loadingOS ? ` (${osList.length})` : ''}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity style={s.funcFiltroBtn} onPress={() => setModalFunc(true)}>
-                  <Text style={s.funcFiltroBtnText}>
-                    {funcFiltro ? funcFiltro.nome.split(' ')[0] : 'Todos'} ▾
-                  </Text>
-                </TouchableOpacity>
+                {cardSel.status !== 'aberta' && cardSel.status !== 'em_andamento' && (
+                  <TouchableOpacity style={s.funcFiltroBtn} onPress={() => setModalFunc(true)}>
+                    <Text style={s.funcFiltroBtnText}>
+                      {funcFiltro ? funcFiltro.nome.split(' ')[0] : 'Todos'} ▾
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
-                  onPress={() => { setCardSel(null); setOsList([]); setFuncFiltro(null); }}
+                  onPress={() => { setCardSel(null); setOsList([]); setFuncFiltro(null); setPeriodoFiltro(1); }}
                   style={s.fecharBtn}
                 >
                   <Text style={s.fecharText}>✕</Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Filtro de período */}
+            {cardSel.hasPeriodo && (
+              <View style={s.periodoRow}>
+                {[1, 2, 3].map(d => (
+                  <TouchableOpacity
+                    key={d}
+                    style={[s.periodoPill, periodoFiltro === d && { backgroundColor: cardSel.color + '22', borderColor: cardSel.color }]}
+                    onPress={() => selecionarPeriodo(d)}
+                  >
+                    <Text style={[s.periodoPillText, periodoFiltro === d && { color: cardSel.color, fontWeight: '700' }]}>
+                      {PERIODO_LABELS[d]}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             <Modal visible={modalFunc} transparent animationType="fade" onRequestClose={() => setModalFunc(false)}>
               <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalFunc(false)}>
@@ -277,18 +324,27 @@ const s = StyleSheet.create({
   cardWide: {
     backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 0,
     borderLeftWidth: 4, elevation: 2,
-    height: WIDE_H, marginBottom: GAP * 2,
+    height: WIDE_H, marginBottom: GAP,
     flexDirection: 'row', alignItems: 'center', gap: 14,
   },
   cardWideNum: { fontSize: 20, fontWeight: '800' },
 
   filtroHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginBottom: 12, marginTop: 2,
+    marginBottom: 8, marginTop: 8,
   },
   filtroTitulo: { fontSize: 15, fontWeight: '700' },
   fecharBtn: { padding: 6 },
   fecharText: { fontSize: 16, color: '#94a3b8', fontWeight: '700' },
+
+  periodoRow: {
+    flexDirection: 'row', gap: 8, marginBottom: 12,
+  },
+  periodoPill: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc',
+  },
+  periodoPillText: { fontSize: 13, color: '#64748b' },
 
   osCard: {
     backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,

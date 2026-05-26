@@ -92,9 +92,16 @@ router.get('/os', authFuncionario, (req, res) => {
       LEFT JOIN vendedores v ON os.vendedor_id = v.id
       WHERE os.loja_id = ?`;
     const params = [lojaAlvo];
-    if (status === 'concluida' || status === 'cancelada') {
-      sql += ` AND os.status = ? AND date(COALESCE(os.data_conclusao, os.data_entrada)) >= date('now', '-2 days', 'localtime')`;
-      params.push(status);
+    const numDias = Math.min(3, Math.max(1, parseInt(dias) || 1));
+    const dateFilter = numDias === 1
+      ? `= date('now', 'localtime')`
+      : `>= date('now', '-${numDias - 1} days', 'localtime')`;
+    if (status === 'concluida') {
+      sql += ` AND os.status = 'concluida' AND os.a_receber != 1 AND date(os.data_entrada) ${dateFilter}`;
+    } else if (status === 'cancelada') {
+      sql += ` AND os.status = 'cancelada' AND date(os.data_entrada) ${dateFilter}`;
+    } else if (status === 'cobrancas') {
+      sql += ` AND os.a_receber = 1 AND os.a_receber_pago = 1 AND date(os.data_recebimento) ${dateFilter}`;
     } else if (status === 'aberta' || status === 'em_andamento') {
       sql += ` AND os.status = ?`;
       params.push(status);
@@ -190,17 +197,18 @@ router.get('/adm-stats', authFuncionario, (req, res) => {
   const funcionarios = db.prepare(`
     SELECT v.id, v.nome, v.is_admin,
       (SELECT COUNT(*) FROM ordens_servico WHERE vendedor_id = v.id AND status IN ('aberta','em_andamento') AND loja_id = ?) as os_abertas,
-      (SELECT COUNT(*) FROM ordens_servico WHERE vendedor_id = v.id AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ? AND loja_id = ?) as os_hoje
+      (SELECT COUNT(*) FROM ordens_servico WHERE vendedor_id = v.id AND status = 'concluida' AND a_receber != 1 AND date(data_entrada) = ? AND loja_id = ?) as os_hoje
     FROM vendedores v WHERE v.loja_id = ? AND v.ativo = 1 ORDER BY v.nome
   `).all(lojaAlvo, hoje, lojaAlvo, lojaAlvo);
   const stats = {
     loja_nome: loja?.nome || 'Minha Loja',
     funcionarios,
-    em_andamento: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'em_andamento'`).get(lojaAlvo).n,
+    em_andamento:  db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'em_andamento'`).get(lojaAlvo).n,
     abertas:       db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'aberta'`).get(lojaAlvo).n,
-    finalizadas_hoje: db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).n,
-    canceladas_hoje:  db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'cancelada' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).n,
-    valor_hoje:    db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(COALESCE(data_conclusao, data_entrada)) = ?`).get(lojaAlvo, hoje).t,
+    finalizadas:   db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND a_receber != 1 AND date(data_entrada) = ?`).get(lojaAlvo, hoje).n,
+    canceladas:    db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'cancelada' AND date(data_entrada) = ?`).get(lojaAlvo, hoje).n,
+    valor_hoje:    db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND a_receber != 1 AND date(data_entrada) = ?`).get(lojaAlvo, hoje).t,
+    cobrancas_hoje: db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND a_receber = 1 AND a_receber_pago = 1 AND date(data_recebimento) = ?`).get(lojaAlvo, hoje).t,
   };
   res.json(stats);
 });

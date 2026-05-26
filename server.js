@@ -112,6 +112,7 @@ app.use('/api/usuarios', auth, require('./routes/usuarios'));
 app.use('/api/lojas', auth, require('./routes/lojas'));
 app.use('/api/estoque', auth, require('./routes/estoque').router);
 app.use('/api/nfse', auth, require('./routes/nfse'));
+app.use('/api/afiacao', auth, require('./routes/afiacao'));
 
 // Config endpoint
 const db = require('./database/db');

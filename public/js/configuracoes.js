@@ -198,7 +198,7 @@ async function salvarWhatsappComissao() {
   const cobrancas = document.getElementById('cfg-whatsapp-cobrancas').value;
   try {
     const pedidosWa = document.getElementById('cfg-whatsapp-pedidos').value;
-  await api('PUT', '/config', { whatsapp_comissao: comissao, whatsapp_cobrancas: cobrancas, whatsapp_pedidos: pedidosWa });
+    await api('PUT', '/config', { whatsapp_comissao: comissao, whatsapp_cobrancas: cobrancas, whatsapp_pedidos: pedidosWa });
     toast('Números salvos!');
   } catch (e) { toast(e.message, 'error'); }
 }

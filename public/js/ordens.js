@@ -23,7 +23,7 @@ async function ordens(el) {
   <div class="card">
     <div class="card-header">
       <span class="card-title">Ordens de Serviço</span>
-      <div class="flex gap-2 align-center">
+      <div class="flex gap-2 align-center" style="flex-wrap:wrap">
         <select id="filtro-status-os" onchange="carregarOrdens()" class="select-custom">
           <option value="">Todos os status</option>
           <option value="aberta">Aberta</option>
@@ -33,6 +33,9 @@ async function ordens(el) {
           <option value="cancelada">Cancelada</option>
           <option value="a_receber">Cobranças (pendente)</option>
         </select>
+        <input type="date" id="filtro-data-inicio" onchange="carregarOrdens()" title="Data início" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#334155">
+        <input type="date" id="filtro-data-fim" onchange="carregarOrdens()" title="Data fim" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;color:#334155">
+        <button onclick="limparFiltrosOS()" title="Limpar datas" style="padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;background:#f8fafc;color:#64748b;cursor:pointer">✕</button>
         <div class="search-box">
           <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
           <input type="text" id="search-os" oninput="filtrarOS()">
@@ -149,7 +152,7 @@ async function ordens(el) {
           <div class="form-full divider" id="os-secao-divider"></div>
 
           <div class="form-full" id="os-secao-itens">
-            <label style="font-weight:700;margin-bottom:12px;display:block">Itens da OS <span style="color:#dc2626;font-size:12px;font-weight:400">(pelo menos 1 serviço obrigatório)</span></label>
+            <label style="font-weight:700;margin-bottom:12px;display:block">Itens da OS <span style="color:#dc2626;font-size:12px;font-weight:400">(pelo menos 1 serviço ou produto obrigatório)</span></label>
             <div class="tabs" id="tabs-os-tipo">
               <button class="tab active" onclick="setTabOS('servico', this)">+ Serviço</button>
               <button class="tab" onclick="setTabOS('produto', this)">+ Produto</button>
@@ -210,12 +213,23 @@ async function ordens(el) {
 }
 
 async function carregarOrdens() {
-  const status = document.getElementById('filtro-status-os')?.value || '';
-  let qs = '';
-  if (status === 'a_receber') qs = '?a_receber=1';
-  else if (status) qs = '?status=' + status;
+  const status     = document.getElementById('filtro-status-os')?.value || '';
+  const dataInicio = document.getElementById('filtro-data-inicio')?.value || '';
+  const dataFim    = document.getElementById('filtro-data-fim')?.value || '';
+  const params = new URLSearchParams();
+  if (status === 'a_receber') params.set('a_receber', '1');
+  else if (status) params.set('status', status);
+  if (dataInicio) params.set('data_inicio', dataInicio);
+  if (dataFim)    params.set('data_fim', dataFim);
+  const qs = params.toString() ? '?' + params.toString() : '';
   ordensData = await api('GET', `/ordens${qs}`);
   renderOrdens(ordensData);
+}
+
+function limparFiltrosOS() {
+  document.getElementById('filtro-data-inicio').value = '';
+  document.getElementById('filtro-data-fim').value = '';
+  carregarOrdens();
 }
 
 function renderOrdens(list) {
@@ -952,7 +966,7 @@ async function salvarOS() {
     descricao: document.getElementById('os-descricao').value,
     valor: parseFloat(document.getElementById('os-valor').value) || 0,
     status: document.getElementById('os-status').value,
-    data_prevista: (() => { const d = document.getElementById('os-data-prevista-data').value; const h = document.getElementById('os-data-prevista-hora').value; return d ? `${d} ${h || '00:00'}` : null; })(),
+    data_prevista: (() => { const d = document.getElementById('os-data-prevista-data').value; const h = document.getElementById('os-data-prevista-hora').value; return d ? (h ? `${d} ${h}` : d) : null; })(),
     forma_pagamento: document.getElementById('os-pagamento').value || null,
     observacoes: document.getElementById('os-obs').value,
     contato_cliente: document.getElementById('os-contato-cliente').value.trim() || null,
@@ -965,8 +979,8 @@ async function salvarOS() {
     itens: osItens
   };
   if (!body.cliente_id && body.cliente_nome_avulso && !avulsoRua) { toast('Informe a rua do endereço do cliente', 'error'); return; }
-  if (!body.is_plantao && !body.chave_auto && !osItens.some(i => i.servico_id)) { toast('Adicione pelo menos 1 serviço na OS', 'warning'); return; }
-  if (!body.is_plantao && !body.descricao.trim() && !osItens.some(i => i.servico_id)) { toast('Preencha a descrição ou adicione um serviço', 'error'); return; }
+  if (!body.is_plantao && !body.chave_auto && osItens.length === 0) { toast('Adicione pelo menos 1 serviço ou produto na OS', 'warning'); return; }
+  if (!body.is_plantao && !body.descricao.trim() && osItens.length === 0) { toast('Preencha a descrição ou adicione um serviço/produto', 'error'); return; }
   try {
     if (id) {
       const resp = await api('PUT', `/ordens/${id}`, body);

@@ -1,5 +1,5 @@
 // === APP ROUTER ===
-const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, estoque: estoquePage, nfse: nfsePage, consulta };
+const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, estoque: estoquePage, nfse: nfsePage, consulta, afiacao };
 
 let _navTimeout = null;
 function navigateTo(page) {
@@ -16,7 +16,7 @@ function navigateTo(page) {
         servicos: 'Tipos de Serviço', vendedores: 'Funcionários', ordens: 'Ordens de Serviço',
         'vendas-nova': 'Vendas', vendas: 'Histórico',
         orcamentos: 'Orçamentos', relatorios: 'Relatórios', configuracoes: 'Configurações', whatsapp: 'WhatsApp',
-        assistente: 'Assistente IA', 'a-receber': 'Cobranças', gastos: 'Controle de Gastos', lembretes: 'Lembretes', pedidos: 'Pedidos de Compra', consumo: 'Uso da Equipe', estoque: 'Meu Estoque', nfse: 'NFS-e Emitidas', consulta: 'Consulta Rápida'
+        assistente: 'Assistente IA', 'a-receber': 'Cobranças', gastos: 'Controle de Gastos', lembretes: 'Lembretes', pedidos: 'Pedidos de Compra', consumo: 'Uso da Equipe', estoque: 'Meu Estoque', nfse: 'NFS-e Emitidas', consulta: 'Consulta Rápida', afiacao: '✂️ Afiação'
     };
     document.getElementById('page-title').textContent = titles[page] || page;
     const fn = pages[page];

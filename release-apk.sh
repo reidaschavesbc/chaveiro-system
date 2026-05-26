@@ -44,8 +44,13 @@ for i in $(seq 1 50); do
       --pattern "*.apk" \
       --dir "$DOWNLOADS" --clobber
     # Renomeia para o nome padrão
-    find "$DOWNLOADS" -name "*.apk" ! -name "ChaveiroOS.apk" -exec mv {} "$DOWNLOADS/ChaveiroOS.apk" \;
-    echo "$VERSION" | xargs -I{} echo "{}" > "$DOWNLOADS/version-apk.json" 2>/dev/null || echo "{\"version\":\"$VERSION\"}" > "$DOWNLOADS/version-apk.json"
+    # Backup do APK anterior antes de sobrescrever
+    if [ -f "$DOWNLOADS/ChaveiroOS.apk" ]; then
+      cp "$DOWNLOADS/ChaveiroOS.apk" "$DOWNLOADS/ChaveiroOS.apk.bak"
+      cp "$DOWNLOADS/version-apk.json" "$DOWNLOADS/version-apk.previous.json" 2>/dev/null || true
+    fi
+    find "$DOWNLOADS" -name "*.apk" ! -name "ChaveiroOS.apk" ! -name "ChaveiroOS.apk.bak" -exec mv {} "$DOWNLOADS/ChaveiroOS.apk" \;
+    echo "{\"version\":\"$VERSION\"}" > "$DOWNLOADS/version-apk.json"
     echo "Pronto! APK $VERSION disponível para download."
     exit 0
   fi

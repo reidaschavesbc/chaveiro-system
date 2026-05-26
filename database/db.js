@@ -499,6 +499,26 @@ function migrate() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS afiacao (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      numero INTEGER NOT NULL,
+      cliente_nome TEXT,
+      cliente_telefone TEXT,
+      quantidade INTEGER NOT NULL DEFAULT 1,
+      observacao TEXT,
+      valor REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'aguardando',
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      atualizado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('whatsapp_afiador', '')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('valor_afiador', '0')").run();
+
+  try { db.exec('ALTER TABLE afiacao ADD COLUMN loja_id INTEGER'); } catch (_) {}
+  try { db.exec('ALTER TABLE afiacao ADD COLUMN data_entrega TEXT'); } catch (_) {}
+
   console.log('✅ Banco de dados inicializado com sucesso!');
 }
 

@@ -410,6 +410,7 @@
     <button class="fin-tab" onclick="finNavegar('gastos')">💸 Gastos</button>
     <button class="fin-tab" onclick="finNavegar('vales')">🎫 Vales</button>
     <button class="fin-tab" onclick="finNavegar('estoque')">📦 Estoque</button>
+    <button class="fin-tab" onclick="finNavegar('afiacao')">✂️ Afiação</button>
     <button class="fin-tab" onclick="finNavegar('funcionarios')">👥 Funcionários</button>
   </div>
   <div class="fin-body" id="fin-content">
@@ -1082,12 +1083,12 @@
   function finNavegar(tab) {
     _finTabAtiva = tab;
     document.querySelectorAll('.fin-tab').forEach((el, i) => {
-      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque'];
+      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque','afiacao'];
       el.classList.toggle('ativa', tabs[i] === tab);
     });
     const content = document.getElementById('fin-content');
     content.innerHTML = '<div class="fin-loading">Carregando...</div>';
-    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque, funcionarios: finFuncionarios };
+    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque, afiacao: finAfiacao, funcionarios: finFuncionarios };
     if (fns[tab]) fns[tab](content);
   }
 
@@ -1686,6 +1687,58 @@
           </tr>`).join('')}</tbody>
         </table></div>`;
     } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  // ── Tab: Afiação ─────────────────────────────────────────────────────────
+  async function finAfiacao(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7)+'-01';
+    const prevDi = document.getElementById('fin-af-di')?.value || inicioMes;
+    const prevDf = document.getElementById('fin-af-df')?.value || hoje;
+    el.innerHTML = `
+      <div class="fin-filtros">
+        <input type="date" id="fin-af-di" value="${prevDi}">
+        <input type="date" id="fin-af-df" value="${prevDf}">
+        <button class="fin-btn" onclick="finAfiacaoCarregar()">Buscar</button>
+      </div>
+      <div id="fin-af-result"><div class="fin-loading">Carregando...</div></div>`;
+    finAfiacaoCarregar();
+  }
+
+  async function finAfiacaoCarregar() {
+    const el = document.getElementById('fin-af-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    const di = document.getElementById('fin-af-di')?.value;
+    const df = document.getElementById('fin-af-df')?.value;
+    try {
+      const d = await reqLoja('GET', `/afiacao/relatorio?data_inicio=${di}&data_fim=${df}`);
+      const fmt = v => 'R$ ' + Number(v||0).toFixed(2).replace('.', ',');
+      const fmtDt = s => { if (!s) return '—'; const [y,m,dia] = String(s).slice(0,10).split('-'); return `${dia}/${m}/${y}`; };
+      el.innerHTML = `
+        <div class="fin-stats">
+          <div class="stat-card"><div class="stat-label">Fichas entregues</div><div class="stat-val">${d.qtd_entregues}</div></div>
+          <div class="stat-card"><div class="stat-label">Em fila (ativas)</div><div class="stat-val">${d.em_fila}</div></div>
+          <div class="stat-card"><div class="stat-label">Total cobrado</div><div class="stat-val">${fmt(d.total_cobrado)}</div></div>
+          <div class="stat-card"><div class="stat-label">Custo afiador</div><div class="stat-val">${fmt(d.total_afiador)}</div></div>
+          <div class="stat-card destaque"><div class="stat-label">Lucro afiação</div><div class="stat-val">${fmt(d.lucro)}</div></div>
+        </div>
+        ${d.fichas.length === 0 ? '<p class="fin-vazio">Nenhuma ficha entregue no período</p>' : `
+        <table class="fin-table">
+          <thead><tr><th>#</th><th>Cliente</th><th>Qtd</th><th>Observação</th><th>Valor</th><th>Entregue em</th></tr></thead>
+          <tbody>
+            ${d.fichas.map(f => `
+              <tr>
+                <td>#${f.numero}</td>
+                <td>${f.cliente_nome || '—'}</td>
+                <td>${f.quantidade}</td>
+                <td>${f.observacao || '—'}</td>
+                <td>${fmt(f.valor)}</td>
+                <td>${fmtDt(f.data_entrega)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`}`;
+    } catch(e) { el.innerHTML = `<p style="color:#ef4444">Erro ao carregar: ${e.message}</p>`; }
   }
 
   // ── Tab: Funcionários ────────────────────────────────────────────────────
