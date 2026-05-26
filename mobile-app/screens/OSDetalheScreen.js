@@ -399,6 +399,8 @@ export default function OSDetalheScreen({ route, navigation }) {
   }
 
   async function verificarEAbrirEstoque(osIdLocal, isPlantao) {
+    await new Promise(r => setTimeout(r, 400));
+
     try {
       const { data } = await api.get('/produtos');
       setEstoqueProdutos(data);
@@ -768,7 +770,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Adicionar Item ─────────────────────────────────────────── */}
         <Modal visible={modalItem} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={s.modalOverlay}>
             <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.88, minHeight: Dimensions.get('window').height * 0.55 }]}>
               <View style={s.modalHeader}>
@@ -868,7 +870,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Finalizar ──────────────────────────────────────────────── */}
         <Modal visible={modalFinalizar} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={s.modalOverlay}>
               <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.92 }]}>
                 <View style={s.modalHeader}>
@@ -975,7 +977,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Editar Item ────────────────────────────────────────── */}
         <Modal visible={modalEditItem} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={s.modalOverlay}>
               <View style={s.modalCard}>
                 <View style={s.modalHeader}>
@@ -1018,7 +1020,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
         {/* ── Modal Consumo de Estoque ─────────────────────────────────── */}
         <Modal visible={modalEstoque} transparent animationType="slide">
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding" keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[s.modalOverlay, { justifyContent: 'flex-end' }]}>
             <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.85 }]}>
               <View style={s.modalHeader}>
