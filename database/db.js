@@ -515,9 +515,27 @@ function migrate() {
   `);
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('whatsapp_afiador', '')").run();
   db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('valor_afiador', '0')").run();
+  db.prepare("INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('senha_vales', '')").run();
 
   try { db.exec('ALTER TABLE afiacao ADD COLUMN loja_id INTEGER'); } catch (_) {}
   try { db.exec('ALTER TABLE afiacao ADD COLUMN data_entrega TEXT'); } catch (_) {}
+
+  addCol('afiacao', 'afiador_pago',  'INTEGER NOT NULL DEFAULT 0');
+  addCol('afiacao', 'pagamento_id',  'INTEGER');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pagamentos_afiador (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loja_id INTEGER NOT NULL,
+      valor REAL NOT NULL,
+      qtd_fichas INTEGER NOT NULL,
+      data_inicio TEXT,
+      data_fim TEXT,
+      observacao TEXT,
+      pago_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
 
   console.log('✅ Banco de dados inicializado com sucesso!');
 }

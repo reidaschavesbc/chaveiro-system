@@ -13,7 +13,8 @@ router.get('/', apenasAdmin, (req, res) => {
     const lojas = db.prepare('SELECT * FROM lojas ORDER BY nome ASC').all();
     const usuarios = db.prepare(`
         SELECT id, nome, email, perfil, ativo, loja_id, principal, criado_em
-        FROM usuarios WHERE loja_id IS NOT NULL ORDER BY principal DESC, nome ASC
+        FROM usuarios WHERE loja_id IS NOT NULL AND perfil != 'afiador'
+        ORDER BY principal DESC, nome ASC
     `).all();
 
     const resultado = lojas.map(l => ({

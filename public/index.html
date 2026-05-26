@@ -283,7 +283,9 @@
 
     if (localStorage.getItem('token')) {
       fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } })
-        .then(r => r.ok ? window.location.href = '/app' : null).catch(() => {});
+        .then(r => r.ok ? r.json() : null)
+        .then(u => { if (u) window.location.href = u.perfil === 'afiador' ? '/afiador' : '/app'; })
+        .catch(() => {});
     }
 
     fetch('/api/config').then(r => r.json()).then(c => {
@@ -310,7 +312,7 @@
         if (!res.ok) throw new Error(data.error || 'Erro ao fazer login');
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/app';
+        window.location.href = data.user.perfil === 'afiador' ? '/afiador' : '/app';
       } catch (err) {
         errEl.textContent = err.message; errEl.style.display = 'block';
         btn.textContent = 'Entrar'; btn.disabled = false;

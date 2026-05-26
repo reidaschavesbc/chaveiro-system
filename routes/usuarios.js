@@ -8,11 +8,11 @@ function apenasAdmin(req, res, next) {
     next();
 }
 
-// GET /api/usuarios — lista todos os usuários
+// GET /api/usuarios — lista todos os usuários (exceto afiadores, gerenciados pela aba Afiação)
 router.get('/', apenasAdmin, (req, res) => {
     const usuarios = db.prepare(`
         SELECT id, nome, email, perfil, ativo, loja_id, principal, criado_em
-        FROM usuarios
+        FROM usuarios WHERE perfil != 'afiador'
         ORDER BY nome ASC
     `).all();
     res.json(usuarios);
@@ -24,7 +24,8 @@ router.get('/pontos', (req, res) => {
     const lojaId = req.user.loja_id;
     const pontos = db.prepare(`
         SELECT id, nome, email, principal FROM usuarios
-        WHERE loja_id = ? AND ativo = 1 ORDER BY principal DESC, nome ASC
+        WHERE loja_id = ? AND ativo = 1 AND perfil != 'afiador'
+        ORDER BY principal DESC, nome ASC
     `).all(lojaId);
     res.json(pontos);
 });

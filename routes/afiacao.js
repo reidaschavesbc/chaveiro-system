@@ -79,8 +79,148 @@ router.get('/relatorio', (req, res) => {
   });
 });
 
+// GET /api/afiacao/usuario-afiador — retorna o usuário afiador da loja
+router.get('/usuario-afiador', (req, res) => {
+  const lojaId = req.user.loja_id || req.user.id; // admin não tem loja_id fixo
+  // admin usa loja_id do query ou da sessão de acesso
+  const loja = req.user.loja_id;
+  const user = loja
+    ? db.prepare(`SELECT id, nome, email, ativo FROM usuarios WHERE perfil = 'afiador' AND loja_id = ?`).get(loja)
+    : null;
+  res.json(user || null);
+});
+
+// POST /api/afiacao/usuario-afiador — cria ou atualiza o usuário afiador da loja
+router.post('/usuario-afiador', (req, res) => {
+  const lojaId = req.user.loja_id;
+  if (!lojaId) return res.status(400).json({ erro: 'Sem loja vinculada' });
+  const { nome, login, senha } = req.body;
+  if (!login || !senha) return res.status(400).json({ erro: 'Login e senha são obrigatórios' });
+  if (senha.length < 4) return res.status(400).json({ erro: 'Senha deve ter pelo menos 4 caracteres' });
+
+  const bcrypt = require('bcryptjs');
+  const hash   = bcrypt.hashSync(senha, 10);
+  const nomeAfiador = (nome || 'Afiador').trim();
+  const loginNorm   = login.trim().toLowerCase();
+
+  // Verifica se o login já pertence a outro usuário (de outra loja ou perfil)
+  const conflito = db.prepare(`SELECT id, loja_id, perfil FROM usuarios WHERE email = ?`).get(loginNorm);
+  if (conflito && conflito.perfil !== 'afiador') {
+    return res.status(409).json({ erro: 'Este login já está em uso por outro usuário' });
+  }
+  if (conflito && conflito.loja_id !== lojaId) {
+    return res.status(409).json({ erro: 'Este login já está em uso por outra loja' });
+  }
+
+  const existente = db.prepare(`SELECT id FROM usuarios WHERE perfil = 'afiador' AND loja_id = ?`).get(lojaId);
+  if (existente) {
+    db.prepare(`UPDATE usuarios SET nome = ?, email = ?, senha = ?, ativo = 1 WHERE id = ?`)
+      .run(nomeAfiador, loginNorm, hash, existente.id);
+    res.json({ ok: true, acao: 'atualizado', id: existente.id });
+  } else {
+    const info = db.prepare(`INSERT INTO usuarios (nome, email, senha, perfil, loja_id, ativo) VALUES (?, ?, ?, 'afiador', ?, 1)`)
+      .run(nomeAfiador, loginNorm, hash, lojaId);
+    res.json({ ok: true, acao: 'criado', id: info.lastInsertRowid });
+  }
+});
+
+// GET /api/afiacao/pendente-afiador
+router.get('/pendente-afiador', (req, res) => {
+  const lojaId = req.user.loja_id;
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+    ORDER BY COALESCE(data_entrega, criado_em) ASC
+  `).all(lojaId);
+  const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+  const datas = fichas.map(f => f.data_entrega || f.criado_em).filter(Boolean).sort();
+  res.json({
+    fichas,
+    qtd: fichas.length,
+    valor_por_ficha: valorAfiador,
+    total: fichas.length * valorAfiador,
+    data_inicio: datas[0]?.slice(0, 10) || null,
+    data_fim: datas[datas.length - 1]?.slice(0, 10) || null,
+  });
+});
+
+// GET /api/afiacao/pagamentos-afiador
+router.get('/pagamentos-afiador', (req, res) => {
+  const lojaId = req.user.loja_id;
+  res.json(db.prepare(`
+    SELECT * FROM pagamentos_afiador WHERE loja_id = ? ORDER BY pago_em DESC LIMIT 50
+  `).all(lojaId));
+});
+
+// POST /api/afiacao/pagamentos-afiador
+router.post('/pagamentos-afiador', (req, res) => {
+  const lojaId = req.user.loja_id;
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+  `).all(lojaId);
+  if (!fichas.length) return res.status(400).json({ erro: 'Nenhuma ficha pendente para pagamento' });
+
+  const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+  const total = fichas.length * valorAfiador;
+  const datas = fichas.map(f => f.data_entrega || f.criado_em).filter(Boolean).sort();
+  const dataInicio = datas[0]?.slice(0, 10) || null;
+  const dataFim    = datas[datas.length - 1]?.slice(0, 10) || null;
+
+  const info = db.prepare(`
+    INSERT INTO pagamentos_afiador (loja_id, valor, qtd_fichas, data_inicio, data_fim, observacao)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(lojaId, total, fichas.length, dataInicio, dataFim, req.body?.observacao || null);
+
+  db.prepare(`
+    UPDATE afiacao SET afiador_pago = 1, pagamento_id = ?
+    WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+  `).run(info.lastInsertRowid, lojaId);
+
+  res.json(db.prepare('SELECT * FROM pagamentos_afiador WHERE id = ?').get(info.lastInsertRowid));
+});
+
+// GET /api/afiacao/meus-ganhos?periodo=hoje|semana|mes
+router.get('/meus-ganhos', (req, res) => {
+  const lojaId = req.user.loja_id;
+  const hoje = new Date().toLocaleDateString('en-CA');
+  let dataInicio = hoje;
+  if (req.query.periodo === 'semana') {
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    dataInicio = d.toLocaleDateString('en-CA');
+  } else if (req.query.periodo === 'mes') {
+    dataInicio = hoje.slice(0, 7) + '-01';
+  }
+
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao
+    WHERE loja_id = ? AND status = 'entregue'
+      AND date(COALESCE(data_entrega, criado_em)) >= ?
+    ORDER BY COALESCE(data_entrega, criado_em) DESC
+  `).all(lojaId, dataInicio);
+
+  const pagamentos = db.prepare(`
+    SELECT * FROM pagamentos_afiador WHERE loja_id = ? ORDER BY pago_em DESC LIMIT 10
+  `).all(lojaId);
+
+  const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+  const pendentes = fichas.filter(f => !f.afiador_pago);
+  const pagas     = fichas.filter(f => f.afiador_pago);
+
+  res.json({
+    fichas,
+    pagamentos,
+    valor_por_ficha: valorAfiador,
+    total: fichas.length * valorAfiador,
+    total_pago: pagas.length * valorAfiador,
+    total_pendente: pendentes.length * valorAfiador,
+    qtd_total: fichas.length,
+    qtd_pago: pagas.length,
+    qtd_pendente: pendentes.length,
+  });
+});
+
 // POST /api/afiacao
 router.post('/', async (req, res) => {
+  if (req.user.perfil === 'afiador') return res.status(403).json({ erro: 'Sem permissão' });
   const lojaId = req.user.loja_id;
   const { cliente_nome, cliente_telefone, quantidade, observacao, valor } = req.body;
   if (!quantidade || quantidade < 1) return res.status(400).json({ erro: 'Quantidade obrigatória' });
@@ -121,6 +261,7 @@ router.put('/:id/status', async (req, res) => {
 
 // DELETE /api/afiacao/:id
 router.delete('/:id', (req, res) => {
+  if (req.user.perfil === 'afiador') return res.status(403).json({ erro: 'Sem permissão' });
   db.prepare('DELETE FROM afiacao WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
   res.json({ ok: true });
 });

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Dimensions, Modal,
+  ActivityIndicator, RefreshControl, Dimensions, Modal, Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +53,7 @@ export default function AdminScreen({ navigation }) {
   const [funcFiltro, setFuncFiltro] = useState(null);
   const [modalFunc, setModalFunc]   = useState(false);
   const [periodoFiltro, setPeriodoFiltro] = useState(1);
+  const [afiacaoPendente, setAfiacaoPendente] = useState(null);
 
   useFocusEffect(useCallback(() => { carregar(); }, []));
 
@@ -67,7 +68,12 @@ export default function AdminScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
+    try {
+      const { data: pend } = await api.get('/afiacao-pendente');
+      setAfiacaoPendente(pend);
+    } catch {}
   }
+
 
   async function buscarOS(card, dias, func) {
     setLoadingOS(true);
@@ -302,6 +308,28 @@ export default function AdminScreen({ navigation }) {
                 </View>
               </View>
             ))}
+
+            <Text style={s.secTitulo}>✂️ Afiação</Text>
+            <TouchableOpacity
+              style={s.afiacaoCard}
+              onPress={() => navigation.navigate('Afiacao')}
+              activeOpacity={0.75}
+            >
+              <View style={{ flex: 1 }}>
+                {afiacaoPendente && afiacaoPendente.qtd > 0 ? (
+                  <>
+                    <Text style={s.afiacaoVal}>{fmtVal(afiacaoPendente.total)} pendente</Text>
+                    <Text style={s.funcSub}>{afiacaoPendente.qtd} ficha(s) aguardando pagamento</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[s.afiacaoVal, { color: '#10b981', fontSize: 15 }]}>Em dia ✓</Text>
+                    <Text style={s.funcSub}>Ver fila e pagamentos</Text>
+                  </>
+                )}
+              </View>
+              <Text style={{ fontSize: 18, color: '#94a3b8' }}>›</Text>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -387,6 +415,19 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#e2e8f0',
   },
   funcFiltroBtnText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+
+  afiacaoCard: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', elevation: 1,
+    borderWidth: 2, borderColor: '#f59e0b',
+  },
+  afiacaoVal: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
+  pagarBtn: {
+    backgroundColor: '#10b981', borderRadius: 10,
+    paddingHorizontal: 18, paddingVertical: 10,
+    minWidth: 70, alignItems: 'center',
+  },
+  pagarBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.3)',

@@ -50,19 +50,35 @@ router.post('/login', (req, res) => {
   const { email, senha } = req.body;
   if (!email || !senha) return res.status(400).json({ error: 'Email e senha são obrigatórios' });
 
+  // Tenta vendedores primeiro
   const func = db.prepare(`SELECT * FROM vendedores WHERE email = ? AND ativo = 1`).get(email);
-  if (!func || !func.senha) return res.status(401).json({ error: 'Credenciais inválidas' });
-  if (!bcrypt.compareSync(senha, func.senha)) return res.status(401).json({ error: 'Credenciais inválidas' });
+  if (func && func.senha && bcrypt.compareSync(senha, func.senha)) {
+    const token = jwt.sign(
+      { id: func.id, nome: func.nome, loja_id: func.loja_id, tipo: 'funcionario', is_admin: func.is_admin },
+      JWT_SECRET, { expiresIn: '30d' }
+    );
+    const lojasAdm = db.prepare(`
+      SELECT l.id, l.nome FROM adm_acesso_externo a JOIN lojas l ON a.loja_id = l.id WHERE a.funcionario_id = ?
+    `).all(func.id);
+    return res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin, lojas_adm: lojasAdm } });
+  }
+
+  // Tenta afiador (tabela usuarios com perfil = 'afiador')
+  const afiador = db.prepare(`SELECT * FROM usuarios WHERE (email = ? OR nome = ?) AND perfil = 'afiador' AND ativo = 1`).get(email, email);
+  if (!afiador || !afiador.senha) return res.status(401).json({ error: 'Credenciais inválidas' });
+  if (!bcrypt.compareSync(senha, afiador.senha)) return res.status(401).json({ error: 'Credenciais inválidas' });
 
   const token = jwt.sign(
-    { id: func.id, nome: func.nome, loja_id: func.loja_id, tipo: 'funcionario', is_admin: func.is_admin },
-    JWT_SECRET,
-    { expiresIn: '30d' }
+    { id: afiador.id, nome: afiador.nome, loja_id: afiador.loja_id, tipo: 'afiador', perfil: 'afiador', is_admin: false },
+    JWT_SECRET, { expiresIn: '30d' }
   );
-  const lojasAdm = db.prepare(`
-    SELECT l.id, l.nome FROM adm_acesso_externo a JOIN lojas l ON a.loja_id = l.id WHERE a.funcionario_id = ?
-  `).all(func.id);
-  res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin, lojas_adm: lojasAdm } });
+  res.json({
+    token,
+    funcionario: {
+      id: afiador.id, nome: afiador.nome, email: afiador.email,
+      loja_id: afiador.loja_id, is_admin: false, perfil: 'afiador', lojas_adm: []
+    }
+  });
 });
 
 // POST /api/app/push-token
@@ -418,6 +434,77 @@ router.get('/perfil', authFuncionario, (req, res) => {
   const func = db.prepare(`SELECT id, nome, email, telefone FROM vendedores WHERE id = ?`).get(req.funcionario.id);
   if (!func) return res.status(404).json({ error: 'Funcionário não encontrado' });
   res.json(func);
+});
+
+// GET /api/app/afiacao — lista fichas de afiação da loja (admin ou afiador)
+router.get('/afiacao', authFuncionario, (req, res) => {
+  const lojaAlvo = req.funcionario.loja_id;
+  if (req.funcionario.tipo !== 'afiador' && !verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao WHERE loja_id = ? ORDER BY criado_em DESC
+  `).all(lojaAlvo);
+  res.json(fichas);
+});
+
+// PUT /api/app/afiacao/:id/status — avança status de uma ficha (admin ou afiador)
+router.put('/afiacao/:id/status', authFuncionario, (req, res) => {
+  const lojaAlvo = req.funcionario.loja_id;
+  if (req.funcionario.tipo !== 'afiador' && !verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  const { status } = req.body;
+  const validos = ['aguardando', 'afiando', 'pronto', 'entregue'];
+  if (!validos.includes(status)) return res.status(400).json({ error: 'Status inválido' });
+  const agora = new Date().toLocaleDateString('en-CA') + ' ' + new Date().toLocaleTimeString('pt-BR');
+  db.prepare(`
+    UPDATE afiacao SET status = ?, atualizado_em = datetime('now','localtime')
+    ${status === 'entregue' ? ", data_entrega = ?" : ""}
+    WHERE id = ? AND loja_id = ?
+  `).run(...(status === 'entregue' ? [status, agora, req.params.id, lojaAlvo] : [status, req.params.id, lojaAlvo]));
+  const ficha = db.prepare('SELECT * FROM afiacao WHERE id = ?').get(req.params.id);
+  if (!ficha) return res.status(404).json({ error: 'Ficha não encontrada' });
+  res.json(ficha);
+});
+
+// GET /api/app/afiacao-historico — histórico de pagamentos ao afiador (admin ou afiador)
+router.get('/afiacao-historico', authFuncionario, (req, res) => {
+  const lojaAlvo = req.funcionario.loja_id;
+  if (req.funcionario.tipo !== 'afiador' && !verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  res.json(db.prepare(`
+    SELECT * FROM pagamentos_afiador WHERE loja_id = ? ORDER BY pago_em DESC LIMIT 20
+  `).all(lojaAlvo));
+});
+
+// GET /api/app/afiacao-pendente — afiador pendente de pagamento (admin ou afiador)
+router.get('/afiacao-pendente', authFuncionario, (req, res) => {
+  const lojaAlvo = req.funcionario.loja_id;
+  if (req.funcionario.tipo !== 'afiador' && !verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+    ORDER BY COALESCE(data_entrega, criado_em) ASC
+  `).all(lojaAlvo);
+  const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+  res.json({ qtd: fichas.length, total: fichas.length * valorAfiador, valor_por_ficha: valorAfiador });
+});
+
+// POST /api/app/afiacao-pagar — registra pagamento ao afiador (admin only)
+router.post('/afiacao-pagar', authFuncionario, (req, res) => {
+  const lojaAlvo = req.funcionario.loja_id;
+  if (!verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
+  const fichas = db.prepare(`
+    SELECT * FROM afiacao WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+  `).all(lojaAlvo);
+  if (!fichas.length) return res.status(400).json({ erro: 'Nenhuma ficha pendente' });
+  const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+  const total = fichas.length * valorAfiador;
+  const datas = fichas.map(f => f.data_entrega || f.criado_em).filter(Boolean).sort();
+  const info = db.prepare(`
+    INSERT INTO pagamentos_afiador (loja_id, valor, qtd_fichas, data_inicio, data_fim)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(lojaAlvo, total, fichas.length, datas[0]?.slice(0, 10) || null, datas[datas.length - 1]?.slice(0, 10) || null);
+  db.prepare(`
+    UPDATE afiacao SET afiador_pago = 1, pagamento_id = ?
+    WHERE loja_id = ? AND status = 'entregue' AND afiador_pago = 0
+  `).run(info.lastInsertRowid, lojaAlvo);
+  res.json({ ok: true, total, qtd: fichas.length });
 });
 
 // Função exportada para notificar funcionário quando OS é criada/atribuída

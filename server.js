@@ -92,6 +92,7 @@ app.get('/api/apk-version', (req, res) => {
 app.use('/api/auth/login', loginRateLimit);
 app.use('/api/auth/admin-login', loginRateLimit);
 app.use('/api/app/login', loginRateLimit);
+app.get('/afiador', (req, res) => res.sendFile(path.join(__dirname, 'public', 'afiador.html')));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/app', require('./routes/app-mobile').router);
 

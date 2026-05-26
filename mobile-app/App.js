@@ -24,6 +24,7 @@ import OSDetalheScreen from './screens/OSDetalheScreen';
 import OSNovaScreen from './screens/OSNovaScreen';
 import BuscaScreen from './screens/BuscaScreen';
 import AdminScreen from './screens/AdminScreen';
+import AfiacaoScreen from './screens/AfiacaoScreen';
 import api from './services/api';
 
 Notifications.setNotificationHandler({
@@ -128,6 +129,27 @@ export default function App() {
     <SafeAreaProvider>
     <NavigationContainer>
       {funcionario ? (
+        funcionario.perfil === 'afiador' ? (
+          <Stack.Navigator>
+            <Stack.Screen
+              name="Afiacao"
+              options={{
+                title: '✂️ Afiação',
+                headerTintColor: '#6366f1',
+                headerRight: () => (
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 }}
+                  >
+                    <Text style={{ fontSize: 13, color: '#6366f1', fontWeight: '700' }}>SAIR</Text>
+                  </TouchableOpacity>
+                ),
+              }}
+            >
+              {props => <AfiacaoScreen {...props} isAfiador={true} />}
+            </Stack.Screen>
+          </Stack.Navigator>
+        ) : (
         <Stack.Navigator>
           <Stack.Screen name="OSList" options={{ headerShown: false }}>
             {props => <OSListScreen {...props} onLogout={handleLogout} />}
@@ -148,6 +170,11 @@ export default function App() {
             options={{ title: '🔍 Consulta de Preços', headerBackTitle: 'Voltar', headerTintColor: '#2563eb' }}
           />
           <Stack.Screen
+            name="Afiacao"
+            component={AfiacaoScreen}
+            options={{ title: '✂️ Afiação', headerBackTitle: 'Voltar', headerTintColor: '#6366f1' }}
+          />
+          <Stack.Screen
             name="Admin"
             component={AdminScreen}
             options={({ navigation }) => ({
@@ -166,6 +193,7 @@ export default function App() {
             })}
           />
         </Stack.Navigator>
+        )
       ) : (
         <LoginScreen onLogin={handleLogin} />
       )}

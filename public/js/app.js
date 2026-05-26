@@ -1,5 +1,5 @@
 // === APP ROUTER ===
-const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, estoque: estoquePage, nfse: nfsePage, consulta, afiacao };
+const pages = { dashboard, clientes, produtos, servicos, vendedores, ordens, 'vendas-nova': vendasNova, vendas: vendasHistorico, orcamentos, configuracoes, whatsapp: whatsappPage, assistente: assistentePage, 'a-receber': aReceberPage, gastos, lembretes, pedidos, consumo, estoque: estoquePage, nfse: nfsePage, consulta, afiacao, vales };
 
 let _navTimeout = null;
 function navigateTo(page) {

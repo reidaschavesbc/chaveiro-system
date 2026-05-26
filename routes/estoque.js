@@ -179,7 +179,7 @@ router.post('/enviar', (req, res) => {
 router.get('/sub-usuarios', (req, res) => {
     const { loja_id, principal } = req.user;
     if (!principal) return res.status(403).json({ error: 'Acesso negado' });
-    const subs = db.prepare('SELECT id, nome, email FROM usuarios WHERE loja_id = ? AND principal = 0 AND ativo = 1 ORDER BY nome').all(loja_id);
+    const subs = db.prepare("SELECT id, nome, email FROM usuarios WHERE loja_id = ? AND principal = 0 AND ativo = 1 AND perfil != 'afiador' ORDER BY nome").all(loja_id);
     res.json(subs);
 });
 
