@@ -1559,8 +1559,9 @@
             <div style="font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;margin-bottom:10px">➖ Deduções</div>
             ${(r.gastos||[]).map(g=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">${cat[g.categoria]||g.categoria}</span><span style="color:#f87171">-${fmtV(g.total)}</span></div>`).join('')}
             ${(r.funcionarios||[]).length ? `<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:8px 0 4px">Funcionários</div>`+(r.funcionarios).map(f=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">👤 ${f.nome}</span><span style="color:#f87171">-${fmtV((f.salario_base||0)+(f.comissao||0)+(f.bonus||0))}</span></div>`).join('') : ''}
-            ${!r.gastos?.length&&!r.funcionarios?.length?'<div style="color:#64748b;font-size:12px">Nenhuma dedução</div>':''}
-            <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#f87171"><span>Total Deduções</span><span>-${fmtV((r.total_gastos||0)+totalFuncs)}</span></div>
+            ${(r.total_excedente_vales||0)>0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#fca5a5">⚠️ Excedente de vales</span><span style="color:#f87171">-${fmtV(r.total_excedente_vales)}</span></div>` : ''}
+            ${!r.gastos?.length&&!r.funcionarios?.length&&!(r.total_excedente_vales>0)?'<div style="color:#64748b;font-size:12px">Nenhuma dedução</div>':''}
+            <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#f87171"><span>Total Deduções</span><span>-${fmtV((r.total_gastos||0)+totalFuncs+(r.total_excedente_vales||0))}</span></div>
           </div>
           <div style="background:${bgR};border:2px solid ${bdR};border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
             <div style="font-size:11px;font-weight:700;color:${cor};text-transform:uppercase;margin-bottom:8px">${r.resultado_liquido>=0?'✅ Lucro Líquido':'⚠️ Prejuízo'}</div>
@@ -1587,9 +1588,10 @@
               ${atingiuMeta && f.bonus_meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🏆 Bônus meta</span><span style="color:#34d399">+${fmtV(f.bonus_meta)}</span></div>` : ''}
               ${bruto > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;padding-top:5px;border-top:1px solid #334155"><span style="color:#94a3b8">Bruto</span><span style="font-weight:600">${fmtV(bruto)}</span></div>` : ''}
               ${temVale ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#f87171">➖ Vales descontados</span><span style="color:#f87171">-${fmtV(f.vales)}</span></div>` : ''}
+              ${(f.excedente||0)>0 ? `<div style="background:#450a0a;border:1px solid #ef4444;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px;color:#fca5a5">⚠️ Vale excede salário em ${fmtV(f.excedente)} — prejuízo contabilizado no lucro líquido</div>` : ''}
               <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding-top:8px;border-top:1px solid #334155;margin-top:4px">
-                <span style="color:#94a3b8">${f.devendo?'⚠️ Devendo':'✅ Pagamento'}</span>
-                <span style="color:${f.devendo?'#f87171':'#34d399'}">${fmtV(liquido)}</span>
+                <span style="color:#94a3b8">${(f.excedente||0)>0?'⚠️ Devendo':'✅ Pagamento'}</span>
+                <span style="color:${(f.excedente||0)>0?'#f87171':'#34d399'}">${fmtV(liquido)}</span>
               </div>
             </div>`;
           }).join('')}

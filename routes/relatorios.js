@@ -217,16 +217,19 @@ router.get('/geral', (req, res) => {
         GROUP BY v.vendedor_id
     `).all(di, df, lojaId).forEach(v => { valesMap[v.nome] = v.total_vales; });
 
-    const funcionariosComVales = funcionarios.map(f => ({
-        ...f, vales: valesMap[f.nome] || 0,
-        total_a_pagar: Math.max(0, f.salario_base + f.comissao + ((f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0) - (valesMap[f.nome] || 0))
-    }));
+    const funcionariosComVales = funcionarios.map(f => {
+        const vales = valesMap[f.nome] || 0;
+        const bruto = f.salario_base + f.comissao + ((f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0);
+        const excedente = Math.max(0, vales - bruto);
+        return { ...f, vales, total_a_pagar: Math.max(0, bruto - vales), excedente };
+    });
 
     const totalSalarios  = funcionarios.reduce((s, f) => s + f.salario_base, 0);
     const totalComissoes = funcionarios.reduce((s, f) => s + f.comissao, 0);
     const totalBonus     = funcionarios.reduce((s, f) => s + f.bonus, 0);
     const totalVales     = Object.values(valesMap).reduce((s, v) => s + v, 0);
-    const resultadoLiquido = faturamentoBruto - totalGastos - totalSalarios - totalComissoes - totalBonus;
+    const totalExcedenteVales = funcionariosComVales.reduce((s, f) => s + f.excedente, 0);
+    const resultadoLiquido = faturamentoBruto - totalGastos - totalSalarios - totalComissoes - totalBonus - totalExcedenteVales;
 
     res.json({
         list, totais,
@@ -236,7 +239,7 @@ router.get('/geral', (req, res) => {
             gastos, total_gastos: totalGastos,
             funcionarios: funcionariosComVales,
             total_salarios: totalSalarios, total_comissoes: totalComissoes,
-            total_bonus: totalBonus, total_vales: totalVales,
+            total_bonus: totalBonus, total_vales: totalVales, total_excedente_vales: totalExcedenteVales,
             resultado_liquido: resultadoLiquido,
             margem: faturamentoBruto > 0 ? ((resultadoLiquido / faturamentoBruto) * 100).toFixed(1) : 0
         }

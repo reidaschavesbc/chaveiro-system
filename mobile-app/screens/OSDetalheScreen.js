@@ -59,6 +59,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [toast, setToast] = useState(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef(null);
+  const scrollRef = useRef(null);
 
   function showToast({ icon, title, subtitle, color }) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -470,7 +471,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <View style={{ flex: 1, backgroundColor: '#f1f5f9' }}>
-        <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 16 }}>
 
           {/* Header */}
           <View style={[s.card, os.is_plantao ? { borderLeftWidth: 3, borderLeftColor: '#7c3aed' } : null]}>
@@ -601,9 +602,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                 </View>
               </>
             ) : (
-              os.cliente_endereco
-                ? <Text style={s.secSub}>📍 {os.cliente_endereco}</Text>
-                : <Text style={[s.secSub, { color: '#cbd5e1' }]}>Sem endereço</Text>
+              (() => { const end = os.cliente_endereco || [os.cliente_avulso_rua, os.cliente_avulso_numero, os.cliente_avulso_cidade].filter(Boolean).join(', '); return end ? <Text style={s.secSub}>📍 {end}</Text> : <Text style={[s.secSub, { color: '#cbd5e1' }]}>Sem endereço</Text>; })()
             )}
           </View>
 
@@ -662,6 +661,7 @@ export default function OSDetalheScreen({ route, navigation }) {
                     keyboardType="decimal-pad"
                     placeholder="0,00"
                     placeholderTextColor="#999"
+                    onFocus={() => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300)}
                   />
                   <TouchableOpacity style={[s.saveBtn, { paddingHorizontal: 12, paddingVertical: 6 }]} onPress={salvarDesconto} disabled={salvando}>
                     <Text style={s.saveBtnText}>OK</Text>
