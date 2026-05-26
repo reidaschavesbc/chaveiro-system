@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Dimensions,
+  ActivityIndicator, RefreshControl, Dimensions, Modal, FlatList,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,6 +47,8 @@ export default function AdminScreen({ navigation }) {
   const [cardSel, setCardSel]     = useState(null);
   const [osList, setOsList]       = useState([]);
   const [loadingOS, setLoadingOS] = useState(false);
+  const [funcFiltro, setFuncFiltro] = useState(null);
+  const [modalFunc, setModalFunc]   = useState(false);
 
   useFocusEffect(useCallback(() => { carregar(); }, []));
 
@@ -67,12 +69,27 @@ export default function AdminScreen({ navigation }) {
     if (cardSel?.key === card.key) {
       setCardSel(null);
       setOsList([]);
+      setFuncFiltro(null);
       return;
     }
     setCardSel(card);
+    setFuncFiltro(null);
     setLoadingOS(true);
     try {
       const { data } = await api.get('/os', { params: { adm: '1', status: card.status } });
+      setOsList(data);
+    } catch {}
+    finally { setLoadingOS(false); }
+  }
+
+  async function selecionarFuncionario(func) {
+    setModalFunc(false);
+    setFuncFiltro(func);
+    setLoadingOS(true);
+    try {
+      const params = { adm: '1', status: cardSel.status };
+      if (func) params.funcionario_id = func.id;
+      const { data } = await api.get('/os', { params });
       setOsList(data);
     } catch {}
     finally { setLoadingOS(false); }
@@ -145,13 +162,37 @@ export default function AdminScreen({ navigation }) {
                 {cardSel.label}
                 {!loadingOS ? ` (${osList.length})` : ''}
               </Text>
-              <TouchableOpacity
-                onPress={() => { setCardSel(null); setOsList([]); }}
-                style={s.fecharBtn}
-              >
-                <Text style={s.fecharText}>✕</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity style={s.funcFiltroBtn} onPress={() => setModalFunc(true)}>
+                  <Text style={s.funcFiltroBtnText}>
+                    {funcFiltro ? funcFiltro.nome.split(' ')[0] : 'Todos'} ▾
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { setCardSel(null); setOsList([]); setFuncFiltro(null); }}
+                  style={s.fecharBtn}
+                >
+                  <Text style={s.fecharText}>✕</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            <Modal visible={modalFunc} transparent animationType="fade" onRequestClose={() => setModalFunc(false)}>
+              <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalFunc(false)}>
+                <View style={s.modalBox}>
+                  <TouchableOpacity style={s.modalItem} onPress={() => selecionarFuncionario(null)}>
+                    <Text style={[s.modalItemText, !funcFiltro && { color: '#7c3aed', fontWeight: '700' }]}>✓ Todos</Text>
+                  </TouchableOpacity>
+                  {(stats?.funcionarios || []).map(f => (
+                    <TouchableOpacity key={f.id} style={s.modalItem} onPress={() => selecionarFuncionario(f)}>
+                      <Text style={[s.modalItemText, funcFiltro?.id === f.id && { color: '#7c3aed', fontWeight: '700' }]}>
+                        {funcFiltro?.id === f.id ? '✓ ' : '   '}{f.nome}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </Modal>
 
             {loadingOS ? (
               <ActivityIndicator style={{ marginTop: 24 }} color="#7c3aed" />
@@ -283,4 +324,24 @@ const s = StyleSheet.create({
   osBadgeNum: { fontSize: 18, fontWeight: '800' },
 
   vazio: { textAlign: 'center', marginTop: 40, color: '#94a3b8', fontSize: 15 },
+
+  funcFiltroBtn: {
+    backgroundColor: '#f1f5f9', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  funcFiltroBtnText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-start', alignItems: 'flex-end',
+    paddingTop: 120, paddingRight: 16,
+  },
+  modalBox: {
+    backgroundColor: '#fff', borderRadius: 12,
+    paddingVertical: 6, minWidth: 180,
+    elevation: 8, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12,
+  },
+  modalItem: { paddingHorizontal: 16, paddingVertical: 12 },
+  modalItemText: { fontSize: 15, color: '#334155' },
 });

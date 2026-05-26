@@ -75,7 +75,7 @@ router.post('/push-token', authFuncionario, (req, res) => {
 
 // GET /api/app/os
 router.get('/os', authFuncionario, (req, res) => {
-  const { status, todas, dias, adm, loja_id } = req.query;
+  const { status, todas, dias, adm, loja_id, funcionario_id } = req.query;
 
   if (adm === '1' && req.funcionario.is_admin) {
     const lojaAlvo = loja_id ? parseInt(loja_id) : req.funcionario.loja_id;
@@ -101,6 +101,10 @@ router.get('/os', authFuncionario, (req, res) => {
     } else {
       sql += ` AND os.status IN ('aberta', 'em_andamento')`;
     }
+    if (funcionario_id) {
+      sql += ` AND os.vendedor_id = ?`;
+      params.push(parseInt(funcionario_id));
+    }
     sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
     return res.json(db.prepare(sql).all(...params));
   }
@@ -116,14 +120,10 @@ router.get('/os', authFuncionario, (req, res) => {
     WHERE os.loja_id = ?`;
   const params = [req.funcionario.loja_id];
 
-  if (todas === '1' && req.funcionario.is_admin) {
-    const d = Math.min(Math.max(parseInt(dias) || 1, 1), 3);
-    sql += ` AND date(os.data_entrada) >= date('now', '-${d - 1} days', 'localtime')`;
-  } else {
-    if (!req.funcionario.is_admin) { sql += ` AND os.vendedor_id = ?`; params.push(req.funcionario.id); }
-    if (status) { sql += ` AND os.status = ?`; params.push(status); }
-    else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
-  }
+  sql += ` AND os.vendedor_id = ?`;
+  params.push(req.funcionario.id);
+  if (status) { sql += ` AND os.status = ?`; params.push(status); }
+  else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
 
   sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
   res.json(db.prepare(sql).all(...params));
