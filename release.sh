@@ -33,10 +33,28 @@ git push "$REMOTE" "v$VERSION"
 pm2 restart chaveiro-system
 
 echo ""
-echo "Release v$VERSION enviado! Aguardando build do GitHub Actions (~5 min)..."
-echo "Quando terminar, execute para publicar e copiar os arquivos:"
-echo ""
-echo "  GH_TOKEN=\"$TOKEN\" gh release edit v$VERSION --repo reidaschavesbc/chaveiro-system --draft=false"
-echo "  GH_TOKEN=\"$TOKEN\" gh release download v$VERSION --repo reidaschavesbc/chaveiro-system --pattern \"SistemaChaveiro-Setup.exe\" --pattern \"latest.yml\" --pattern \"SistemaChaveiro-Setup.exe.blockmap\" --dir /home/chaveiro/chaveiro-system/public/downloads/ --clobber"
-echo ""
-echo "Após isso o auto-update nos clientes funcionará automaticamente."
+echo "Release v$VERSION enviado! Aguardando build do GitHub Actions (~15 min)..."
+
+# Aguarda o build terminar e baixa automaticamente
+REPO="reidaschavesbc/chaveiro-system"
+DOWNLOADS="/home/chaveiro/chaveiro-system/public/downloads"
+
+echo "Verificando build a cada 30 segundos..."
+for i in $(seq 1 40); do
+  sleep 30
+  STATUS=$(GH_TOKEN="$TOKEN" gh release view "v$VERSION" --repo "$REPO" --json assets --jq '.assets | length' 2>/dev/null)
+  if [ "$STATUS" -ge 3 ] 2>/dev/null; then
+    echo "Build concluído! Baixando arquivos..."
+    GH_TOKEN="$TOKEN" gh release download "v$VERSION" --repo "$REPO" \
+      --pattern "SistemaChaveiro-Setup.exe" \
+      --pattern "latest.yml" \
+      --pattern "SistemaChaveiro-Setup.exe.blockmap" \
+      --dir "$DOWNLOADS" --clobber
+    echo "Pronto! Auto-update ativo para v$VERSION."
+    exit 0
+  fi
+  echo "  Aguardando... (${i}/40)"
+done
+
+echo "Timeout — baixe manualmente:"
+echo "  GH_TOKEN=\"$TOKEN\" gh release download v$VERSION --repo $REPO --pattern \"SistemaChaveiro-Setup.exe\" --pattern \"latest.yml\" --pattern \"SistemaChaveiro-Setup.exe.blockmap\" --dir $DOWNLOADS --clobber"
