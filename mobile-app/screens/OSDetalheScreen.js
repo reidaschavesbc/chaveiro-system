@@ -1022,7 +1022,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         <Modal visible={modalEstoque} transparent animationType="slide">
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={[s.modalOverlay, { paddingBottom: insets.bottom }]}>
-            <View style={[s.modalCard, { maxHeight: Dimensions.get('window').height * 0.85 }]}>
+            <View style={[s.modalCard, { height: Dimensions.get('window').height * 0.85 }]}>
               <View style={s.modalHeader}>
                 <Text style={[s.modalTitle, estoqueModo === 'custo' ? { color: '#7c3aed' } : estoqueModo === 'estoque' ? { color: '#475569' } : {}]}>
                   {estoqueModo === 'custo' ? '💰 Material com custo' : estoqueModo === 'estoque' ? '📦 Retirada de estoque' : '📦 Consumo de Estoque'}
