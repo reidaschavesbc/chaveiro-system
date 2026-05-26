@@ -66,8 +66,8 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-          ssh "$VPS_USER@$VPS_HOST" "
+          ssh-keyscan -p 2222 -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          ssh -p 2222 "$VPS_USER@$VPS_HOST" "
             GH_TOKEN=$GH_TOKEN gh release download $TAG \
               --repo reidaschavesbc/chaveiro-system \
               --pattern 'SistemaChaveiro-Setup.exe' \
