@@ -194,7 +194,7 @@ async function ordens(el) {
                   <input type="number" id="os-item-produto-preco" step="0.01" min="0" value="0">
                 </div>
               </div>
-              <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('produto')">Adicionar Produto</button>
+              <button class="btn btn-sm" style="margin-top:8px;background:#2563eb;color:#fff;border:none;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px" onclick="adicionarItemOS('produto')">+ Adicionar Produto</button>
             </div>
 
             <div id="lista-itens-os" style="margin-top:16px"></div>
@@ -1281,7 +1281,10 @@ function modalPreviewNfse(dados, osNumero) {
 
 function verNfse(osId, chaveAcesso) {
   if (!chaveAcesso) { toast('Chave de acesso não disponível', 'error'); return; }
-  window.open(`/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`, '_blank');
+  const a = document.createElement('a');
+  a.href = `/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`;
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 async function enviarNfseWhatsapp(osId) {

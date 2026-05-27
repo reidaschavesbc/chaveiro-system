@@ -256,7 +256,7 @@ async function orcamentos(el) {
                 <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-servico-qtd" min="1" value="1" placeholder="1"></div>
                 <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-servico-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('servico')">Adicionar Serviço</button>
+              <button class="btn btn-sm" style="margin-top:8px;background:#2563eb;color:#fff;border:none;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px" onclick="orcAdicionarItem('servico')">+ Adicionar Serviço</button>
             </div>
             <div id="tab-orc-produto" style="display:none">
               <div class="form-grid">
@@ -268,7 +268,7 @@ async function orcamentos(el) {
                 <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-prod-qtd" min="1" value="1" placeholder="1"></div>
                 <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('produto')">Adicionar Produto</button>
+              <button class="btn btn-sm" style="margin-top:8px;background:#2563eb;color:#fff;border:none;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px" onclick="orcAdicionarItem('produto')">+ Adicionar Produto</button>
             </div>
             <div id="tab-orc-manual" style="display:none">
               <div class="form-grid">
@@ -279,7 +279,7 @@ async function orcamentos(el) {
                 <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-man-qtd" min="1" value="1" placeholder="1"></div>
                 <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-man-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
-              <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('manual')">Adicionar Item</button>
+              <button class="btn btn-sm" style="margin-top:8px;background:#2563eb;color:#fff;border:none;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px" onclick="orcAdicionarItem('manual')">+ Adicionar Item</button>
             </div>
             <div id="lista-itens-orc" style="margin-top:16px"></div>
           </div>

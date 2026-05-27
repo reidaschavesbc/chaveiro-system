@@ -722,7 +722,10 @@ async function emitirNfseVenda(vendaId, vendaNumero) {
 
 function verNfseVenda(chaveAcesso) {
   if (!chaveAcesso) { toast('Chave de acesso não disponível', 'error'); return; }
-  window.open(`/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`, '_blank');
+  const a = document.createElement('a');
+  a.href = `/api/nfse/danfse/${chaveAcesso}?t=${getToken()}`;
+  a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function _modalPreviewNfseVenda(dados, vendaNumero) {
