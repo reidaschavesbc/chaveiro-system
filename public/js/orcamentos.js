@@ -7,6 +7,7 @@ let orcVendedores = [];
 let orcServicoSelecionado = null;
 let orcProdutoSelecionado = null;
 let _orcDropdown = null;
+let _orcClienteDropdown = null;
 
 function _orcEnsureDropdown() {
   if (!_orcDropdown) {
@@ -60,6 +61,60 @@ function fecharListaOrc() {
   setTimeout(() => { if (_orcDropdown) _orcDropdown.style.display = 'none'; }, 150);
 }
 
+function _orcEnsureClienteDropdown() {
+  if (!_orcClienteDropdown) {
+    _orcClienteDropdown = document.createElement('div');
+    _orcClienteDropdown.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_orcClienteDropdown);
+  }
+  return _orcClienteDropdown;
+}
+
+function filtrarClienteOrc() {
+  const input = document.getElementById('orc-cliente-busca');
+  const busca = input.value.toLowerCase().trim();
+  const filtrados = busca
+    ? orcClientes.filter(c => (c.nome_fantasia || c.nome).toLowerCase().includes(busca) || c.nome.toLowerCase().includes(busca))
+    : orcClientes.slice(0, 40);
+
+  const dd = _orcEnsureClienteDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top = rect.bottom + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  const semCliente = !busca
+    ? `<div onmousedown="event.preventDefault()" onclick="selecionarClienteOrc('','')"
+        onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+        style="padding:10px 14px;cursor:pointer;font-size:13px;color:#94a3b8;border-bottom:1px solid #f1f5f9">— Sem cliente —</div>`
+    : '';
+
+  dd.innerHTML = semCliente + (filtrados.length
+    ? filtrados.map(c => {
+        const label = c.nome_fantasia || c.nome;
+        const sub = c.nome_fantasia && c.nome_fantasia !== c.nome ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px">${c.nome}</span>` : '';
+        const safe = label.replace(/'/g, "\\'");
+        return `<div onmousedown="event.preventDefault()" onclick="selecionarClienteOrc(${c.id},'${safe}')"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9">
+                  ${label}${sub}
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum cliente encontrado</div>');
+}
+
+function selecionarClienteOrc(id, nome) {
+  document.getElementById('orc-cliente').value = id;
+  document.getElementById('orc-cliente-busca').value = nome;
+  if (_orcClienteDropdown) _orcClienteDropdown.style.display = 'none';
+  orcToggleAvulso();
+}
+
+function fecharClienteOrc() {
+  setTimeout(() => { if (_orcClienteDropdown) _orcClienteDropdown.style.display = 'none'; }, 150);
+}
+
 const ORC_STATUS = {
     pendente:  { bg: '#fef3c7', color: '#92400e', label: 'Pendente' },
     aprovado:  { bg: '#d1fae5', color: '#065f46', label: 'Aprovado' },
@@ -100,7 +155,7 @@ async function orcamentos(el) {
         api('GET', '/clientes'),
         api('GET', '/servicos'),
         api('GET', '/produtos'),
-        api('GET', '/vendedores'),
+        api('GET', '/vendedores?tecnico=1'),
     ]);
 
     el.innerHTML = `
@@ -140,10 +195,15 @@ async function orcamentos(el) {
           <div class="form-grid">
             <div class="form-group">
               <label>Cliente</label>
-              <select id="orc-cliente" onchange="orcToggleAvulso()">
+              <select id="orc-cliente" style="display:none">
                 <option value="">-- Sem cliente --</option>
                 ${orcClientes.map(c => `<option value="${c.id}" data-tel="${c.telefone || ''}">${c.nome_fantasia || c.nome}</option>`).join('')}
               </select>
+              <div style="position:relative">
+                <input type="text" id="orc-cliente-busca" placeholder="Pesquisar cliente..." autocomplete="off" style="padding-right:28px;width:100%"
+                  oninput="filtrarClienteOrc()" onfocus="filtrarClienteOrc()" onblur="fecharClienteOrc()">
+                <span onclick="selecionarClienteOrc('','')" title="Limpar" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#94a3b8;font-size:14px;line-height:1;user-select:none">✕</span>
+              </div>
               <input type="text" id="orc-cliente-avulso" placeholder="Nome do cliente" style="margin-top:6px">
               <input type="text" id="orc-cliente-tel-avulso" placeholder="(00) 00000-0000" style="margin-top:6px" oninput="mascaraTelefone(this)">
             </div>
@@ -412,6 +472,7 @@ function orcAtualizarTotal() {
 function abrirModalOrc() {
     document.getElementById('orc-id').value = '';
     document.getElementById('orc-cliente').value = '';
+    document.getElementById('orc-cliente-busca').value = '';
     document.getElementById('orc-cliente-avulso').value = '';
     document.getElementById('orc-cliente-tel-avulso').value = '';
     orcToggleAvulso();
@@ -435,6 +496,8 @@ async function editarOrc(id) {
         const o = await api('GET', `/orcamentos/${id}`);
         document.getElementById('orc-id').value = o.id;
         document.getElementById('orc-cliente').value = o.cliente_id || '';
+        const _bcOrcEdit = document.getElementById('orc-cliente-busca');
+        if (_bcOrcEdit) { const _cObj = orcClientes.find(c => c.id == o.cliente_id); _bcOrcEdit.value = _cObj ? (_cObj.nome_fantasia || _cObj.nome) : ''; }
         document.getElementById('orc-cliente-avulso').value = o.cliente_nome_avulso || '';
         document.getElementById('orc-cliente-tel-avulso').value = aplicarMascaraTelefone(o.cliente_telefone_avulso || '');
         orcToggleAvulso();

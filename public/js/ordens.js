@@ -7,6 +7,7 @@ let osItens = [];
 let osServicoSelecionado = null;
 let osProdutoSelecionado = null;
 let _osDropdown = null;
+let _osClienteDropdown = null;
 
 async function ordens(el) {
   [clientesForOS, servicosForOS, produtosForOS, vendedoresForOS] = await Promise.all([
@@ -60,7 +61,12 @@ async function ordens(el) {
         <div class="form-grid">
           <div class="form-group">
             <label>Cliente</label>
-            <select id="os-cliente" onchange="toggleClienteAvulso('os');carregarAutorizadosOS()"><option value="">-- Sem cliente --</option>${clienteOptions}</select>
+            <select id="os-cliente" style="display:none"><option value="">-- Sem cliente --</option>${clienteOptions}</select>
+            <div style="position:relative">
+              <input type="text" id="os-cliente-busca" placeholder="Pesquisar cliente..." autocomplete="off" style="padding-right:28px;width:100%"
+                oninput="filtrarClienteOS()" onfocus="filtrarClienteOS()" onblur="fecharClienteOS()">
+              <span onclick="selecionarClienteOS('','')" title="Limpar" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#94a3b8;font-size:14px;line-height:1;user-select:none">✕</span>
+            </div>
             <input type="text" id="os-cliente-avulso" style="margin-top:6px">
             <div id="os-solicitado-wrap" style="display:none;margin-top:6px">
               <select id="os-solicitado-por" style="width:100%">
@@ -171,7 +177,7 @@ async function ordens(el) {
                   <input type="number" id="os-item-servico-preco" step="0.01" min="0" value="0">
                 </div>
               </div>
-              <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="adicionarItemOS('servico')">Adicionar Serviço</button>
+              <button class="btn btn-sm" style="margin-top:8px;background:#2563eb;color:#fff;border:none;font-weight:700;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px" onclick="adicionarItemOS('servico')">+ Adicionar Serviço</button>
             </div>
 
             <div id="tab-os-produto" style="display:none">
@@ -757,6 +763,7 @@ function togglePlantao() {
 function abrirModalOS() {
   document.getElementById('os-id').value = '';
   document.getElementById('os-cliente').value = '';
+  document.getElementById('os-cliente-busca').value = '';
   document.getElementById('os-cliente-avulso').value = '';
   ['rua','numero','complemento','cidade','referencia'].forEach(f => { const el = document.getElementById(`os-avulso-${f}`); if(el) el.value=''; });
   toggleClienteAvulso('os');
@@ -850,6 +857,61 @@ function fecharListaOS() {
   setTimeout(() => { if (_osDropdown) _osDropdown.style.display = 'none'; }, 150);
 }
 
+function _osEnsureClienteDropdown() {
+  if (!_osClienteDropdown) {
+    _osClienteDropdown = document.createElement('div');
+    _osClienteDropdown.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_osClienteDropdown);
+  }
+  return _osClienteDropdown;
+}
+
+function filtrarClienteOS() {
+  const input = document.getElementById('os-cliente-busca');
+  const busca = input.value.toLowerCase().trim();
+  const filtrados = busca
+    ? clientesForOS.filter(c => (c.nome_fantasia || c.nome).toLowerCase().includes(busca) || c.nome.toLowerCase().includes(busca))
+    : clientesForOS.slice(0, 40);
+
+  const dd = _osEnsureClienteDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top = rect.bottom + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  const semCliente = !busca
+    ? `<div onmousedown="event.preventDefault()" onclick="selecionarClienteOS('','')"
+        onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+        style="padding:10px 14px;cursor:pointer;font-size:13px;color:#94a3b8;border-bottom:1px solid #f1f5f9">— Sem cliente —</div>`
+    : '';
+
+  dd.innerHTML = semCliente + (filtrados.length
+    ? filtrados.map(c => {
+        const label = c.nome_fantasia || c.nome;
+        const sub = c.nome_fantasia && c.nome_fantasia !== c.nome ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px">${c.nome}</span>` : '';
+        const safe = label.replace(/'/g, "\\'");
+        return `<div onmousedown="event.preventDefault()" onclick="selecionarClienteOS(${c.id},'${safe}')"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9">
+                  ${label}${sub}
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum cliente encontrado</div>');
+}
+
+function selecionarClienteOS(id, nome) {
+  document.getElementById('os-cliente').value = id;
+  document.getElementById('os-cliente-busca').value = nome;
+  if (_osClienteDropdown) _osClienteDropdown.style.display = 'none';
+  toggleClienteAvulso('os');
+  carregarAutorizadosOS();
+}
+
+function fecharClienteOS() {
+  setTimeout(() => { if (_osClienteDropdown) _osClienteDropdown.style.display = 'none'; }, 150);
+}
+
 function setTabOS(tab, btn) {
   document.getElementById('tab-os-servico').style.display = tab === 'servico' ? 'block' : 'none';
   document.getElementById('tab-os-produto').style.display = tab === 'produto' ? 'block' : 'none';
@@ -916,6 +978,8 @@ async function editarOS(id) {
   if (!o) return;
   document.getElementById('os-id').value = o.id;
   document.getElementById('os-cliente').value = o.cliente_id || '';
+  const _bcEdit = document.getElementById('os-cliente-busca');
+  if (_bcEdit) { const _cObjEdit = clientesForOS.find(c => c.id == o.cliente_id); _bcEdit.value = _cObjEdit ? (_cObjEdit.nome_fantasia || _cObjEdit.nome) : ''; }
   document.getElementById('os-cliente-avulso').value = o.cliente_nome_avulso || '';
   toggleClienteAvulso('os');
   await carregarAutorizadosOS(o.solicitado_por || '');
@@ -1007,10 +1071,14 @@ async function _preencherOSFromOrcamento(orc) {
   // Cliente
   if (orc.cliente_id) {
     document.getElementById('os-cliente').value = orc.cliente_id;
+    const _bcOrc = document.getElementById('os-cliente-busca');
+    if (_bcOrc) { const _cObjOrc = clientesForOS.find(c => c.id == orc.cliente_id); _bcOrc.value = _cObjOrc ? (_cObjOrc.nome_fantasia || _cObjOrc.nome) : ''; }
     toggleClienteAvulso('os');
     await carregarAutorizadosOS();
   } else if (orc.cliente_nome_avulso) {
     document.getElementById('os-cliente').value = '';
+    const _bcOrc2 = document.getElementById('os-cliente-busca');
+    if (_bcOrc2) _bcOrc2.value = '';
     toggleClienteAvulso('os');
     document.getElementById('os-cliente-avulso').value = orc.cliente_nome_avulso;
   }

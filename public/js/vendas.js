@@ -4,6 +4,7 @@ let vendaProdutos = [];
 let vendaServicos = [];
 let vendaVendedores = [];
 let vendaProdutoSelecionado = null;
+let _vendaClienteDropdown = null;
 
 async function vendasNova(el) {
   [vendaClientes, vendaProdutos, vendaServicos, vendaVendedores] = await Promise.all([
@@ -62,10 +63,15 @@ async function vendasNova(el) {
         <div class="card-body">
           <div class="form-group" style="margin-bottom:12px">
             <label>Cliente (opcional)</label>
-            <select id="venda-cliente" onchange="toggleClienteAvulso('venda')">
+            <select id="venda-cliente" style="display:none">
               <option value="">-- Sem cliente --</option>
               ${vendaClientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome}</option>`).join('')}
             </select>
+            <div style="position:relative">
+              <input type="text" id="venda-cliente-busca" placeholder="Pesquisar cliente..." autocomplete="off" style="padding-right:28px;width:100%;padding:9px 14px 9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box"
+                oninput="filtrarClienteVenda()" onfocus="filtrarClienteVenda()" onblur="fecharClienteVenda()">
+              <span onclick="selecionarClienteVenda('','')" title="Limpar" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#94a3b8;font-size:14px;line-height:1;user-select:none">✕</span>
+            </div>
             <input type="text" id="venda-cliente-avulso" style="margin-top:6px;padding:8px 12px;border:2px solid #e5e7eb;border-radius:9px;font-size:13px;width:100%">
           </div>
           <div class="form-group" style="margin-bottom:12px">
@@ -170,10 +176,15 @@ async function vendasNova(el) {
       <div style="flex:1;overflow-y:auto;padding:12px 14px;min-height:0;display:flex;flex-direction:column;gap:10px">
         <div class="form-group" style="margin:0">
           <label>Cliente (opcional)</label>
-          <select id="venda-cliente" onchange="toggleClienteAvulso('venda')">
+          <select id="venda-cliente" style="display:none">
             <option value="">-- Sem cliente --</option>
             ${vendaClientes.map(c => `<option value="${c.id}">${c.nome_fantasia || c.nome}</option>`).join('')}
           </select>
+          <div style="position:relative">
+            <input type="text" id="venda-cliente-busca" placeholder="Pesquisar cliente..." autocomplete="off" style="padding-right:28px;width:100%"
+              oninput="filtrarClienteVenda()" onfocus="filtrarClienteVenda()" onblur="fecharClienteVenda()">
+            <span onclick="selecionarClienteVenda('','')" title="Limpar" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#94a3b8;font-size:14px;line-height:1;user-select:none">✕</span>
+          </div>
           <input type="text" id="venda-cliente-avulso" placeholder="Nome do cliente" style="margin-top:6px">
         </div>
         <div class="form-group" style="margin:0">
@@ -254,6 +265,61 @@ function fecharListaProdutos() {
     const lista = document.getElementById('venda-produto-lista');
     if (lista) lista.style.display = 'none';
   }, 150);
+}
+
+function _vendaEnsureClienteDropdown() {
+  if (!_vendaClienteDropdown) {
+    _vendaClienteDropdown = document.createElement('div');
+    _vendaClienteDropdown.style.cssText = 'position:fixed;z-index:10000;background:#fff;border:2px solid #1a56db;border-top:none;border-radius:0 0 10px 10px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none';
+    document.body.appendChild(_vendaClienteDropdown);
+  }
+  return _vendaClienteDropdown;
+}
+
+function filtrarClienteVenda() {
+  const input = document.getElementById('venda-cliente-busca');
+  if (!input) return;
+  const busca = input.value.toLowerCase().trim();
+  const filtrados = busca
+    ? vendaClientes.filter(c => (c.nome_fantasia || c.nome).toLowerCase().includes(busca) || c.nome.toLowerCase().includes(busca))
+    : vendaClientes.slice(0, 40);
+
+  const dd = _vendaEnsureClienteDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top = rect.bottom + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  const semCliente = !busca
+    ? `<div onmousedown="event.preventDefault()" onclick="selecionarClienteVenda('','')"
+        onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+        style="padding:10px 14px;cursor:pointer;font-size:13px;color:#94a3b8;border-bottom:1px solid #f1f5f9">— Sem cliente —</div>`
+    : '';
+
+  dd.innerHTML = semCliente + (filtrados.length
+    ? filtrados.map(c => {
+        const label = c.nome_fantasia || c.nome;
+        const sub = c.nome_fantasia && c.nome_fantasia !== c.nome ? `<span style="color:#94a3b8;font-size:11px;margin-left:6px">${c.nome}</span>` : '';
+        const safe = label.replace(/'/g, "\\'");
+        return `<div onmousedown="event.preventDefault()" onclick="selecionarClienteVenda(${c.id},'${safe}')"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9">
+                  ${label}${sub}
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum cliente encontrado</div>');
+}
+
+function selecionarClienteVenda(id, nome) {
+  document.getElementById('venda-cliente').value = id;
+  document.getElementById('venda-cliente-busca').value = nome;
+  if (_vendaClienteDropdown) _vendaClienteDropdown.style.display = 'none';
+  toggleClienteAvulso('venda');
+}
+
+function fecharClienteVenda() {
+  setTimeout(() => { if (_vendaClienteDropdown) _vendaClienteDropdown.style.display = 'none'; }, 150);
 }
 
 function verFotoProdutoVenda() {
