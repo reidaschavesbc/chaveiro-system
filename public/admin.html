@@ -414,6 +414,7 @@
     <button class="fin-tab" onclick="finNavegar('estoque')">📦 Estoque</button>
     <button class="fin-tab" onclick="finNavegar('afiacao')">✂️ Afiação</button>
     <button class="fin-tab" onclick="finNavegar('funcionarios')">👑 Acesso App</button>
+    <button class="fin-tab" onclick="finNavegar('ponto')">🕐 Ponto</button>
   </div>
   <div class="fin-body" id="fin-content">
     <div class="fin-loading">Carregando...</div>
@@ -1115,12 +1116,12 @@
   function finNavegar(tab) {
     _finTabAtiva = tab;
     document.querySelectorAll('.fin-tab').forEach((el, i) => {
-      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque','afiacao','funcionarios'];
+      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque','afiacao','funcionarios','ponto'];
       el.classList.toggle('ativa', tabs[i] === tab);
     });
     const content = document.getElementById('fin-content');
     content.innerHTML = '<div class="fin-loading">Carregando...</div>';
-    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque, afiacao: finAfiacao, funcionarios: finFuncionarios };
+    const fns = { geral: finGeral, os: finOS, plantao: finPlantao, vendas: finVendas, areceber: finAReceber, comissoes: finComissoes, gastos: finGastos, vales: finVales, estoque: finEstoque, afiacao: finAfiacao, funcionarios: finFuncionarios, ponto: finPonto };
     if (fns[tab]) fns[tab](content);
   }
 
@@ -2023,6 +2024,126 @@
           </tbody>
         </table>`}`;
     } catch(e) { el.innerHTML = `<p style="color:#ef4444">Erro ao carregar: ${e.message}</p>`; }
+  }
+
+  // ── Tab: Ponto ───────────────────────────────────────────────────────────
+  async function finPonto(el) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    const inicioMes = hoje.slice(0,7) + '-01';
+
+    el.innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px">
+        <input type="date" id="pt-adm-di" value="${inicioMes}" style="padding:8px 12px;border:1px solid #334155;border-radius:8px;font-size:13px;background:#1e293b;color:#f1f5f9;outline:none">
+        <span style="color:#475569">até</span>
+        <input type="date" id="pt-adm-df" value="${hoje}" style="padding:8px 12px;border:1px solid #334155;border-radius:8px;font-size:13px;background:#1e293b;color:#f1f5f9;outline:none">
+        <button onclick="finPontoCarregar()" style="padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Filtrar</button>
+      </div>
+      <div id="pt-adm-conteudo"><div class="fin-loading">Carregando...</div></div>`;
+
+    await finPontoCarregar();
+  }
+
+  const PT_TIPO = {
+    entrada:        { label: 'Entrada',      cor: '#15803d', bg: '#dcfce7' },
+    saida_almoco:   { label: 'Saída Almoço', cor: '#92400e', bg: '#fef3c7' },
+    retorno_almoco: { label: 'Retorno',      cor: '#1e40af', bg: '#dbeafe' },
+    saida:          { label: 'Saída',        cor: '#b91c1c', bg: '#fee2e2' },
+  };
+
+  function ptFmtHora(dh) { return dh ? dh.slice(11,16) : '—'; }
+  function ptFmtData(dh) { return dh ? dh.slice(8,10)+'/'+dh.slice(5,7)+'/'+dh.slice(0,4) : '—'; }
+  function ptCalcHoras(regs) {
+    let total = 0, entrada = null;
+    for (const r of regs) {
+      const t = new Date(r.data_hora.replace(' ','T'));
+      if (r.tipo === 'entrada' || r.tipo === 'retorno_almoco') entrada = t;
+      else if ((r.tipo === 'saida_almoco' || r.tipo === 'saida') && entrada) { total += t - entrada; entrada = null; }
+    }
+    if (entrada) total += Date.now() - entrada;
+    if (total <= 0) return '—';
+    const h = Math.floor(total/3600000), m = Math.floor((total%3600000)/60000);
+    return `${h}h${String(m).padStart(2,'0')}`;
+  }
+
+  async function finPontoCarregar() {
+    const di = document.getElementById('pt-adm-di')?.value;
+    const df = document.getElementById('pt-adm-df')?.value;
+    const el = document.getElementById('pt-adm-conteudo');
+    if (!el || !di || !df) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const dados = await reqLoja('GET', `/ponto/relatorio?data_inicio=${di}&data_fim=${df}`);
+      if (!dados.length) { el.innerHTML = '<p style="color:#64748b;padding:24px;text-align:center">Nenhum registro no período.</p>'; return; }
+
+      // Agrupa por funcionário → dia
+      const porFunc = {};
+      for (const r of dados) {
+        const dia = r.data_hora.slice(0,10);
+        if (!porFunc[r.usuario_id]) porFunc[r.usuario_id] = { nome: r.nome, dias: {} };
+        if (!porFunc[r.usuario_id].dias[dia]) porFunc[r.usuario_id].dias[dia] = [];
+        porFunc[r.usuario_id].dias[dia].push(r);
+      }
+
+      el.innerHTML = Object.entries(porFunc).map(([fid, f], fi) => {
+        const diasEntries = Object.entries(f.dias);
+        const totalGeral = (() => {
+          const todos = diasEntries.flatMap(([,regs]) => regs);
+          return ptCalcHoras(todos);
+        })();
+
+        const linhas = diasEntries.map(([dia, regs]) => `
+          <tr style="border-top:1px solid #1e293b">
+            <td style="color:#94a3b8;font-size:12px;padding:8px 14px;white-space:nowrap">${ptFmtData(dia+' 00:00')}</td>
+            <td style="padding:8px 14px">
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                ${regs.map(r => `
+                  <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;background:${PT_TIPO[r.tipo]?.bg||'#1e293b'};color:${PT_TIPO[r.tipo]?.cor||'#94a3b8'}">
+                    ${PT_TIPO[r.tipo]?.label||r.tipo} ${ptFmtHora(r.data_hora)}
+                  </span>`).join('')}
+            </td>
+            <td style="padding:8px 14px;text-align:center;font-weight:700;color:#f1f5f9;white-space:nowrap">${ptCalcHoras(regs)}</td>
+          </tr>`).join('');
+
+        return `
+          <div style="border:1px solid #334155;border-radius:12px;overflow:hidden;margin-bottom:10px">
+            <div onclick="ptToggle('pt-body-${fi}')"
+              style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#1e293b;cursor:pointer;user-select:none">
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:34px;height:34px;border-radius:50%;background:#6366f1;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:14px;flex-shrink:0">${f.nome.charAt(0)}</div>
+                <div>
+                  <div style="font-weight:700;color:#f1f5f9;font-size:14px">${f.nome}</div>
+                  <div style="font-size:11px;color:#64748b">${diasEntries.length} dia(s) · Total: <b style="color:#94a3b8">${totalGeral}</b></div>
+                </div>
+              </div>
+              <svg id="pt-arrow-${fi}" viewBox="0 0 24 24" style="width:18px;height:18px;fill:#475569;transition:transform .2s"><path d="M7 10l5 5 5-5z"/></svg>
+            </div>
+            <div id="pt-body-${fi}" style="display:none">
+              <table style="width:100%;border-collapse:collapse;font-size:13px">
+                <thead>
+                  <tr style="background:#0f172a">
+                    <th style="padding:8px 14px;text-align:left;color:#475569;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Data</th>
+                    <th style="padding:8px 14px;text-align:left;color:#475569;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Registros</th>
+                    <th style="padding:8px 14px;text-align:center;color:#475569;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">Total</th>
+                  </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+              </table>
+            </div>
+          </div>`;
+      }).join('');
+
+      // Injeta função de toggle se ainda não existir
+      if (!window.ptToggle) {
+        window.ptToggle = function(id) {
+          const body = document.getElementById(id);
+          const idx = id.split('-').pop();
+          const arrow = document.getElementById('pt-arrow-' + idx);
+          const open = body.style.display === 'none';
+          body.style.display = open ? '' : 'none';
+          if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
+        };
+      }
+    } catch(e) { el.innerHTML = `<p style="color:#ef4444;padding:16px">${e.message}</p>`; }
   }
 
   // ── Tab: Funcionários ────────────────────────────────────────────────────

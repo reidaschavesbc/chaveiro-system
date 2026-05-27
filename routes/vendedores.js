@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 
 router.get('/', (req, res) => {
     const soTecnico = req.query.tecnico === '1';
-    const sql = `SELECT * FROM vendedores WHERE ativo = 1 AND loja_id = ?${soTecnico ? ' AND tecnico = 1' : ''} ORDER BY nome`;
+    const sql = `SELECT *, CASE WHEN senha_ponto IS NOT NULL THEN 1 ELSE 0 END AS tem_pin FROM vendedores WHERE ativo = 1 AND loja_id = ?${soTecnico ? ' AND tecnico = 1' : ''} ORDER BY nome`;
     res.json(db.prepare(sql).all(req.user.loja_id));
 });
 

@@ -106,6 +106,7 @@ async function carregarVendedores() {
             <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
           </button>
           <button class="btn btn-sm btn-secondary btn-icon" title="Acesso App" onclick="abrirAcessoApp(${v.id},'${escHtml(v.nome)}','${escHtml(v.email||'')}')">📱</button>
+          <button class="btn btn-sm btn-secondary btn-icon" title="PIN do Ponto" onclick="abrirPinPonto(${v.id},'${escHtml(v.nome)}',${v.tem_pin||0})">🔑</button>
           <button class="btn btn-sm btn-danger btn-icon" title="Desativar" onclick="excluirVendedor(${v.id})">✕</button>
         </td>
       </tr>`).join('')}
@@ -246,6 +247,48 @@ async function salvarAcessoApp(id) {
     await api('PUT', `/vendedores/${id}/acesso-app`, { email: usuario, senha: senha || undefined });
     document.getElementById('modal-acesso-app').remove();
     toast('Acesso configurado!');
+    carregarVendedores();
+  } catch (e) { erroEl.textContent = e.message; erroEl.style.display = ''; }
+}
+
+function abrirPinPonto(id, nome, temPin) {
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-pin-ponto';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15px;font-weight:700;color:#1e293b">🔑 PIN do Ponto — ${escHtml(nome)}</span>
+        <button onclick="document.getElementById('modal-pin-ponto').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8">✕</button>
+      </div>
+      <div style="padding:16px 24px">
+        <p style="font-size:13px;color:#64748b;margin-bottom:16px">${temPin ? 'PIN já configurado. Digite um novo para alterar.' : 'Defina o PIN numérico que este funcionário usará no kiosk.'}</p>
+        <div style="margin-bottom:8px">
+          <label style="display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:5px">PIN (4 a 6 dígitos)</label>
+          <input type="password" id="pin-ponto-valor" inputmode="numeric" maxlength="6" autocomplete="new-password" placeholder="Ex: 1234"
+            style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:8px;font-size:20px;letter-spacing:8px;text-align:center;outline:none">
+        </div>
+        <div id="pin-ponto-erro" style="color:#dc2626;font-size:13px;margin-bottom:4px;display:none"></div>
+      </div>
+      <div style="padding:0 24px 20px;display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('modal-pin-ponto').remove()"
+          style="padding:10px 18px;border:1.5px solid #e5e7eb;background:#fff;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="salvarPinPonto(${id})"
+          style="padding:10px 18px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Salvar PIN</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('pin-ponto-valor').focus();
+}
+
+async function salvarPinPonto(id) {
+  const pin = document.getElementById('pin-ponto-valor').value.trim();
+  const erroEl = document.getElementById('pin-ponto-erro');
+  if (!/^\d{4,6}$/.test(pin)) { erroEl.textContent = 'PIN deve ter 4 a 6 dígitos numéricos'; erroEl.style.display = ''; return; }
+  try {
+    await api('PUT', `/ponto/funcionario/${id}/pin`, { pin });
+    document.getElementById('modal-pin-ponto').remove();
+    toast('PIN configurado!');
     carregarVendedores();
   } catch (e) { erroEl.textContent = e.message; erroEl.style.display = ''; }
 }
