@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const wa = require('../services/whatsapp');
+const { notificarAfiadorApp } = require('./app-mobile');
 
 function gerarNumeroAfiacao(lojaId) {
   const row = db.prepare('SELECT MAX(numero) as max FROM afiacao WHERE loja_id = ?').get(lojaId);
@@ -21,12 +22,17 @@ function normalizePhone(phone) {
 }
 
 async function notificarAfiador(ficha) {
+  const obs = ficha.observacao ? ` | ${ficha.observacao}` : '';
+  const cliente = ficha.cliente_nome ? ` | ${ficha.cliente_nome}` : '';
+  const pushBody = `Qtd: ${ficha.quantidade}${cliente}${obs} — R$ ${Number(ficha.valor).toFixed(2).replace('.', ',')}`;
+  notificarAfiadorApp(ficha.loja_id, `✂️ Nova Ficha #${ficha.numero}`, pushBody).catch(() => {});
+
   const tel = normalizePhone(getConfig('whatsapp_afiador'));
   if (!tel) return;
-  const obs = ficha.observacao ? `\n📝 Obs: ${ficha.observacao}` : '';
-  const cliente = ficha.cliente_nome ? `\n👤 Cliente: ${ficha.cliente_nome}` : '';
+  const obsWa = ficha.observacao ? `\n📝 Obs: ${ficha.observacao}` : '';
+  const clienteWa = ficha.cliente_nome ? `\n👤 Cliente: ${ficha.cliente_nome}` : '';
   const msg = `✂️ *Nova ficha de Afiação #${ficha.numero}*\n`
-    + `🔢 Qtd: ${ficha.quantidade}${obs}${cliente}\n`
+    + `🔢 Qtd: ${ficha.quantidade}${obsWa}${clienteWa}\n`
     + `💰 Valor: R$ ${Number(ficha.valor).toFixed(2).replace('.', ',')}`;
   try { await wa.enviarMensagem(tel, msg); } catch (_) {}
 }

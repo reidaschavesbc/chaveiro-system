@@ -564,6 +564,24 @@ function migrate() {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ponto (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      usuario_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL,
+      data_hora TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      registrado_por INTEGER,
+      loja_id INTEGER,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+      FOREIGN KEY (registrado_por) REFERENCES usuarios(id)
+    );
+  `);
+
+  addCol('usuarios', 'senha_ponto',     'TEXT');
+  addCol('usuarios', 'expo_push_token', 'TEXT');
+  addCol('vendedores', 'senha_ponto', 'TEXT');
+  addCol('ponto', 'vendedor_id', 'INTEGER REFERENCES vendedores(id)');
+
   console.log('✅ Banco de dados inicializado com sucesso!');
 }
 

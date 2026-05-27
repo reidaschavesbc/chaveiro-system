@@ -85,7 +85,11 @@ router.post('/login', (req, res) => {
 router.post('/push-token', authFuncionario, (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token é obrigatório' });
-  db.prepare(`UPDATE vendedores SET expo_push_token = ? WHERE id = ?`).run(token, req.funcionario.id);
+  if (req.funcionario.tipo === 'afiador') {
+    db.prepare(`UPDATE usuarios SET expo_push_token = ? WHERE id = ?`).run(token, req.funcionario.id);
+  } else {
+    db.prepare(`UPDATE vendedores SET expo_push_token = ? WHERE id = ?`).run(token, req.funcionario.id);
+  }
   res.json({ ok: true });
 });
 
@@ -597,4 +601,25 @@ async function notificarFuncionario(vendedorId, titulo, mensagem) {
   }
 }
 
-module.exports = { router, notificarFuncionario };
+// Função exportada para notificar afiador (tabela usuarios) quando nova ficha chega
+async function notificarAfiadorApp(lojaId, titulo, mensagem) {
+  const afiador = db.prepare(
+    `SELECT expo_push_token FROM usuarios WHERE loja_id = ? AND perfil = 'afiador' AND ativo = 1 AND expo_push_token IS NOT NULL LIMIT 1`
+  ).get(lojaId);
+  if (!afiador?.expo_push_token) return;
+  if (!admin.apps.length) { console.error('Firebase Admin não inicializado'); return; }
+  try {
+    await admin.messaging().send({
+      token: afiador.expo_push_token,
+      notification: { title: titulo, body: mensagem },
+      android: {
+        priority: 'high',
+        notification: { channelId: 'chaveiro_alerts', sound: 'default' }
+      }
+    });
+  } catch (e) {
+    console.error('Erro ao enviar FCM para afiador:', e.message);
+  }
+}
+
+module.exports = { router, notificarFuncionario, notificarAfiadorApp };

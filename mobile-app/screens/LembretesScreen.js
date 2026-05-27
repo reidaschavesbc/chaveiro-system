@@ -35,6 +35,12 @@ function dataHoraDefault() {
   };
 }
 
+function formatarHora(text) {
+  const nums = text.replace(/\D/g, '').slice(0, 4);
+  if (nums.length <= 2) return nums;
+  return nums.slice(0, 2) + ':' + nums.slice(2);
+}
+
 function parseDataDisplay(str) {
   if (!str) return null;
   const parts = str.split('/');
@@ -275,8 +281,9 @@ export default function LembretesScreen({ navigation }) {
                       placeholder="HH:MM"
                       placeholderTextColor="#94a3b8"
                       value={hora}
-                      onChangeText={setHora}
-                      keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'numeric'}
+                      onChangeText={text => setHora(formatarHora(text))}
+                      keyboardType="numeric"
+                      maxLength={5}
                     />
                   </View>
                 </View>
