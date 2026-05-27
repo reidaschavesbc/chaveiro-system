@@ -136,8 +136,6 @@ function editarVendedor(id, nome, telefone, percentual, percentual_plantao, meta
 }
 
 async function revelarRestrito() {
-  const ok = await modalSenhaGerente('Campos Restritos', 'Esses campos são confidenciais. Digite a senha do gerente para revelar.');
-  if (!ok) return;
   const r = window._vendedorRestrito || {};
   document.getElementById('vendedor-comissao').value = r.percentual || '';
   document.getElementById('vendedor-plantao').value  = r.percentual_plantao || '';

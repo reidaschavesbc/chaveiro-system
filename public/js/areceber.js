@@ -1,6 +1,11 @@
 // === A RECEBER ===
 
-const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
+async function navegarCobrancas() {
+  if (!await pedirSenhaGerente()) return;
+  navigateTo('a-receber');
+}
+
+const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' };
 const arFmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
 const arFmtDate = s => s ? s.slice(0,10).split('-').reverse().join('/') : '—';
 
@@ -140,7 +145,7 @@ async function renderAReceber(el) {
 
 function arHistoricoHtml(historico) {
   if (!historico?.length) return '';
-  const pgLabel = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
+  const pgLabel = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' };
   return `
     <div class="card" style="margin-top:24px">
       <div class="card-header">

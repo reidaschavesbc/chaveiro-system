@@ -134,6 +134,9 @@ function consRenderLista() {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
+let _consDropdown = null;
+let _consProdutoSelecionado = null;
+
 function consModalHtml() {
   const catOpts = Object.entries(CONS_CAT).map(([k,v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
   return `
@@ -141,17 +144,16 @@ function consModalHtml() {
       <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
         <div style="font-size:17px;font-weight:700;margin-bottom:20px">Registrar Uso da Equipe</div>
         <div class="form-grid">
-          <div class="form-group form-full">
+          <div class="form-group form-full" style="position:relative">
             <label>Produto *</label>
-            <select id="cons-produto" onchange="consAtualizarEstoque()">
-              <option value="">-- Selecione o produto --</option>
-              ${consProdutos.map(p => `<option value="${p.id}" data-estoque="${p.estoque}" data-unidade="${p.unidade}">${p.nome} (estoque: ${p.estoque} ${p.unidade})</option>`).join('')}
-            </select>
+            <input type="text" id="cons-produto-busca" placeholder="🔍 Digite para buscar..." autocomplete="off"
+                   oninput="consFiltrarProdutos()" onfocus="consFiltrarProdutos()" onblur="consFecharDropdown()">
+            <input type="hidden" id="cons-produto-id">
+            <div id="cons-estoque-info" style="font-size:11px;color:#64748b;margin-top:4px"></div>
           </div>
           <div class="form-group">
             <label>Quantidade *</label>
             <input type="number" id="cons-qtd" min="1" value="1">
-            <div id="cons-estoque-info" style="font-size:11px;color:#64748b;margin-top:4px"></div>
           </div>
           <div class="form-group">
             <label>Categoria *</label>
@@ -174,27 +176,74 @@ function consModalHtml() {
     </div>`;
 }
 
-function consAtualizarEstoque() {
-  const sel = document.getElementById('cons-produto');
-  const opt = sel.options[sel.selectedIndex];
+function _consEnsureDropdown() {
+  if (!_consDropdown) {
+    _consDropdown = document.createElement('div');
+    _consDropdown.style.cssText = 'position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;max-height:220px;overflow-y:auto;display:none';
+    document.body.appendChild(_consDropdown);
+  }
+  return _consDropdown;
+}
+
+function consFiltrarProdutos() {
+  const input = document.getElementById('cons-produto-busca');
+  const busca = input.value.toLowerCase().trim();
+  const lista = busca ? consProdutos.filter(p => p.nome.toLowerCase().includes(busca)) : consProdutos;
+
+  const dd = _consEnsureDropdown();
+  const rect = input.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + window.scrollY) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.width = rect.width + 'px';
+  dd.style.display = 'block';
+
+  dd.innerHTML = lista.length
+    ? lista.map(p => {
+        const baixo = p.estoque <= 2;
+        return `<div onmousedown="event.preventDefault()" onclick="consEscolherProduto(${p.id})"
+                     onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''"
+                     style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+                  <span>${p.nome}</span>
+                  <span style="font-size:11px;color:${baixo?'#dc2626':'#64748b'};white-space:nowrap;margin-left:8px">${p.estoque} ${p.unidade}</span>
+                </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:#94a3b8;font-size:13px;text-align:center">Nenhum produto encontrado</div>';
+}
+
+function consEscolherProduto(id) {
+  const p = consProdutos.find(x => x.id === id);
+  if (!p) return;
+  _consProdutoSelecionado = p;
+  document.getElementById('cons-produto-busca').value = p.nome;
+  document.getElementById('cons-produto-id').value = p.id;
+  document.getElementById('cons-qtd').max = p.estoque;
   const info = document.getElementById('cons-estoque-info');
-  if (!opt.value) { info.textContent = ''; return; }
-  const estoque = parseInt(opt.dataset.estoque);
-  const unidade = opt.dataset.unidade;
-  info.style.color = estoque <= 2 ? '#dc2626' : '#64748b';
-  info.textContent = `Disponível: ${estoque} ${unidade}`;
-  document.getElementById('cons-qtd').max = estoque;
+  info.style.color = p.estoque <= 2 ? '#dc2626' : '#64748b';
+  info.textContent = `Disponível: ${p.estoque} ${p.unidade}`;
+  if (_consDropdown) _consDropdown.style.display = 'none';
+  document.getElementById('cons-qtd').focus();
+}
+
+function consFecharDropdown() {
+  setTimeout(() => { if (_consDropdown) _consDropdown.style.display = 'none'; }, 150);
+}
+
+function consAtualizarEstoque() {
+  // mantido por compatibilidade, lógica movida para consEscolherProduto
 }
 
 function consAbrirModal() {
-  document.getElementById('cons-produto').value = '';
+  _consProdutoSelecionado = null;
+  document.getElementById('cons-produto-busca').value = '';
+  document.getElementById('cons-produto-id').value = '';
   document.getElementById('cons-qtd').value = '1';
+  document.getElementById('cons-qtd').max = '';
   document.getElementById('cons-cat').value = 'erro_corte';
   document.getElementById('cons-os').value = '';
   document.getElementById('cons-obs').value = '';
   document.getElementById('cons-estoque-info').textContent = '';
   document.getElementById('cons-modal').style.display = 'flex';
-  setTimeout(() => document.getElementById('cons-produto').focus(), 80);
+  setTimeout(() => document.getElementById('cons-produto-busca').focus(), 80);
 }
 
 function consFecharModal() {
@@ -202,7 +251,7 @@ function consFecharModal() {
 }
 
 async function consSalvar() {
-  const produto_id = document.getElementById('cons-produto').value;
+  const produto_id = document.getElementById('cons-produto-id').value;
   const quantidade = parseInt(document.getElementById('cons-qtd').value);
   const categoria  = document.getElementById('cons-cat').value;
   const os_ref     = document.getElementById('cons-os').value.trim();

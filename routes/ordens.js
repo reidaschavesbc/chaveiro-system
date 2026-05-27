@@ -262,15 +262,15 @@ router.put('/:id/receber', (req, res) => {
 
     const now = new Date();
     const dataRecebimento = now.toLocaleDateString('en-CA') + ' ' + now.toLocaleTimeString('pt-BR');
-    const { forma_pagamento } = req.body;
+    const fp = req.body.forma_pagamento || 'dinheiro';
     const restante = os.valor - (os.valor_pago || 0);
 
     if (restante > 0) {
         db.prepare('INSERT INTO pagamentos_cobranca (ordem_id, valor, forma_pagamento) VALUES (?, ?, ?)')
-            .run(os.id, restante, forma_pagamento || 'dinheiro');
+            .run(os.id, restante, fp);
     }
-    db.prepare(`UPDATE ordens_servico SET a_receber_pago = 1, valor_pago = valor, data_recebimento = ?${forma_pagamento ? ', forma_pagamento = ?' : ''} WHERE id = ? AND loja_id = ?`)
-        .run(dataRecebimento, ...(forma_pagamento ? [forma_pagamento, req.params.id, req.user.loja_id] : [req.params.id, req.user.loja_id]));
+    db.prepare(`UPDATE ordens_servico SET a_receber_pago = 1, valor_pago = valor, data_recebimento = ?, forma_pagamento = ? WHERE id = ? AND loja_id = ?`)
+        .run(dataRecebimento, fp, req.params.id, req.user.loja_id);
 
     res.json({ ok: true });
 });
@@ -344,10 +344,11 @@ router.post('/:id/pagamento-parcial', (req, res) => {
     const now = new Date();
     const agora = now.toLocaleDateString('en-CA') + ' ' + now.toLocaleTimeString('pt-BR');
 
+    const fpParcial = forma_pagamento || 'dinheiro';
     db.prepare('INSERT INTO pagamentos_cobranca (ordem_id, valor, forma_pagamento, observacoes) VALUES (?, ?, ?, ?)')
-        .run(os.id, valorParcial, forma_pagamento || 'dinheiro', observacoes || null);
-    db.prepare('UPDATE ordens_servico SET valor_pago = ?, a_receber_pago = ?, data_recebimento = ? WHERE id = ? AND loja_id = ?')
-        .run(novoValorPago, quitado ? 1 : 0, quitado ? agora : null, os.id, req.user.loja_id);
+        .run(os.id, valorParcial, fpParcial, observacoes || null);
+    db.prepare(`UPDATE ordens_servico SET valor_pago = ?, a_receber_pago = ?, data_recebimento = ?${quitado ? ', forma_pagamento = ?' : ''} WHERE id = ? AND loja_id = ?`)
+        .run(novoValorPago, quitado ? 1 : 0, quitado ? agora : null, ...(quitado ? [fpParcial] : []), os.id, req.user.loja_id);
 
     res.json({ ok: true, quitado, valor_pago: novoValorPago, valor_restante: Math.max(0, os.valor - novoValorPago) });
 });
@@ -451,20 +452,9 @@ router.delete('/:id', (req, res) => {
     res.json({ ok: true });
 });
 
-// DELETE /api/ordens/:id/excluir (exclusão física com senha — somente usuário principal)
+// DELETE /api/ordens/:id/excluir (exclusão física — somente usuário principal)
 router.delete('/:id/excluir', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode excluir OS permanentemente' });
-
-    const { senha } = req.body;
-    if (!senha) return res.status(400).json({ error: 'Senha é obrigatória' });
-
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    if (!cfg || !cfg.valor) return res.status(400).json({ error: 'Senha do gerente não configurada. Acesse Configurações para definir.' });
-
-    const senhaCorreta = cfg.valor.startsWith('$2')
-        ? bcrypt.compareSync(senha, cfg.valor)
-        : senha === cfg.valor; // compatibilidade com senhas legadas em texto plano
-    if (!senhaCorreta) return res.status(422).json({ error: 'Senha incorreta' });
 
     const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!os) return res.status(404).json({ error: 'OS não encontrada' });

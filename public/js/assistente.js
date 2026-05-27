@@ -79,15 +79,7 @@ async function assVerificarSenhaSensivel(mensagem) {
   const eSensivel = SENSIVEIS.some(k => txt.includes(k.normalize('NFD').replace(/[̀-ͯ]/g, '')))
   if (!eSensivel) return true
 
-  if (_assGerSenhaConfig === null) {
-    try {
-      const cfg = await api('GET', '/config')
-      _assGerSenhaConfig = !!cfg.senha_gerente_configurada
-    } catch { _assGerSenhaConfig = false }
-  }
-  if (!_assGerSenhaConfig) return true  // sem senha configurada = livre
-
-  return await modalSenhaGerente('Informação Restrita', 'Esta consulta contém dados financeiros. Digite a senha do gerente para continuar.')
+  return true
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

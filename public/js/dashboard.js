@@ -10,9 +10,9 @@ async function dashboard(el) {
     const gm = data.gastos_mes || { total: 0, qtd: 0 };
     const resultado = data.vendas_mes.total - gm.total;
 
-    const pgLabel = { dinheiro:'Dinheiro', pix:'PIX', credito:'Crédito', debito:'Débito' };
-    const pgColor = { dinheiro:'#15803d', pix:'#1d4ed8', credito:'#7e22ce', debito:'#c2410c' };
-    const pgBg    = { dinheiro:'#f0fdf4', pix:'#eff6ff', credito:'#fdf4ff', debito:'#fff7ed' };
+    const pgLabel = { dinheiro:'Dinheiro', pix:'PIX', cartao1:'Cartão', cartao2:'Cartão', credito:'Cartão', debito:'Cartão', misto:'Misto' };
+    const pgColor = { dinheiro:'#15803d', pix:'#1d4ed8', cartao1:'#7e22ce' };
+    const pgBg    = { dinheiro:'#f0fdf4', pix:'#eff6ff', cartao1:'#fdf4ff' };
 
     function badgePg(fp) {
       const cor = pgColor[fp] || '#475569';
@@ -56,12 +56,12 @@ async function dashboard(el) {
         action: data.produtos_baixo_estoque > 0 ? () => navigateTo('produtos') : null
       },
       {
-        label: ar.vencidos > 0 ? `Cobranças (${ar.vencidos} vencida${ar.vencidos>1?'s':''})` : 'Cobranças',
-        value: fmtVal(ar.total),
-        sub: `${ar.qtd} OS pendente${ar.qtd !== 1 ? 's' : ''}`,
+        label: 'Cobranças',
+        value: `${ar.qtd} pendente${ar.qtd !== 1 ? 's' : ''}`,
+        sub: ar.vencidos > 0 ? `⚠ ${ar.vencidos} vencida${ar.vencidos>1?'s':''}` : 'clique para ver',
         grad: arAlerta ? 'linear-gradient(135deg,#dc2626,#f87171)' : 'linear-gradient(135deg,#d97706,#fbbf24)',
         icon: `<path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>`,
-        action: () => navigateTo('a-receber'),
+        action: () => navegarCobrancas(),
         hidden: ar.qtd === 0
       },
     ].filter(c => !c.hidden);

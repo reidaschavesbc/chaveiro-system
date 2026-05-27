@@ -103,9 +103,6 @@ function relGetFiltroParam() {
 }
 
 async function relatorios(el) {
-  const ok = await modalSenhaGerente('Relatórios', 'Os relatórios financeiros são restritos ao gerente.');
-  if (!ok) { navigateTo('dashboard'); return; }
-
   const user = getUser();
   const isPrincipal = user && user.principal;
 
@@ -209,7 +206,7 @@ async function carregarRelatorioGeral() {
   const r = data.resultado;
 
   const catLabels = { material:'Material', combustivel:'Combustível', alimentacao:'Alimentação', manutencao:'Manutenção', servicos:'Serviços', outros:'Outros' };
-  const pgLabels  = { dinheiro:'Dinheiro', pix:'PIX', credito:'Crédito', debito:'Débito' };
+  const pgLabels  = { dinheiro:'Dinheiro', pix:'PIX', cartao1:'Cartão', cartao2:'Cartão', credito:'Cartão', debito:'Cartão', misto:'Misto' };
 
   const corResultado = r.resultado_liquido >= 0 ? '#16a34a' : '#dc2626';
   const bgResultado  = r.resultado_liquido >= 0 ? '#f0fdf4' : '#fff5f5';
@@ -348,7 +345,7 @@ async function carregarRelatorioVendas() {
       ${data.totais.map(t => `
       <div class="stat-card">
         <div class="stat-icon" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></div>
-        <div><div class="stat-value">${formatCurrency(t.total)}</div><div class="stat-label">${{ dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' }[t.forma_pagamento] || t.forma_pagamento}</div></div>
+        <div><div class="stat-value">${formatCurrency(t.total)}</div><div class="stat-label">${{ dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' }[t.forma_pagamento] || t.forma_pagamento}</div></div>
       </div>`).join('')}
     </div>
     ${data.vendas.length ? `<table>
@@ -412,7 +409,7 @@ async function carregarRelatorioOS() {
       ${data.totais.map(t => `
       <div class="stat-card">
         <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#fbbf24)"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg></div>
-        <div><div class="stat-value">${formatCurrency(t.total)}</div><div class="stat-label">${{ dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Crédito', debito: 'Débito' }[t.forma_pagamento] || t.forma_pagamento}</div></div>
+        <div><div class="stat-value">${formatCurrency(t.total)}</div><div class="stat-label">${{ dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' }[t.forma_pagamento] || t.forma_pagamento}</div></div>
       </div>`).join('')}
     </div>
     ${list.length ? `<table>

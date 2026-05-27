@@ -179,6 +179,8 @@
     .btn-modal.secondary:hover { background: #334155; color: #f1f5f9; }
     .btn-modal.primary { background: #6366f1; border: none; color: white; }
     .btn-modal.primary:hover { background: #4f46e5; }
+    .btn-modal.danger  { background: #dc2626; border: none; color: white; }
+    .btn-modal.danger:hover  { background: #b91c1c; }
 
     /* ─── TOAST ─── */
     #toast { position: fixed; bottom: 24px; right: 24px; z-index: 99999; display: none; }
@@ -411,7 +413,7 @@
     <button class="fin-tab" onclick="finNavegar('vales')">🎫 Vales</button>
     <button class="fin-tab" onclick="finNavegar('estoque')">📦 Estoque</button>
     <button class="fin-tab" onclick="finNavegar('afiacao')">✂️ Afiação</button>
-    <button class="fin-tab" onclick="finNavegar('funcionarios')">👥 Funcionários</button>
+    <button class="fin-tab" onclick="finNavegar('funcionarios')">👑 Acesso App</button>
   </div>
   <div class="fin-body" id="fin-content">
     <div class="fin-loading">Carregando...</div>
@@ -606,6 +608,7 @@
                   <button class="btn-acao ${u.ativo ? 'danger' : 'success'}" onclick="toggleUsuario(${u.id}, ${u.ativo})">
                     ${u.ativo ? 'Desativar' : 'Ativar'}
                   </button>
+                  ${!u.principal ? `<button class="btn-acao danger" onclick="excluirUsuario(${u.id}, '${esc(u.nome)}')">Excluir</button>` : ''}
                 </div>
               </td>
             </tr>`).join('')}
@@ -706,12 +709,13 @@
   }
 
   // ── Excluir loja ─────────────────────────────────────────────────────────
-  async function excluirLoja(id, nome) {
-    if (!confirm(`Tem certeza que deseja EXCLUIR permanentemente a loja "${nome}"?\n\nIsso apagará todos os usuários desta loja. Esta ação não pode ser desfeita.`)) return;
-    try {
-      await req('DELETE', `/lojas/${id}`);
-      toast('Loja excluída!'); carregarLojas();
-    } catch (e) { toast(e.message, 'error'); }
+  function excluirLoja(id, nome) {
+    confirmar('Excluir Loja', `Isso apagará a loja <strong style="color:#f1f5f9">${esc(nome)}</strong> e todos os seus usuários permanentemente.`, async () => {
+      try {
+        await req('DELETE', `/lojas/${id}`);
+        toast('Loja excluída!'); carregarLojas();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: true });
   }
 
   // ── Modal NFS-e por loja ─────────────────────────────────────────────────
@@ -838,12 +842,13 @@
   }
 
   // ── Toggle loja ──────────────────────────────────────────────────────────
-  async function toggleLoja(id, ativoAtual) {
-    if (!confirm(`Deseja ${ativoAtual ? 'desativar' : 'ativar'} esta loja?`)) return;
-    try {
-      await req('PUT', `/lojas/${id}`, { ativo: !ativoAtual });
-      toast(`Loja ${ativoAtual ? 'desativada' : 'ativada'}!`); carregarLojas();
-    } catch (e) { toast(e.message, 'error'); }
+  function toggleLoja(id, ativoAtual) {
+    confirmar(ativoAtual ? 'Desativar Loja' : 'Ativar Loja', `Deseja ${ativoAtual ? 'desativar' : 'ativar'} esta loja?`, async () => {
+      try {
+        await req('PUT', `/lojas/${id}`, { ativo: !ativoAtual });
+        toast(`Loja ${ativoAtual ? 'desativada' : 'ativada'}!`); carregarLojas();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: ativoAtual });
   }
 
   // ── Modal sub-usuário ────────────────────────────────────────────────────
@@ -958,15 +963,42 @@
   }
 
   // ── Toggle usuário ───────────────────────────────────────────────────────
-  async function toggleUsuario(id, ativoAtual) {
-    if (!confirm(`Deseja ${ativoAtual ? 'desativar' : 'ativar'} este usuário?`)) return;
-    try {
-      await req('PUT', `/usuarios/${id}`, { ativo: !ativoAtual });
-      toast(`Usuário ${ativoAtual ? 'desativado' : 'ativado'}!`); carregarLojas();
-    } catch (e) { toast(e.message, 'error'); }
+  function toggleUsuario(id, ativoAtual) {
+    confirmar(ativoAtual ? 'Desativar Usuário' : 'Ativar Usuário', `Deseja ${ativoAtual ? 'desativar' : 'ativar'} este usuário?`, async () => {
+      try {
+        await req('PUT', `/usuarios/${id}`, { ativo: !ativoAtual });
+        toast(`Usuário ${ativoAtual ? 'desativado' : 'ativado'}!`); carregarLojas();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: ativoAtual });
+  }
+
+  function excluirUsuario(id, nome) {
+    confirmar('Excluir Usuário', `Excluir permanentemente o usuário <strong style="color:#f1f5f9">${esc(nome)}</strong>? Esta ação não pode ser desfeita.`, async () => {
+      try {
+        await req('DELETE', `/usuarios/${id}`);
+        toast('Usuário excluído!'); carregarLojas();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: true });
   }
 
   // ── Overlay ──────────────────────────────────────────────────────────────
+  function confirmar(titulo, mensagem, onConfirm, { perigo = false } = {}) {
+    criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">${titulo}</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color:#cbd5e1;font-size:14px;line-height:1.6;margin:0">${mensagem}</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal ${perigo ? 'danger' : 'primary'}" id="btn-confirmar-ok">Confirmar</button>
+      </div>
+    `, { fecharAoClicarFora: false });
+    document.getElementById('btn-confirmar-ok').onclick = () => { fecharModal(); onConfirm(); };
+  }
+
   function criarOverlay(conteudo, { fecharAoClicarFora = true } = {}) {
     fecharModal();
     const ov = document.createElement('div');
@@ -1017,8 +1049,8 @@
     _waTimer = setTimeout(_pollWA, status === 'conectado' ? 10000 : 3000);
   }
   async function waAdminConectar() { try { await req('POST', '/whatsapp/conectar'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
-  async function waAdminDesconectar() { if (!confirm('Desconectar o WhatsApp?')) return; try { await req('POST', '/whatsapp/desconectar'); toast('Desconectado'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
-  async function waAdminTrocar() { if (!confirm('Isso apaga a sessão atual e gera novo QR. Continuar?')) return; try { await req('POST', '/whatsapp/trocar-conta'); toast('Aguarde o novo QR...'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }
+  function waAdminDesconectar() { confirmar('Desconectar WhatsApp', 'Deseja desconectar o bot do WhatsApp?', async () => { try { await req('POST', '/whatsapp/desconectar'); toast('Desconectado'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }, { perigo: true }); }
+  function waAdminTrocar() { confirmar('Trocar Conta', 'Isso apaga a sessão atual e gera um novo QR Code. Continuar?', async () => { try { await req('POST', '/whatsapp/trocar-conta'); toast('Aguarde o novo QR...'); _pollWA(); } catch (e) { toast(e.message, 'error'); } }, { perigo: true }); }
 
   // ── Financeiro ───────────────────────────────────────────────────────────
   let _lojaToken = null;
@@ -1083,7 +1115,7 @@
   function finNavegar(tab) {
     _finTabAtiva = tab;
     document.querySelectorAll('.fin-tab').forEach((el, i) => {
-      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque','afiacao'];
+      const tabs = ['geral','os','plantao','vendas','areceber','comissoes','gastos','vales','estoque','afiacao','funcionarios'];
       el.classList.toggle('ativa', tabs[i] === tab);
     });
     const content = document.getElementById('fin-content');
@@ -1175,17 +1207,20 @@
   async function finPlantao(el) {
     const hoje = new Date().toLocaleDateString('en-CA');
     const inicioMes = hoje.slice(0,7)+'-01';
-    const prevDi = document.getElementById('fin-plantao-di')?.value || inicioMes;
-    const prevDf = document.getElementById('fin-plantao-df')?.value || hoje;
-    const prevQ  = document.getElementById('fin-plantao-q')?.value  || '';
+    const prevDi   = document.getElementById('fin-plantao-di')?.value   || inicioMes;
+    const prevDf   = document.getElementById('fin-plantao-df')?.value   || hoje;
+    const prevQ    = document.getElementById('fin-plantao-q')?.value    || '';
+    const prevFunc = document.getElementById('fin-plantao-func')?.value || '';
     el.innerHTML = `
       <div class="fin-filtros">
         <input type="date" id="fin-plantao-di" value="${prevDi}">
         <input type="date" id="fin-plantao-df" value="${prevDf}">
+        <select id="fin-plantao-func"><option value="">Todos os funcionários</option></select>
         <input type="text" id="fin-plantao-q" placeholder="Buscar..." value="${esc(prevQ)}" onkeydown="if(event.key==='Enter')finPlantaoCarregar()">
         <button class="fin-btn" onclick="finPlantaoCarregar()">Buscar</button>
       </div>
       <div id="fin-plantao-result"><div class="fin-loading">Carregando...</div></div>`;
+    document.getElementById('fin-plantao-func').value = prevFunc;
     finPlantaoCarregar();
   }
 
@@ -1193,20 +1228,31 @@
     const el = document.getElementById('fin-plantao-result');
     if (!el) return;
     el.innerHTML = '<div class="fin-loading">Carregando...</div>';
-    const di = document.getElementById('fin-plantao-di')?.value;
-    const df = document.getElementById('fin-plantao-df')?.value;
-    const q  = document.getElementById('fin-plantao-q')?.value  || '';
+    const di       = document.getElementById('fin-plantao-di')?.value;
+    const df       = document.getElementById('fin-plantao-df')?.value;
+    const q        = document.getElementById('fin-plantao-q')?.value  || '';
+    const funcSel  = document.getElementById('fin-plantao-func');
+    const funcId   = funcSel?.value || '';
     try {
       let url = '/ordens?is_plantao=1&';
       if (di) url += 'data_inicio='+di+'&';
       if (df) url += 'data_fim='+df+'&';
       if (q)  url += 'q='+encodeURIComponent(q);
-      const [rows, vends] = await Promise.all([
+      const [rowsAll, vends] = await Promise.all([
         reqLoja('GET', url),
         reqLoja('GET', '/vendedores')
       ]);
       const vendMap = {};
       vends.forEach(v => { vendMap[v.id] = v; });
+
+      // popular select de funcionários preservando seleção
+      if (funcSel) {
+        const cur = funcSel.value;
+        funcSel.innerHTML = '<option value="">Todos os funcionários</option>' +
+          vends.map(v => `<option value="${v.id}"${String(v.id)===cur?' selected':''}>${esc(v.nome)}</option>`).join('');
+      }
+
+      const rows = funcId ? rowsAll.filter(o => String(o.vendedor_id) === funcId) : rowsAll;
 
       const calcLucro = o => {
         if (o.status !== 'concluida') return null;
@@ -1425,13 +1471,17 @@
     const hoje = new Date().toLocaleDateString('en-CA');
     const inicioMes = hoje.slice(0,7)+'-01';
     el.innerHTML = `
+      <div class="fin-section-title">Gastos do Período</div>
       <div class="fin-filtros">
         <input type="date" id="fin-g-di" value="${inicioMes}">
         <input type="date" id="fin-g-df" value="${hoje}">
         <button class="fin-btn" onclick="finGastosCarregar()">Buscar</button>
       </div>
-      <div id="fin-g-result"><div class="fin-loading">Carregando...</div></div>`;
+      <div id="fin-g-result"><div class="fin-loading">Carregando...</div></div>
+      <div class="fin-section-title" style="margin-top:24px">📌 Gastos Fixos Mensais</div>
+      <div id="fin-gf-result"><div class="fin-loading">Carregando...</div></div>`;
     finGastosCarregar();
+    finGastosFixosCarregar();
   }
 
   async function finGastosCarregar() {
@@ -1452,18 +1502,151 @@
         ${(gastos||[]).length ? `
         <div class="fin-table-wrap">
           <table class="fin-table">
-            <thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Data</th></tr></thead>
-            <tbody>${gastos.map(g=>`
-              <tr>
+            <thead><tr><th>Descrição</th><th>Categoria</th><th>Pagamento</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody>${gastos.map(g=>{
+              const fpIcon = {dinheiro:'💵',cartao:'💳',pix:'⚡'}[g.forma_pagamento]||'💵';
+              const fpLabel = {dinheiro:'Dinheiro',cartao:'Cartão',pix:'Pix'}[g.forma_pagamento]||'Dinheiro';
+              const catLabel = {material:'🔧 Material',combustivel:'⛽ Combustível',alimentacao:'🍽️ Alimentação',manutencao:'🔩 Manutenção',servicos:'📋 Serviços',outros:'📌 Outros'}[g.categoria]||'📌 Outros';
+              return `<tr>
                 <td class="n">${esc(g.descricao)}</td>
-                <td>${esc(g.categoria||'—')}</td>
+                <td style="white-space:nowrap">${catLabel}</td>
+                <td style="white-space:nowrap">${fpIcon} ${fpLabel}</td>
                 <td>${fmtV(g.valor)}</td>
                 <td>${fmtDT(g.data)}</td>
-              </tr>`).join('')}
+              </tr>`;}).join('')}
             </tbody>
           </table>
         </div>` : '<div class="fin-empty">Nenhum gasto no período</div>'}`;
     } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finGastosFixosCarregar() {
+    const el = document.getElementById('fin-gf-result');
+    if (!el) return;
+    el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    try {
+      const { gastos, total_ativo } = await reqLoja('GET', '/gastos-fixos');
+      const cats = { material:'Material', combustivel:'Combustível', alimentacao:'Alimentação', manutencao:'Manutenção', servicos:'Serviços', outros:'Outros' };
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:13px;color:#94a3b8">${gastos.filter(g=>g.ativo).length} ativo(s) · <strong style="color:#f1f5f9">${fmtV(total_ativo)}</strong>/mês contabilizados</span>
+          <button class="fin-btn" onclick="finGastosFixosNovo()">+ Novo gasto fixo</button>
+        </div>
+        ${gastos.length ? `
+        <div class="fin-table-wrap">
+          <table class="fin-table">
+            <thead><tr><th>Descrição</th><th>Categoria</th><th>Valor/mês</th><th>Status</th><th></th></tr></thead>
+            <tbody>${gastos.map(g => `
+              <tr style="${g.ativo ? '' : 'opacity:.45'}">
+                <td>${esc(g.descricao)}</td>
+                <td style="white-space:nowrap">${{material:'🔧 Material',combustivel:'⛽ Combustível',alimentacao:'🍽️ Alimentação',manutencao:'🔩 Manutenção',servicos:'📋 Serviços',outros:'📌 Outros'}[g.categoria]||'📌 Outros'}</td>
+                <td>${fmtV(g.valor)}</td>
+                <td><span style="background:${g.ativo?'#14532d':'#1e293b'};color:${g.ativo?'#4ade80':'#94a3b8'};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">${g.ativo?'Ativo':'Inativo'}</span></td>
+                <td>
+                  <div class="acoes">
+                    <button class="btn-acao ${g.ativo?'danger':'success'}" onclick="finGastosFixosToggle(${g.id},${g.ativo})">${g.ativo?'Desativar':'Ativar'}</button>
+                    <button class="btn-acao danger" onclick="finGastosFixosDeletar(${g.id},'${esc(g.descricao)}')">Excluir</button>
+                  </div>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div class="fin-empty">Nenhum gasto fixo cadastrado</div>'}`;
+    } catch (e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  function finGastosFixosNovo() {
+    const cats = { material:'Material', combustivel:'Combustível', alimentacao:'Alimentação', manutencao:'Manutenção', servicos:'Serviços', outros:'Outros' };
+    criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Novo Gasto Fixo</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="m-field"><label>Descrição</label><input id="gf-desc" placeholder="Ex: Aluguel, Internet..."></div>
+        <div class="m-field"><label>Valor mensal (R$)</label><input id="gf-valor" type="number" min="0.01" step="0.01" placeholder="0,00"></div>
+        <div class="m-field"><label>Categoria</label>
+          <select id="gf-cat">${Object.entries(cats).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+        </div>
+        <div class="m-erro" id="gf-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="finGastosFixosSalvar()">Adicionar</button>
+      </div>
+    `);
+  }
+
+  async function finGastosFixosSalvar() {
+    const descricao = document.getElementById('gf-desc')?.value.trim();
+    const valor = document.getElementById('gf-valor')?.value;
+    const categoria = document.getElementById('gf-cat')?.value;
+    const erro = document.getElementById('gf-erro');
+    if (!descricao) { erro.textContent = 'Informe a descrição'; return; }
+    if (!valor || parseFloat(valor) <= 0) { erro.textContent = 'Informe um valor válido'; return; }
+    try {
+      await reqLoja('POST', '/gastos-fixos', { descricao, valor: parseFloat(valor), categoria });
+      fecharModal(); toast('Gasto fixo adicionado!'); finGastosFixosCarregar();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  async function finGastosFixosToggle(id, ativoAtual) {
+    try {
+      await reqLoja('PUT', `/gastos-fixos/${id}`, { ativo: !ativoAtual });
+      finGastosFixosCarregar();
+    } catch (e) { toast(e.message, 'error'); }
+  }
+
+  function finGastosFixosDeletar(id, nome) {
+    confirmar('Excluir Gasto Fixo', `Excluir permanentemente <strong style="color:#f1f5f9">${esc(nome)}</strong>?`, async () => {
+      try {
+        await reqLoja('DELETE', `/gastos-fixos/${id}`);
+        toast('Gasto fixo excluído!'); finGastosFixosCarregar();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: true });
+  }
+
+  // ── Extras de funcionário ────────────────────────────────────────────────
+  function abrirModalExtra(vendedorId, nome, di, df) {
+    const hoje = new Date().toLocaleDateString('en-CA');
+    criarOverlay(`
+      <div class="modal-header">
+        <span class="modal-title">Extra — ${esc(nome)}</span>
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="m-field"><label>Descrição</label><input id="ex-desc" placeholder="Ex: Hora extra, Folga comprada..."></div>
+        <div class="m-field"><label>Valor (R$)</label><input id="ex-valor" type="number" min="0.01" step="0.01" placeholder="0,00"></div>
+        <div class="m-field"><label>Data</label><input id="ex-data" type="date" value="${hoje}"></div>
+        <div class="m-erro" id="ex-erro"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal secondary" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-modal primary" onclick="salvarExtra(${vendedorId})">Adicionar</button>
+      </div>
+    `);
+  }
+
+  async function salvarExtra(vendedorId) {
+    const descricao = document.getElementById('ex-desc')?.value.trim();
+    const valor = document.getElementById('ex-valor')?.value;
+    const data = document.getElementById('ex-data')?.value;
+    const erro = document.getElementById('ex-erro');
+    if (!descricao) { erro.textContent = 'Informe a descrição'; return; }
+    if (!valor || parseFloat(valor) <= 0) { erro.textContent = 'Informe um valor válido'; return; }
+    try {
+      await reqLoja('POST', '/extras-funcionario', { vendedor_id: vendedorId, descricao, valor: parseFloat(valor), data });
+      fecharModal(); toast('Extra adicionado!'); finGeralCarregar();
+    } catch (e) { erro.textContent = e.message; }
+  }
+
+  function excluirExtra(id) {
+    confirmar('Excluir Extra', 'Remover este extra do salário do funcionário?', async () => {
+      try {
+        await reqLoja('DELETE', `/extras-funcionario/${id}`);
+        toast('Extra removido!'); finGeralCarregar();
+      } catch (e) { toast(e.message, 'error'); }
+    }, { perigo: true });
   }
 
   // ── Helpers de badge e data ──────────────────────────────────────────────
@@ -1473,7 +1656,7 @@
     return `<span style="background:${bg};color:${color};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">${label}</span>`;
   }
   function _finBadgePag(p) {
-    const m = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', credito:'💳 Crédito', debito:'💳 Débito' };
+    const m = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', cartao1:'💳 Cartão', cartao2:'💳 Cartão', credito:'💳 Cartão', debito:'💳 Cartão', misto:'🔀 Misto' };
     return `<span style="font-size:12px">${m[p]||p||'—'}</span>`;
   }
   function _finMesAtual() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
@@ -1524,6 +1707,16 @@
             <div class="stat-val">${d.total_clientes||0}</div>
             <div class="stat-sub">${d.produtos_baixo_estoque||0} produto(s) com estoque baixo</div>
           </div>
+          <div class="stat-card ${(d.lucro_plantao_mes?.lucro||0) < 0 ? 'alerta' : ''}">
+            <div class="stat-label">Lucro Plantão (mês)</div>
+            <div class="stat-val">${fmtV(d.lucro_plantao_mes?.lucro||0)}</div>
+            <div class="stat-sub">${d.lucro_plantao_mes?.qtd||0} OS concluída(s)</div>
+          </div>
+          <div class="stat-card ${(d.lucro_afiacao_mes?.lucro||0) < 0 ? 'alerta' : ''}">
+            <div class="stat-label">Lucro Afiação (mês)</div>
+            <div class="stat-val">${fmtV(d.lucro_afiacao_mes?.lucro||0)}</div>
+            <div class="stat-sub">${d.lucro_afiacao_mes?.qtd||0} pedido(s) entregue(s)</div>
+          </div>
         </div>
         <div class="fin-section-title" style="margin-top:8px">Resultado Financeiro por Período</div>
         ${_finFiltroBar('fin-geral','finGeralCarregar()')}
@@ -1541,12 +1734,12 @@
     try {
       const data = await reqLoja('GET', `/relatorios/geral?data_inicio=${di}&data_fim=${df}`);
       const r = data.resultado;
-      const pg  = { dinheiro:'Dinheiro', pix:'PIX', credito:'Crédito', debito:'Débito' };
+      const pg  = { dinheiro:'Dinheiro', pix:'PIX', cartao1:'Cartão', cartao2:'Cartão', credito:'Cartão', debito:'Cartão', misto:'Misto' };
       const cat = { material:'Material', combustivel:'Combustível', alimentacao:'Alimentação', manutencao:'Manutenção', servicos:'Serviços', outros:'Outros' };
       const cor = r.resultado_liquido >= 0 ? '#16a34a' : '#dc2626';
       const bgR = r.resultado_liquido >= 0 ? '#f0fdf4' : '#fff5f5';
       const bdR = r.resultado_liquido >= 0 ? '#bbf7d0' : '#fecaca';
-      const totalFuncs = (r.total_salarios||0)+(r.total_comissoes||0)+(r.total_bonus||0);
+      const totalFuncs = (r.total_salarios||0)+(r.total_comissoes||0)+(r.total_bonus||0)+(r.total_extras||0);
       res.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:20px">
           <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
@@ -1555,12 +1748,15 @@
             <div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px"><span style="color:#94a3b8">Vendas</span><strong>${fmtV(data.list.filter(x=>x.tipo==='venda').reduce((s,x)=>s+x.valor,0))}</strong></div>
             <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700"><span>Total Bruto</span><span>${fmtV(r.faturamento_bruto)}</span></div>
           </div>
-          <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
+          <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;display:flex;flex-direction:column">
             <div style="font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;margin-bottom:10px">➖ Deduções</div>
-            ${(r.gastos||[]).map(g=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">${cat[g.categoria]||g.categoria}</span><span style="color:#f87171">-${fmtV(g.total)}</span></div>`).join('')}
-            ${(r.funcionarios||[]).length ? `<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:8px 0 4px">Funcionários</div>`+(r.funcionarios).map(f=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">👤 ${f.nome}</span><span style="color:#f87171">-${fmtV((f.salario_base||0)+(f.comissao||0)+(f.bonus||0))}</span></div>`).join('') : ''}
-            ${(r.total_excedente_vales||0)>0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#fca5a5">⚠️ Excedente de vales</span><span style="color:#f87171">-${fmtV(r.total_excedente_vales)}</span></div>` : ''}
-            ${!r.gastos?.length&&!r.funcionarios?.length&&!(r.total_excedente_vales>0)?'<div style="color:#64748b;font-size:12px">Nenhuma dedução</div>':''}
+            <div style="overflow-y:auto;max-height:220px;flex:1;margin-bottom:8px">
+              ${(r.gastos||[]).map(g=>{const cl={material:'🔧 Material',combustivel:'⛽ Combustível',alimentacao:'🍽️ Alimentação',manutencao:'🔩 Manutenção',servicos:'📋 Serviços',outros:'📌 Outros'}[g.categoria]||'📌 Outros';return`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">${cl}</span><span style="color:#f87171">-${fmtV(g.total)}</span></div>`;}).join('')}
+              ${(r.gastos_fixos_total||0)>0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">📌 Gastos fixos</span><span style="color:#f87171">-${fmtV(r.gastos_fixos_total)}</span></div>` : ''}
+              ${(r.funcionarios||[]).length ? `<div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;margin:8px 0 4px">Funcionários</div>`+(r.funcionarios).map(f=>`<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#94a3b8">👤 ${f.nome}</span><span style="color:#f87171">-${fmtV((f.salario_base||0)+(f.comissao||0)+(f.bonus||0)+(f.extras||0))}</span></div>`).join('') : ''}
+              ${(r.total_excedente_vales||0)>0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px"><span style="color:#fca5a5">⚠️ Excedente de vales</span><span style="color:#f87171">-${fmtV(r.total_excedente_vales)}</span></div>` : ''}
+              ${!r.gastos?.length&&!(r.gastos_fixos_total>0)&&!r.funcionarios?.length&&!(r.total_excedente_vales>0)?'<div style="color:#64748b;font-size:12px">Nenhuma dedução</div>':''}
+            </div>
             <div style="border-top:1px solid #334155;padding-top:8px;display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#f87171"><span>Total Deduções</span><span>-${fmtV((r.total_gastos||0)+totalFuncs+(r.total_excedente_vales||0))}</span></div>
           </div>
           <div style="background:${bgR};border:2px solid ${bdR};border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
@@ -1576,20 +1772,36 @@
         <div class="fin-section-title" style="margin-top:8px">Fechamento de Funcionários</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px">
           ${r.funcionarios.map(f => {
-            const bruto = (f.salario_base||0)+(f.comissao||0)+(f.bonus||0);
+            const bruto = (f.salario_base||0)+(f.comissao||0)+(f.bonus||0)+(f.extras||0);
             const liquido = f.total_a_pagar||0;
             const temVale = (f.vales||0) > 0;
+            const temExtra = (f.extras||0) > 0;
             const atingiuMeta = f.meta > 0 && f.total_os >= f.meta;
-            return `<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px">
-              <div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #334155">👤 ${esc(f.nome)}</div>
-              ${f.salario_base > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">💼 Salário base</span><span>${fmtV(f.salario_base)}</span></div>` : ''}
-              ${f.comissao > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">📊 Comissão (${f.percentual_comissao}% · ${f.qtd_os} OS)</span><span style="color:#34d399">+${fmtV(f.comissao)}</span></div>` : ''}
-              ${f.meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🎯 Meta ${fmtV(f.meta)}</span><span style="color:${atingiuMeta?'#34d399':'#64748b'}">${atingiuMeta?'✔ Atingida':'Não atingida'}</span></div>` : ''}
-              ${atingiuMeta && f.bonus_meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🏆 Bônus meta</span><span style="color:#34d399">+${fmtV(f.bonus_meta)}</span></div>` : ''}
-              ${bruto > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;padding-top:5px;border-top:1px solid #334155"><span style="color:#94a3b8">Bruto</span><span style="font-weight:600">${fmtV(bruto)}</span></div>` : ''}
-              ${temVale ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#f87171">➖ Vales descontados</span><span style="color:#f87171">-${fmtV(f.vales)}</span></div>` : ''}
-              ${(f.excedente||0)>0 ? `<div style="background:#450a0a;border:1px solid #ef4444;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px;color:#fca5a5">⚠️ Vale excede salário em ${fmtV(f.excedente)} — prejuízo contabilizado no lucro líquido</div>` : ''}
-              <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding-top:8px;border-top:1px solid #334155;margin-top:4px">
+            const diGeral = document.getElementById('fin-geral-ini')?.value || '';
+            const dfGeral = document.getElementById('fin-geral-fim')?.value || '';
+            return `<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;display:flex;flex-direction:column;max-height:340px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #334155;flex-shrink:0">
+                <span style="font-size:13px;font-weight:700;color:#f1f5f9">👤 ${esc(f.nome)}</span>
+                <button class="btn-acao" style="font-size:11px" onclick='abrirModalExtra(${f.id},"${esc(f.nome)}","${diGeral}","${dfGeral}")'>+ Extra</button>
+              </div>
+              <div style="overflow-y:auto;flex:1;margin-bottom:8px">
+                ${f.salario_base > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">💼 Salário base</span><span>${fmtV(f.salario_base)}</span></div>` : ''}
+                ${f.comissao > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">📊 Comissão (${f.percentual_comissao}% · ${f.qtd_os} OS)</span><span style="color:#34d399">+${fmtV(f.comissao)}</span></div>` : ''}
+                ${f.meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🎯 Meta ${fmtV(f.meta)}</span><span style="color:${atingiuMeta?'#34d399':'#64748b'}">${atingiuMeta?'✔ Atingida':'Não atingida'}</span></div>` : ''}
+                ${atingiuMeta && f.bonus_meta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#94a3b8">🏆 Bônus meta</span><span style="color:#34d399">+${fmtV(f.bonus_meta)}</span></div>` : ''}
+                ${temExtra ? (f.extras_detalhe||[]).map(e=>`
+                  <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;margin-bottom:4px">
+                    <span style="color:#38bdf8">⭐ ${esc(e.descricao)}</span>
+                    <span style="display:flex;align-items:center;gap:6px">
+                      <span style="color:#38bdf8">+${fmtV(e.valor)}</span>
+                      <button onclick="excluirExtra(${e.id})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:12px;padding:0;line-height:1">✕</button>
+                    </span>
+                  </div>`).join('') : ''}
+                ${bruto > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;padding-top:5px;border-top:1px solid #334155"><span style="color:#94a3b8">Bruto</span><span style="font-weight:600">${fmtV(bruto)}</span></div>` : ''}
+                ${temVale ? `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span style="color:#f87171">➖ Vales descontados</span><span style="color:#f87171">-${fmtV(f.vales)}</span></div>` : ''}
+                ${(f.excedente||0)>0 ? `<div style="background:#450a0a;border:1px solid #ef4444;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px;color:#fca5a5">⚠️ Vale excede salário em ${fmtV(f.excedente)} — prejuízo contabilizado no lucro líquido</div>` : ''}
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;padding-top:8px;border-top:1px solid #334155;flex-shrink:0">
                 <span style="color:#94a3b8">${(f.excedente||0)>0?'⚠️ Devendo':'✅ Pagamento'}</span>
                 <span style="color:${(f.excedente||0)>0?'#f87171':'#34d399'}">${fmtV(liquido)}</span>
               </div>
@@ -1626,6 +1838,20 @@
         </select>
         <input type="number" id="fin-vales-ano" value="${ano}" min="2020" max="2099" style="background:#1e293b;color:#f1f5f9;border:1.5px solid #334155;border-radius:8px;padding:6px 12px;font-size:13px;width:90px">
         <button class="fin-btn" onclick="finValesCarregar()">Buscar</button>
+        <button class="fin-btn" style="margin-left:auto;background:#10b981;border-color:#10b981;color:#fff" onclick="finValeNovo()">+ Novo Vale</button>
+      </div>
+      <div id="fin-vale-form" style="display:none;background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:#f1f5f9;margin-bottom:12px">Registrar Vale</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Funcionário</label><select id="fin-vale-func" style="width:100%;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-size:13px"><option value="">Selecione...</option></select></div>
+          <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Valor</label><input type="number" id="fin-vale-valor" placeholder="0,00" step="0.01" style="width:100%;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box"></div>
+          <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Data</label><input type="date" id="fin-vale-data" style="width:100%;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box"></div>
+          <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:4px">Descrição</label><input type="text" id="fin-vale-desc" placeholder="Opcional" style="width:100%;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="fin-btn" style="background:#10b981;border-color:#10b981;color:#fff" onclick="finValeSalvar()">Salvar</button>
+          <button class="fin-btn" onclick="document.getElementById('fin-vale-form').style.display='none'">Cancelar</button>
+        </div>
       </div>
       <div id="fin-vales-res"><div class="fin-loading">Carregando...</div></div>`;
     finValesCarregar();
@@ -1656,15 +1882,71 @@
           </div>`).join('')}
         </div>` : ''}
         ${vales.length ? `<div class="fin-table-wrap"><table class="fin-table">
-          <thead><tr><th>Funcionário</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
+          <thead><tr><th>Funcionário</th><th>Descrição</th><th>Valor</th><th>Data</th><th></th></tr></thead>
           <tbody>${vales.map(v=>`<tr>
             <td>${esc(v.vendedor_nome)}</td>
             <td>${esc(v.descricao||'—')}</td>
             <td style="color:#f87171;font-weight:600">${fmtV(v.valor)}</td>
             <td>${fmtDT(v.data)}</td>
+            <td><button onclick="finValeExcluir(${v.id})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:16px;padding:2px 6px">🗑</button></td>
           </tr>`).join('')}</tbody>
         </table></div>` : '<div class="fin-empty">Nenhum vale no período</div>'}`;
     } catch(e) { res.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finValeNovo() {
+    const form = document.getElementById('fin-vale-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'none') return;
+    document.getElementById('fin-vale-data').value = new Date().toLocaleDateString('en-CA');
+    try {
+      const funcs = await reqLoja('GET', '/vendedores');
+      document.getElementById('fin-vale-func').innerHTML = '<option value="">Selecione...</option>' +
+        funcs.filter(f=>f.ativo).map(f=>`<option value="${f.id}">${esc(f.nome)}</option>`).join('');
+    } catch(_) {}
+  }
+
+  async function finValeSalvar() {
+    const vendedor_id = document.getElementById('fin-vale-func').value;
+    const valor = parseFloat(document.getElementById('fin-vale-valor').value);
+    const data = document.getElementById('fin-vale-data').value;
+    const descricao = document.getElementById('fin-vale-desc').value.trim();
+    if (!vendedor_id) { alert('Selecione o funcionário'); return; }
+    if (!valor || valor <= 0) { alert('Informe o valor'); return; }
+    if (!data) { alert('Informe a data'); return; }
+    try {
+      await reqLoja('POST', '/vales', { vendedor_id: parseInt(vendedor_id), valor, data, descricao: descricao || null });
+      document.getElementById('fin-vale-form').style.display = 'none';
+      finValesCarregar();
+    } catch(e) { alert('Erro: ' + e.message); }
+  }
+
+  function admConfirmar(msg) {
+    return new Promise(resolve => {
+      let el = document.getElementById('adm-confirm-overlay');
+      if (!el) { el = document.createElement('div'); el.id = 'adm-confirm-overlay'; el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center'; document.body.appendChild(el); }
+      el.innerHTML = `<div style="background:#1e293b;border:1px solid #334155;border-radius:14px;padding:24px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:12px">🗑 Confirmar exclusão</div>
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:20px">${msg}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="adm-conf-no" style="background:#334155;color:#f1f5f9;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px">Cancelar</button>
+          <button id="adm-conf-yes" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">Excluir</button>
+        </div>
+      </div>`;
+      el.style.display = 'flex';
+      const close = v => { el.style.display = 'none'; resolve(v); };
+      document.getElementById('adm-conf-no').onclick  = () => close(false);
+      document.getElementById('adm-conf-yes').onclick = () => close(true);
+    });
+  }
+
+  async function finValeExcluir(id) {
+    if (!await admConfirmar('Deseja excluir este vale? Esta ação não pode ser desfeita.')) return;
+    try {
+      await reqLoja('DELETE', `/vales/${id}`);
+      toast('Vale excluído!');
+      finValesCarregar();
+    } catch(e) { toast('Erro ao excluir: ' + e.message, 'error'); }
   }
 
   // ── Tab: Estoque ─────────────────────────────────────────────────────────
@@ -1746,9 +2028,27 @@
   // ── Tab: Funcionários ────────────────────────────────────────────────────
   async function finFuncionarios(el) {
     el.innerHTML = '<div class="fin-loading">Carregando...</div>';
+    // Renderiza seção de senha ADM no topo
+    const senhaAdmHtml = `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">🔑 Senha ADM</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="password" id="fin-adm-atual" placeholder="Senha atual (se já cadastrada)"
+            style="padding:9px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:13px;color:#f1f5f9;outline:none">
+          <input type="password" id="fin-adm-nova" placeholder="Nova senha ADM"
+            style="padding:9px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:13px;color:#f1f5f9;outline:none">
+          <input type="password" id="fin-adm-conf" placeholder="Confirmar nova senha"
+            style="padding:9px 12px;background:#0f172a;border:1px solid #334155;border-radius:8px;font-size:13px;color:#f1f5f9;outline:none">
+          <button onclick="finSalvarSenhaAdm()"
+            style="padding:9px 16px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;align-self:flex-end">
+            Salvar Senha ADM
+          </button>
+        </div>
+      </div>`;
+    el.innerHTML = senhaAdmHtml + '<div id="fin-func-lista"><div class="fin-loading">Carregando funcionários...</div></div>';
     try {
       const list = await reqLoja('GET', '/vendedores');
-      el.innerHTML = `
+      document.getElementById('fin-func-lista').innerHTML = `
         <div style="margin-bottom:16px;font-size:13px;color:#94a3b8;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 16px">
           👑 Configure aqui quais funcionários têm acesso ao <strong style="color:#a78bfa">Painel Admin</strong> no app. Esta configuração é exclusiva desta tela.
         </div>
@@ -1778,7 +2078,23 @@
               </tr>`).join('')}
           </tbody>
         </table></div>`;
-    } catch(e) { el.innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+    } catch(e) { document.getElementById('fin-func-lista').innerHTML = `<div class="fin-empty">${e.message}</div>`; }
+  }
+
+  async function finSalvarSenhaAdm() {
+    const atual = document.getElementById('fin-adm-atual')?.value;
+    const nova  = document.getElementById('fin-adm-nova')?.value;
+    const conf  = document.getElementById('fin-adm-conf')?.value;
+    if (!nova) { toast('Digite a nova senha', 'warning'); return; }
+    if (nova.length < 4) { toast('Mínimo 4 caracteres', 'warning'); return; }
+    if (nova !== conf) { toast('As senhas não coincidem', 'warning'); return; }
+    try {
+      await reqLoja('PUT', '/config/senha-adm', { senha_atual: atual || undefined, senha_nova: nova });
+      toast('Senha ADM salva!');
+      document.getElementById('fin-adm-atual').value = '';
+      document.getElementById('fin-adm-nova').value = '';
+      document.getElementById('fin-adm-conf').value = '';
+    } catch(e) { toast(e.message, 'error'); }
   }
 
   async function adminToggleFuncionario(id) {

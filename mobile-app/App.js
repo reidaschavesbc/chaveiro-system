@@ -178,7 +178,14 @@ export default function App() {
           <Stack.Screen
             name="Lembretes"
             component={LembretesScreen}
-            options={{ headerShown: false }}
+            options={{
+              title: '🔔 Lembretes',
+              headerBackVisible: false,
+              headerLeft: () => null,
+              headerTintColor: '#1a1a2e',
+              headerStyle: { backgroundColor: '#f59e0b' },
+              headerTitleStyle: { color: '#1a1a2e', fontWeight: 'bold' },
+            }}
           />
           <Stack.Screen
             name="Admin"
@@ -186,14 +193,16 @@ export default function App() {
             options={({ navigation }) => ({
               title: '👑 ADM',
               headerBackVisible: false,
-              headerTintColor: '#7c3aed',
+              headerTintColor: '#fff',
+              headerStyle: { backgroundColor: '#7c3aed' },
+              headerTitleStyle: { color: '#fff', fontWeight: 'bold' },
               headerLeft: () => null,
               headerRight: () => (
                 <TouchableOpacity
                   onPress={() => navigation.goBack()}
                   style={{ paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#ffffff22', borderRadius: 8 }}
                 >
-                  <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '700' }}>VOLTAR</Text>
+                  <Text style={{ fontSize: 13, color: '#fff', fontWeight: '700' }}>VOLTAR</Text>
                 </TouchableOpacity>
               ),
             })}

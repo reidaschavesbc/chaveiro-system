@@ -110,6 +110,8 @@ app.use('/api/whatsapp', auth, require('./routes/whatsapp'));
 app.use('/api/assistente', auth, require('./routes/assistente'));
 app.use('/api/comissoes', auth, require('./routes/comissoes').router);
 app.use('/api/gastos', auth, require('./routes/gastos'));
+app.use('/api/gastos-fixos', auth, require('./routes/gastos_fixos'));
+app.use('/api/extras-funcionario', auth, require('./routes/extras_funcionario'));
 app.use('/api/lembretes', auth, require('./routes/lembretes'));
 app.use('/api/pedidos', auth, require('./routes/pedidos').router);
 app.use('/api/consumo', auth, require('./routes/consumo'));
@@ -130,6 +132,8 @@ app.get('/api/config', auth, (req, res) => {
     delete cfg.senha_exclusao;
     cfg.senha_gerente_configurada = !!cfg.senha_gerente;
     delete cfg.senha_gerente;
+    cfg.senha_adm_configurada = !!cfg.senha_adm;
+    delete cfg.senha_adm;
     res.json(cfg);
 });
 app.put('/api/config', auth, (req, res) => {
@@ -139,12 +143,37 @@ app.put('/api/config', auth, (req, res) => {
     Object.entries(resto).forEach(([k, v]) => stmt.run(k, v));
     res.json({ ok: true });
 });
-// POST /api/auth/verificar-gerente — verifica senha do gerente (para o assistente e salário)
+// POST /api/auth/verificar-gerente — aceita senha_gerente OU senha_adm
 app.post('/api/auth/verificar-gerente', auth, (req, res) => {
     const { senha } = req.body;
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    if (!cfg || !cfg.valor) return res.json({ ok: true }); // sem senha configurada = livre
+    const cfgGerente = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
+    const cfgAdm     = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
+    if (!cfgGerente?.valor && !cfgAdm?.valor) return res.json({ ok: true });
+    if (cfgGerente?.valor && verificarSenhaGerente(senha, cfgGerente.valor)) return res.json({ ok: true });
+    if (cfgAdm?.valor     && verificarSenhaGerente(senha, cfgAdm.valor))     return res.json({ ok: true });
+    res.json({ ok: false });
+});
+
+// POST /api/auth/verificar-adm — verifica SOMENTE senha_adm
+app.post('/api/auth/verificar-adm', auth, (req, res) => {
+    const { senha } = req.body;
+    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
+    if (!cfg?.valor) return res.json({ ok: true });
     res.json({ ok: verificarSenhaGerente(senha, cfg.valor) });
+});
+
+// PUT /api/config/senha-adm — define/altera senha ADM da loja
+app.put('/api/config/senha-adm', auth, (req, res) => {
+    const { senha_atual, senha_nova } = req.body;
+    if (!senha_nova) return res.status(400).json({ error: 'Nova senha é obrigatória' });
+    if (senha_nova.length < 4) return res.status(400).json({ error: 'A senha deve ter pelo menos 4 caracteres' });
+    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
+    if (cfg?.valor) {
+        if (!senha_atual) return res.status(400).json({ error: 'Senha atual é obrigatória' });
+        if (!verificarSenhaGerente(senha_atual, cfg.valor)) return res.status(422).json({ error: 'Senha atual incorreta' });
+    }
+    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_adm', bcrypt.hashSync(senha_nova, 10));
+    res.json({ ok: true });
 });
 
 app.put('/api/config/senha-gerente', auth, (req, res) => {
@@ -175,12 +204,13 @@ app.put('/api/config/senha-exclusao', auth, (req, res) => {
 const { enviarResumoDiario, enviarAvisoPedido } = require('./routes/pedidos');
 const { executarFechamento, montarMensagemWhatsapp, MESES } = require('./routes/comissoes');
 
-// Alta prioridade: lembrete a cada 1h para não confirmados e não silenciados
+// Alta prioridade: lembrete a cada 1h — somente pedidos com alertas_ativos = 1
 cron.schedule('0 * * * *', async () => {
     try {
         const pedidos = db.prepare(`
             SELECT * FROM pedidos_compra
             WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'alta'
+              AND alertas_ativos = 1
               AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
               AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-1 hours'))
         `).all();
@@ -188,12 +218,13 @@ cron.schedule('0 * * * *', async () => {
     } catch (e) { console.error('Cron pedidos alta:', e.message); }
 });
 
-// Média prioridade: lembrete a cada 3h para não confirmados e não silenciados
+// Média prioridade: lembrete a cada 3h — somente pedidos com alertas_ativos = 1
 cron.schedule('0 */3 * * *', async () => {
     try {
         const pedidos = db.prepare(`
             SELECT * FROM pedidos_compra
             WHERE status = 'pendente' AND confirmado = 0 AND prioridade = 'media'
+              AND alertas_ativos = 1
               AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
               AND (ultimo_aviso IS NULL OR datetime(ultimo_aviso) <= datetime('now','localtime','-3 hours'))
         `).all();
@@ -201,7 +232,7 @@ cron.schedule('0 */3 * * *', async () => {
     } catch (e) { console.error('Cron pedidos media:', e.message); }
 });
 
-// Diário às 9h: resumo geral de todos não confirmados + baixa prioridade
+// Diário às 9h: resumo somente de pedidos com alertas_ativos = 1
 cron.schedule('0 9 * * *', async () => {
     try { await enviarResumoDiario(); }
     catch (e) { console.error('Cron resumo diário:', e.message); }

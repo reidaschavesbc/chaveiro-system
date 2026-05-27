@@ -63,9 +63,10 @@ async function configuracoes(el) {
           <label>WhatsApp para Cobranças <span style="color:#64748b;font-weight:400;font-size:12px">(aviso diário às 08h)</span></label>
           <input type="text" id="cfg-whatsapp-cobrancas" value="${aplicarMascaraTelefone(cfg.whatsapp_cobrancas)}" oninput="mascaraTelefone(this)">
         </div>
-        <div class="form-group" style="max-width:300px;margin-bottom:16px">
+        <div class="form-group" style="margin-bottom:16px">
           <label>WhatsApp para Pedidos de Compra <span style="color:#64748b;font-weight:400;font-size:12px">(avisos por prioridade)</span></label>
-          <input type="text" id="cfg-whatsapp-pedidos" value="${aplicarMascaraTelefone(cfg.whatsapp_pedidos)}" oninput="mascaraTelefone(this)">
+          <div id="cfg-pedidos-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+          <button type="button" onclick="cfgPedidosAdicionar()" style="font-size:12px;padding:5px 14px;border:1.5px dashed #cbd5e1;border-radius:8px;background:transparent;color:#475569;cursor:pointer">+ Adicionar número</button>
         </div>
         <button class="btn btn-primary" onclick="salvarWhatsappComissao()">Salvar</button>
       </div>
@@ -121,6 +122,41 @@ async function configuracoes(el) {
     </div>
 
   </div>`;
+  cfgPedidosInit(cfg.whatsapp_pedidos_lista, cfg.whatsapp_pedidos);
+}
+
+let _cfgPedidosLista = [];
+
+function cfgPedidosInit(listaJson, legado) {
+  try { _cfgPedidosLista = JSON.parse(listaJson || '[]'); } catch (_) { _cfgPedidosLista = []; }
+  if (!_cfgPedidosLista.length && legado) _cfgPedidosLista = [{ nome: '', numero: aplicarMascaraTelefone(legado) }];
+  cfgPedidosRender();
+}
+
+function cfgPedidosRender() {
+  const el = document.getElementById('cfg-pedidos-lista');
+  if (!el) return;
+  el.innerHTML = _cfgPedidosLista.map((item, i) => `
+    <div style="display:flex;gap:8px;align-items:center;max-width:460px">
+      <input type="text" placeholder="Nome (ex: Dono)" value="${(item.nome || '').toUpperCase()}"
+        oninput="_cfgPedidosLista[${i}].nome=this.value.toUpperCase();this.value=this.value.toUpperCase()"
+        autocorrect="off" autocapitalize="characters" spellcheck="false"
+        style="flex:1;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;text-transform:uppercase">
+      <input type="text" placeholder="(11) 99999-9999" value="${item.numero || ''}"
+        oninput="mascaraTelefone(this);_cfgPedidosLista[${i}].numero=this.value"
+        style="flex:1.4;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px">
+      <button onclick="cfgPedidosRemover(${i})" style="padding:6px 10px;border:none;border-radius:8px;background:#fee2e2;color:#dc2626;cursor:pointer;font-size:14px" title="Remover">✕</button>
+    </div>`).join('');
+}
+
+function cfgPedidosAdicionar() {
+  _cfgPedidosLista.push({ nome: '', numero: '' });
+  cfgPedidosRender();
+}
+
+function cfgPedidosRemover(i) {
+  _cfgPedidosLista.splice(i, 1);
+  cfgPedidosRender();
 }
 
 async function buscarCEP(cep) {
@@ -196,9 +232,15 @@ async function salvarSenhaExclusao() {
 async function salvarWhatsappComissao() {
   const comissao = document.getElementById('cfg-whatsapp-comissao').value;
   const cobrancas = document.getElementById('cfg-whatsapp-cobrancas').value;
+  const lista = _cfgPedidosLista
+    .map(x => ({ nome: (x.nome || '').trim().toUpperCase(), numero: (x.numero || '').trim() }))
+    .filter(x => x.numero.replace(/\D/g,'').length >= 10);
   try {
-    const pedidosWa = document.getElementById('cfg-whatsapp-pedidos').value;
-    await api('PUT', '/config', { whatsapp_comissao: comissao, whatsapp_cobrancas: cobrancas, whatsapp_pedidos: pedidosWa });
+    await api('PUT', '/config', {
+      whatsapp_comissao: comissao,
+      whatsapp_cobrancas: cobrancas,
+      whatsapp_pedidos_lista: JSON.stringify(lista),
+    });
     toast('Números salvos!');
   } catch (e) { toast(e.message, 'error'); }
 }

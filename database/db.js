@@ -403,7 +403,8 @@ function migrate() {
   addCol('fechamentos_comissao', 'loja_id',  'INTEGER');
   addCol('lembretes',            'loja_id',  'INTEGER');
   addCol('lembretes',            'origem',   "TEXT NOT NULL DEFAULT 'web'");
-  addCol('pedidos_compra',       'loja_id',  'INTEGER');
+  addCol('pedidos_compra',       'loja_id',       'INTEGER');
+  addCol('pedidos_compra',       'alertas_ativos', 'INTEGER NOT NULL DEFAULT 0');
   addCol('orcamentos',           'loja_id',  'INTEGER');
   addCol('movimentacoes_estoque','loja_id',  'INTEGER');
 

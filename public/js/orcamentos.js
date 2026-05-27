@@ -50,8 +50,9 @@ function escolherItemOrc(tipo, id) {
   if (tipo === 'servico') orcServicoSelecionado = item;
   else orcProdutoSelecionado = item;
   const preco = tipo === 'servico' ? item.preco_base : item.preco_venda;
+  const precoId = tipo === 'produto' ? 'orc-item-prod-preco' : `orc-item-${tipo}-preco`;
   document.getElementById(`orc-item-${tipo}-busca`).value = item.nome;
-  document.getElementById(`orc-item-${tipo}-preco`).value = preco;
+  document.getElementById(precoId).value = preco;
   if (_orcDropdown) _orcDropdown.style.display = 'none';
 }
 
@@ -143,8 +144,8 @@ async function orcamentos(el) {
                 <option value="">-- Sem cliente --</option>
                 ${orcClientes.map(c => `<option value="${c.id}" data-tel="${c.telefone || ''}">${c.nome_fantasia || c.nome}</option>`).join('')}
               </select>
-              <input type="text" id="orc-cliente-avulso" style="margin-top:6px">
-              <input type="text" id="orc-cliente-tel-avulso" style="margin-top:6px" oninput="mascaraTelefone(this)">
+              <input type="text" id="orc-cliente-avulso" placeholder="Nome do cliente" style="margin-top:6px">
+              <input type="text" id="orc-cliente-tel-avulso" placeholder="(00) 00000-0000" style="margin-top:6px" oninput="mascaraTelefone(this)">
             </div>
             <div class="form-group">
               <label>Funcionário</label>
@@ -155,7 +156,7 @@ async function orcamentos(el) {
             </div>
             <div class="form-group form-full">
               <label>Descrição *</label>
-              <textarea id="orc-descricao"></textarea>
+              <textarea id="orc-descricao" placeholder="Ex: Duplicata de chave veicular, instalação de fechadura, cópia de controle..."></textarea>
             </div>
             <div class="form-group">
               <label>Validade (dias)</label>
@@ -172,7 +173,7 @@ async function orcamentos(el) {
             </div>
             <div class="form-group form-full">
               <label>Observações</label>
-              <textarea id="orc-obs" style="min-height:56px"></textarea>
+              <textarea id="orc-obs" placeholder="Condições de pagamento, prazo de entrega, validade da proposta..." style="min-height:56px"></textarea>
             </div>
           </div>
 
@@ -192,8 +193,8 @@ async function orcamentos(el) {
                          oninput="filtrarItensOrc('servico')" onfocus="filtrarItensOrc('servico')" onblur="fecharListaOrc()"
                          style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-servico-qtd" min="1" value="1"></div>
-                <div class="form-group"><input type="number" id="orc-item-servico-preco" step="0.01" min="0" value="0"></div>
+                <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-servico-qtd" min="1" value="1" placeholder="1"></div>
+                <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-servico-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('servico')">Adicionar Serviço</button>
             </div>
@@ -204,18 +205,19 @@ async function orcamentos(el) {
                          oninput="filtrarItensOrc('produto')" onfocus="filtrarItensOrc('produto')" onblur="fecharListaOrc()"
                          style="width:100%;padding:9px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-prod-qtd" min="1" value="1"></div>
-                <div class="form-group"><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0"></div>
+                <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-prod-qtd" min="1" value="1" placeholder="1"></div>
+                <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-prod-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('produto')">Adicionar Produto</button>
             </div>
             <div id="tab-orc-manual" style="display:none">
               <div class="form-grid">
                 <div class="form-group form-full">
-                  <input type="text" id="orc-item-man-desc">
+                  <label>Descrição do item</label>
+                  <input type="text" id="orc-item-man-desc" placeholder="Ex: Mão de obra, deslocamento, material especial...">
                 </div>
-                <div class="form-group"><input type="number" id="orc-item-man-qtd" min="1" value="1"></div>
-                <div class="form-group"><input type="number" id="orc-item-man-preco" step="0.01" min="0" value="0"></div>
+                <div class="form-group"><label>Qtd</label><input type="number" id="orc-item-man-qtd" min="1" value="1" placeholder="1"></div>
+                <div class="form-group"><label>Valor (R$)</label><input type="number" id="orc-item-man-preco" step="0.01" min="0" value="0" placeholder="0,00"></div>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="orcAdicionarItem('manual')">Adicionar Item</button>
             </div>
@@ -242,7 +244,7 @@ async function orcamentos(el) {
           <p id="orc-enviar-numero" style="font-weight:600;color:#1a56db;margin-bottom:14px"></p>
           <div class="form-group">
             <label>Telefone do destinatário</label>
-            <input type="text" id="orc-enviar-tel" oninput="mascaraTelefone(this)">
+            <input type="text" id="orc-enviar-tel" placeholder="(00) 00000-0000" oninput="mascaraTelefone(this)">
           </div>
           <div class="form-group" style="margin-top:14px">
             <label style="margin-bottom:10px;display:block;font-weight:600">Enviar como:</label>

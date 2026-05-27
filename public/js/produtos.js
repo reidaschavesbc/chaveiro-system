@@ -10,8 +10,6 @@ function _bloquearCustoProduto(valor) {
 }
 
 async function revelarCustoProduto() {
-    const ok = await modalSenhaGerente('Preço de Custo Restrito', 'O preço de custo é confidencial. Digite a senha do gerente para revelar.');
-    if (!ok) return;
     const valor = document.getElementById('produto-custo').value;
     document.getElementById('produto-custo-valor').value = valor;
     document.getElementById('produto-custo-locked').style.display = 'none';

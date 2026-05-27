@@ -108,7 +108,7 @@ router.post('/', (req, res) => {
                         db.prepare('UPDATE produtos SET estoque = ? WHERE id = ?').run(novoEstoque, item.produto_id);
                         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id)
                             VALUES (?, 'saida', ?, ?, ?, ?, 'Venda', ?, ?)`).run(item.produto_id, item.quantidade, p.estoque, novoEstoque, `Venda ${numero}`, req.user?.id||null, req.user.loja_id);
-                        verificarEstoqueBaixo(item.produto_id);
+                        verificarEstoqueBaixo(item.produto_id, req.user.loja_id);
                     }
                 } else {
                     const anterior = getQtdUsuario(req.user.id, item.produto_id);
@@ -140,19 +140,9 @@ router.post('/', (req, res) => {
     }
 });
 
-// DELETE /api/vendas/:id/excluir (exclusão física com senha — somente usuário principal)
+// DELETE /api/vendas/:id/excluir (exclusão física — somente usuário principal)
 router.delete('/:id/excluir', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode excluir vendas permanentemente' });
-
-    const { senha } = req.body;
-    if (!senha) return res.status(400).json({ error: 'Senha é obrigatória' });
-
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    if (!cfg || !cfg.valor) return res.status(400).json({ error: 'Senha do gerente não configurada. Acesse Configurações para definir.' });
-    const senhaCorreta = cfg.valor.startsWith('$2')
-        ? bcrypt.compareSync(senha, cfg.valor)
-        : senha === cfg.valor;
-    if (!senhaCorreta) return res.status(422).json({ error: 'Senha incorreta' });
 
     const excluirVenda = db.transaction(() => {
         const venda = db.prepare('SELECT * FROM vendas WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);

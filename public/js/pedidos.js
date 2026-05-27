@@ -40,6 +40,9 @@ async function pedidos(el) {
           <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;margin-right:4px"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
           Verificar Estoque
         </button>
+        <button class="btn btn-secondary" onclick="pedidosDispararAlertas()" title="Envia alerta WhatsApp para todos os pedidos pendentes agora">
+          📲 Disparar Alertas
+        </button>
         <button class="btn btn-primary" onclick="pedidosAbrirModal()">+ Adicionar Manual</button>
       </div>
     </div>
@@ -57,6 +60,69 @@ async function pedidos(el) {
   `;
 
   await pedidosCarregar();
+}
+
+async function pedidosDispararAlertas() {
+  const idsSelecionados = pedidosSelecionados.size > 0 ? [...pedidosSelecionados] : null;
+  const alvos = idsSelecionados
+    ? pedidosData.filter(p => idsSelecionados.includes(p.id) && p.status === 'pendente')
+    : pedidosData.filter(p => p.status === 'pendente');
+
+  if (!alvos.length) { toast('Nenhum pedido pendente nos selecionados', 'warning'); return; }
+
+  let lista = [];
+  try { lista = await api('GET', '/pedidos/numeros-alertas'); } catch (_) {}
+  if (!lista.length) { toast('Nenhum número configurado para pedidos (veja Configurações)', 'warning'); return; }
+
+  const numeros = await pedidosSelecionarNumeros(lista, alvos.length, !!idsSelecionados);
+  if (!numeros) return;
+
+  try {
+    const res = await api('POST', '/pedidos/disparar-alertas', {
+      numeros,
+      ids: idsSelecionados || [],
+    });
+    toast(res.enviados > 0 ? `📲 ${res.enviados} alerta(s) enviado(s)!` : 'Nenhum alerta enviado', res.enviados > 0 ? 'success' : 'warning');
+  } catch (e) { toast(e.message, 'error'); }
+}
+
+function pedidosSelecionarNumeros(lista, qtdPedidos, selecionados = false) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;display:flex;align-items:center;justify-content:center';
+    const descricao = selecionados
+      ? `Enviar alerta dos <strong>${qtdPedidos}</strong> pedido(s) selecionado(s) para:`
+      : `Enviar alerta de <strong>todos os ${qtdPedidos}</strong> pedido(s) pendente(s) para:`;
+    overlay.innerHTML = `
+      <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
+        <div style="font-size:17px;font-weight:700;margin-bottom:6px">📲 Disparar Alertas</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:18px">${descricao}</div>
+        <div id="pda-nums" style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          ${lista.map((item, i) => `
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px">
+              <input type="checkbox" data-num="${item.numero}" checked style="width:16px;height:16px;cursor:pointer;accent-color:#2563eb;flex-shrink:0">
+              <div>
+                <div style="font-weight:600;text-transform:uppercase">${item.nome || 'Sem nome'}</div>
+                <div style="color:#64748b;font-size:12px">${item.numero}</div>
+              </div>
+            </label>`).join('')}
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button id="pda-cancel" class="btn btn-secondary">Cancelar</button>
+          <button id="pda-ok" class="btn btn-primary">Disparar</button>
+        </div>
+      </div>`;
+
+    overlay.addEventListener('click', e => { if (e.target === overlay) { document.body.removeChild(overlay); resolve(null); } });
+    overlay.querySelector('#pda-cancel').addEventListener('click', () => { document.body.removeChild(overlay); resolve(null); });
+    overlay.querySelector('#pda-ok').addEventListener('click', () => {
+      const selecionados = [...overlay.querySelectorAll('#pda-nums input:checked')].map(el => el.dataset.num);
+      document.body.removeChild(overlay);
+      if (!selecionados.length) { toast('Selecione ao menos um número', 'warning'); resolve(null); return; }
+      resolve(selecionados);
+    });
+    document.body.appendChild(overlay);
+  });
 }
 
 async function pedidosVerificarEstoque() {
@@ -158,6 +224,7 @@ function pedidosRenderLista() {
               ${p.produto_estoque !== null && p.produto_estoque !== undefined
                 ? `<div style="font-size:11px;color:${p.produto_estoque <= p.produto_estoque_minimo ? '#ef4444' : '#94a3b8'}">Estoque: ${p.produto_estoque} / mín: ${p.produto_estoque_minimo}</div>` : ''}
               ${p.observacoes ? `<div style="font-size:11px;color:#94a3b8">${p.observacoes}</div>` : ''}
+              ${p.alertas_ativos ? `<div style="font-size:10px;color:#2563eb;margin-top:2px">🔔 Alertas ativos no WhatsApp</div>` : ''}
               ${p.confirmado ? `<div style="font-size:10px;color:#16a34a;margin-top:2px">✔ Aviso confirmado ${p.confirmado_em ? fmtDatePedido(p.confirmado_em) : ''}</div>` : ''}
               ${p.silenciado_ate && !p.confirmado ? `<div style="font-size:10px;color:#ea580c;margin-top:2px">🔕 Silenciado até amanhã às 9h</div>` : ''}
             </td>
@@ -403,11 +470,13 @@ async function pedidosExcluirSelecionados() {
   if (!ok) return;
   try {
     await api('DELETE', '/pedidos', { ids: [...pedidosSelecionados] });
-    toast(`${pedidosSelecionados.size} pedido(s) removido(s)`);
+    const total = pedidosSelecionados.size;
     pedidosSelecionando = false;
     pedidosSelecionados.clear();
     const btnSel = document.getElementById('btn-pedidos-selecionar');
     if (btnSel) btnSel.textContent = '☑ Selecionar';
+    pedidosAtualizarContador();
+    toast(`${total} pedido(s) removido(s)`);
     await pedidosCarregar();
   } catch (e) {
     toast(e.message, 'error');

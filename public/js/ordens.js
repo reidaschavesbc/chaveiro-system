@@ -118,8 +118,7 @@ async function ordens(el) {
               <option value="">-- A definir --</option>
               <option value="dinheiro">Dinheiro</option>
               <option value="pix">PIX</option>
-              <option value="debito">Cartão Débito</option>
-              <option value="credito">Cartão Crédito</option>
+              <option value="cartao1">Cartão</option>
             </select>
           </div>
           <div class="form-group form-full">
@@ -369,7 +368,7 @@ function _pgRender() {
   const el = document.getElementById('pg-modal-overlay');
   if (!el) return;
   const fmtV = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
-  const labels = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', debito:'💳 Débito', credito:'💳 Crédito' };
+  const labels = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', cartao1:'💳 Cartão' };
   const pago = _pgPagamentos.reduce((s, p) => s + p.valor, 0);
   const restante = Math.max(0, _pgTotal - pago);
   const coberto = restante < 0.01;
@@ -1048,7 +1047,7 @@ async function cancelarOS(id) {
 
 async function receberOS(id, numero, valor) {
   const fmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão Débito', credito: 'Cartão Crédito' };
+  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão' };
   const opts = Object.entries(pgMap).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
 
   const html = `
@@ -1086,11 +1085,12 @@ async function receberOS(id, numero, valor) {
 }
 
 async function excluirOS(id, numero, nfseStatus) {
-  const senha = await pedirSenhaExclusao(`OS ${numero}${nfseStatus === 'autorizada' ? ' ⚠ possui NFS-e emitida' : ''}`);
-  if (senha === null) return;
-  if (!senha.trim()) { toast('Senha é obrigatória!', 'error'); return; }
+  if (!await pedirSenhaGerente()) return;
+  const aviso = nfseStatus === 'autorizada' ? '<br><strong style="color:#dc2626">⚠ Esta OS possui NFS-e emitida!</strong>' : '';
+  const ok = await modalConfirmar({ titulo: 'Excluir OS', mensagem: `Excluir permanentemente a <strong>OS ${numero}</strong>? Esta ação não pode ser desfeita.${aviso}`, icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Excluir' });
+  if (!ok) return;
   try {
-    await api('DELETE', `/ordens/${id}/excluir`, { senha });
+    await api('DELETE', `/ordens/${id}/excluir`, {});
     toast(`OS ${numero} excluída permanentemente!`);
     await carregarOrdens();
   } catch (e) { toast(e.message, 'error'); }

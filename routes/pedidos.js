@@ -8,15 +8,27 @@ const PRIORIDADES = ['alta', 'media', 'baixa'];
 function fmtVal(v) { return 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ','); }
 function fmtDate(s) { if (!s) return ''; const d = String(s).slice(0,10); const [y,m,dd] = d.split('-'); return `${dd}/${m}/${y}`; }
 
-function getWhatsappPedidos() {
+function getWhatsappPedidosLista() {
+    const lista = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_pedidos_lista'").get();
+    if (lista && lista.valor) {
+        try {
+            const parsed = JSON.parse(lista.valor);
+            if (Array.isArray(parsed) && parsed.length) return parsed;
+        } catch (_) {}
+    }
+    // fallback para número legado único
     const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'whatsapp_pedidos'").get();
-    return cfg && cfg.valor ? cfg.valor : null;
+    if (cfg && cfg.valor) return [{ nome: 'Principal', numero: cfg.valor }];
+    return [];
 }
 
 // enviarAvisoPedido: chamado por cron e por rotas — opera sem req.user (nível sistema)
-async function enviarAvisoPedido(pedido, tipo = 'criacao') {
-    const num = getWhatsappPedidos();
-    if (!num) return;
+// numerosAlvo: array de strings com números específicos; null = todos configurados
+async function enviarAvisoPedido(pedido, tipo = 'criacao', numerosAlvo = null) {
+    const lista = numerosAlvo
+        ? numerosAlvo.map(n => ({ numero: n }))
+        : getWhatsappPedidosLista();
+    if (!lista.length) return;
     const priLabel = { alta: '🔴 ALTA', media: '🟡 MÉDIA', baixa: '🟢 BAIXA' };
     let msg;
     if (tipo === 'criacao') {
@@ -26,21 +38,19 @@ async function enviarAvisoPedido(pedido, tipo = 'criacao') {
     } else {
         msg = `⏰ *Lembrete — Pedido Pendente*\n\n📦 *${pedido.descricao}*\n🔢 Quantidade: ${pedido.quantidade}\n⚡ Prioridade: ${priLabel[pedido.prioridade] || pedido.prioridade}\n📅 Criado em: ${fmtDate(pedido.criado_em)}\n\n⚠️ Este pedido ainda não foi confirmado.`;
     }
-    try {
-        await wa.enviarMensagem(num, msg);
-        db.prepare("UPDATE pedidos_compra SET ultimo_aviso = datetime('now','localtime') WHERE id = ?").run(pedido.id);
-    } catch (e) {
-        console.error('WhatsApp pedido:', e.message);
+    for (const item of lista) {
+        try { await wa.enviarMensagem(item.numero, msg); } catch (e) { console.error('WhatsApp pedido:', e.message); }
     }
+    db.prepare("UPDATE pedidos_compra SET ultimo_aviso = datetime('now','localtime') WHERE id = ?").run(pedido.id);
 }
 
 // enviarResumoDiario: chamado por cron — opera sem req.user, abrange TODAS as lojas
 async function enviarResumoDiario() {
-    const num = getWhatsappPedidos();
-    if (!num) return;
+    const lista = getWhatsappPedidosLista();
+    if (!lista.length) return;
     const pedidos = db.prepare(`
         SELECT * FROM pedidos_compra
-        WHERE status = 'pendente' AND confirmado = 0
+        WHERE status = 'pendente' AND confirmado = 0 AND alertas_ativos = 1
           AND (silenciado_ate IS NULL OR datetime(silenciado_ate) <= datetime('now','localtime'))
         ORDER BY CASE prioridade WHEN 'alta' THEN 1 WHEN 'media' THEN 2 ELSE 3 END, criado_em ASC
     `).all();
@@ -68,29 +78,64 @@ async function enviarResumoDiario() {
     }
     msg += `\n📊 *Total: ${pedidos.length} pedido(s) aguardando*`;
 
-    try {
-        await wa.enviarMensagem(num, msg);
-        // Atualiza ultimo_aviso de todos (para não duplicar reminders logo após)
-        const ids = pedidos.map(p => p.id);
-        const placeholders = ids.map(() => '?').join(',');
-        db.prepare(`UPDATE pedidos_compra SET ultimo_aviso = datetime('now','localtime') WHERE id IN (${placeholders})`).run(...ids);
-    } catch (e) {
-        console.error('WhatsApp resumo diário:', e.message);
+    for (const item of lista) {
+        try { await wa.enviarMensagem(item.numero, msg); } catch (e) { console.error('WhatsApp resumo diário:', e.message); }
     }
+    // Atualiza ultimo_aviso de todos (para não duplicar reminders logo após)
+    const ids = pedidos.map(p => p.id);
+    const placeholders = ids.map(() => '?').join(',');
+    db.prepare(`UPDATE pedidos_compra SET ultimo_aviso = datetime('now','localtime') WHERE id IN (${placeholders})`).run(...ids);
 }
 
 // verificarEstoqueBaixo: chamado por cron e por rotas de venda/OS
-// Não recebe loja_id pois só precisa do produto_id para checar estoque mínimo
-function verificarEstoqueBaixo(produto_id) {
-    const p = db.prepare('SELECT id, nome, estoque, estoque_minimo FROM produtos WHERE id = ? AND ativo = 1').get(produto_id);
+// silencioso=true: só cria o pedido, não envia WhatsApp (usado pelo botão "Verificar Estoque")
+function verificarEstoqueBaixo(produto_id, loja_id, silencioso = false) {
+    const p = db.prepare('SELECT id, nome, estoque, estoque_minimo, loja_id FROM produtos WHERE id = ? AND ativo = 1').get(produto_id);
     if (!p || p.estoque > p.estoque_minimo) return;
-    const existente = db.prepare("SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente'").get(produto_id);
+    const lojaId = loja_id || p.loja_id;
+    if (!lojaId) return;
+    const existente = db.prepare("SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente' AND loja_id = ?").get(produto_id, lojaId);
     if (existente) return;
-    const result = db.prepare(`INSERT INTO pedidos_compra (produto_id, descricao, quantidade, status, origem, prioridade) VALUES (?, ?, 1, 'pendente', 'automatico', 'alta')`)
-        .run(produto_id, p.nome);
-    const pedido = db.prepare('SELECT * FROM pedidos_compra WHERE id = ?').get(result.lastInsertRowid);
-    enviarAvisoPedido(pedido, 'criacao').catch(() => {});
+    const result = db.prepare(`INSERT INTO pedidos_compra (produto_id, descricao, quantidade, status, origem, prioridade, loja_id) VALUES (?, ?, 1, 'pendente', 'automatico', 'alta', ?)`)
+        .run(produto_id, p.nome, lojaId);
+    if (!silencioso) {
+        const pedido = db.prepare('SELECT * FROM pedidos_compra WHERE id = ?').get(result.lastInsertRowid);
+        enviarAvisoPedido(pedido, 'criacao').catch(() => {});
+    }
 }
+
+// GET /api/pedidos/numeros-alertas — retorna lista de números configurados para pedidos
+router.get('/numeros-alertas', (req, res) => {
+    res.json(getWhatsappPedidosLista());
+});
+
+// POST /api/pedidos/disparar-alertas — ativa alertas repetidos para os pedidos selecionados
+router.post('/disparar-alertas', async (req, res) => {
+    const lojaId = req.user.loja_id;
+    const numerosAlvo = Array.isArray(req.body.numeros) && req.body.numeros.length ? req.body.numeros : null;
+    const idsAlvo = Array.isArray(req.body.ids) && req.body.ids.length ? req.body.ids : null;
+
+    let pendentes;
+    if (idsAlvo) {
+        const placeholders = idsAlvo.map(() => '?').join(',');
+        pendentes = db.prepare(`SELECT * FROM pedidos_compra WHERE status = 'pendente' AND loja_id = ? AND id IN (${placeholders})`).all(lojaId, ...idsAlvo);
+    } else {
+        pendentes = db.prepare(`SELECT * FROM pedidos_compra WHERE status = 'pendente' AND loja_id = ?`).all(lojaId);
+    }
+
+    if (!pendentes.length) return res.json({ enviados: 0 });
+
+    // Ativa alertas_ativos para os selecionados e envia aviso imediato
+    const ids = pendentes.map(p => p.id);
+    const placeholders = ids.map(() => '?').join(',');
+    db.prepare(`UPDATE pedidos_compra SET alertas_ativos = 1 WHERE id IN (${placeholders})`).run(...ids);
+
+    let enviados = 0;
+    for (const pedido of pendentes) {
+        try { await enviarAvisoPedido(pedido, 'lembrete', numerosAlvo); enviados++; } catch (_) {}
+    }
+    res.json({ enviados, total: pendentes.length });
+});
 
 // GET /api/pedidos/count — badge sidebar (filtrado por loja)
 router.get('/count', (req, res) => {
@@ -100,11 +145,12 @@ router.get('/count', (req, res) => {
 
 // POST /api/pedidos/verificar-estoque (filtrado por loja)
 router.post('/verificar-estoque', (req, res) => {
-    const baixos = db.prepare(`SELECT id FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ?`).all(req.user.loja_id);
+    const lojaId = req.user.loja_id;
+    const baixos = db.prepare(`SELECT id FROM produtos WHERE ativo = 1 AND estoque <= estoque_minimo AND loja_id = ?`).all(lojaId);
     let adicionados = 0;
     baixos.forEach(p => {
-        const antes = db.prepare("SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente'").get(p.id);
-        if (!antes) { verificarEstoqueBaixo(p.id); adicionados++; }
+        const antes = db.prepare("SELECT id FROM pedidos_compra WHERE produto_id = ? AND status = 'pendente' AND loja_id = ?").get(p.id, lojaId);
+        if (!antes) { verificarEstoqueBaixo(p.id, lojaId, true); adicionados++; }
     });
     res.json({ verificados: baixos.length, adicionados });
 });
@@ -141,9 +187,9 @@ router.post('/', async (req, res) => {
     res.status(201).json({ id: result.lastInsertRowid });
 });
 
-// PUT /api/pedidos/:id/confirmar — marca aviso como confirmado
+// PUT /api/pedidos/:id/confirmar — marca aviso como confirmado e para alertas
 router.put('/:id/confirmar', (req, res) => {
-    db.prepare(`UPDATE pedidos_compra SET confirmado = 1, confirmado_em = datetime('now','localtime') WHERE id = ? AND loja_id = ?`).run(req.params.id, req.user.loja_id);
+    db.prepare(`UPDATE pedidos_compra SET confirmado = 1, confirmado_em = datetime('now','localtime'), alertas_ativos = 0 WHERE id = ? AND loja_id = ?`).run(req.params.id, req.user.loja_id);
     res.json({ ok: true });
 });
 
@@ -171,18 +217,21 @@ router.put('/:id', (req, res) => {
 
     const pri = PRIORIDADES.includes(prioridade) ? prioridade : pedido.prioridade;
 
+    const novoStatus = status ?? pedido.status;
     db.prepare(`
         UPDATE pedidos_compra SET descricao=?, quantidade=?, observacoes=?, status=?, comprado_em=?, prioridade=?,
-        confirmado = CASE WHEN ? = 'pendente' AND status != 'pendente' THEN 0 ELSE confirmado END
+        confirmado = CASE WHEN ? = 'pendente' AND status != 'pendente' THEN 0 ELSE confirmado END,
+        alertas_ativos = CASE WHEN ? IN ('comprado','cancelado') THEN 0 ELSE alertas_ativos END
         WHERE id=? AND loja_id=?
     `).run(
         descricao ?? pedido.descricao,
         quantidade ?? pedido.quantidade,
         observacoes ?? pedido.observacoes,
-        status ?? pedido.status,
+        novoStatus,
         comprado_em,
         pri,
-        status ?? pedido.status,
+        novoStatus,
+        novoStatus,
         req.params.id,
         req.user.loja_id
     );

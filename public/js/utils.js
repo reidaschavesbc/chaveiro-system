@@ -92,11 +92,119 @@ function badgeStatus(status) {
     return `<span class="badge badge-${status}">${labels[status] || status}</span>`;
 }
 function badgePagamento(fp) {
-    const labels = { dinheiro: 'Dinheiro', pix: 'PIX', credito: 'Cartão Crédito', debito: 'Cartão Débito', cartao1: 'Cartão 1', cartao2: 'Cartão 2' };
+    const labels = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' };
     return `<span class="badge badge-${fp}">${labels[fp] || fp}</span>`;
 }
 
 function confirmDialog(msg) { return modalConfirmar({ titulo: 'Confirmar', mensagem: msg }); }
+
+async function pedirSenhaAdm() {
+    return new Promise(resolve => {
+        let overlay = document.getElementById('modal-senha-adm');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-senha-adm';
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML = `
+        <div class="modal" style="max-width:380px;width:100%" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title">🔑 Senha ADM</span>
+                <button class="modal-close" id="btn-sa-fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta área requer a senha ADM.</p>
+                <input type="password" id="sa-senha" placeholder="Digite a senha ADM" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
+                <div id="sa-erro" style="display:none;color:#dc2626;font-size:12px;margin-top:8px">Senha incorreta.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-sa-cancelar">Cancelar</button>
+                <button class="btn btn-primary" id="btn-sa-ok">Confirmar</button>
+            </div>
+        </div>`;
+
+        openModal('modal-senha-adm');
+        const senhaInput = document.getElementById('sa-senha');
+        const erroEl = document.getElementById('sa-erro');
+        const fechar = (val) => { closeModal('modal-senha-adm'); resolve(val); };
+
+        overlay.onclick = () => fechar(false);
+        overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+        document.getElementById('btn-sa-fechar').onclick   = () => fechar(false);
+        document.getElementById('btn-sa-cancelar').onclick = () => fechar(false);
+
+        const confirmar = async () => {
+            const senha = senhaInput.value;
+            try {
+                const data = await api('POST', '/auth/verificar-adm', { senha });
+                if (data.ok) { fechar(true); }
+                else { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
+            } catch (e) { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
+        };
+
+        document.getElementById('btn-sa-ok').onclick = confirmar;
+        senhaInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmar(); });
+        setTimeout(() => senhaInput.focus(), 80);
+    });
+}
+
+async function navegarVendedores() {
+  if (!await pedirSenhaAdm()) return;
+  navigateTo('vendedores');
+}
+
+async function pedirSenhaGerente() {
+    return new Promise(resolve => {
+        let overlay = document.getElementById('modal-senha-gerente');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'modal-senha-gerente';
+            overlay.className = 'modal-overlay';
+            document.body.appendChild(overlay);
+        }
+        overlay.innerHTML = `
+        <div class="modal" style="max-width:380px;width:100%" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title">🔒 Senha do Gerente</span>
+                <button class="modal-close" id="btn-sg-fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta ação requer autorização do gerente.</p>
+                <input type="password" id="sg-senha" placeholder="Digite a senha" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
+                <div id="sg-erro" style="display:none;color:#dc2626;font-size:12px;margin-top:8px">Senha incorreta.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-sg-cancelar">Cancelar</button>
+                <button class="btn btn-primary" id="btn-sg-ok">Confirmar</button>
+            </div>
+        </div>`;
+
+        openModal('modal-senha-gerente');
+        const senhaInput = document.getElementById('sg-senha');
+        const erroEl = document.getElementById('sg-erro');
+
+        const fechar = (val) => { closeModal('modal-senha-gerente'); resolve(val); };
+
+        overlay.onclick = () => fechar(false);
+        overlay.querySelector('.modal').onclick = e => e.stopPropagation();
+        document.getElementById('btn-sg-fechar').onclick   = () => fechar(false);
+        document.getElementById('btn-sg-cancelar').onclick = () => fechar(false);
+
+        const confirmar = async () => {
+            const senha = senhaInput.value;
+            try {
+                const data = await api('POST', '/auth/verificar-gerente', { senha });
+                if (data.ok) { fechar(true); }
+                else { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
+            } catch (e) { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
+        };
+
+        document.getElementById('btn-sg-ok').onclick = confirmar;
+        senhaInput.addEventListener('keydown', e => { if (e.key === 'Enter') confirmar(); });
+        setTimeout(() => senhaInput.focus(), 80);
+    });
+}
 
 function modalPrompt({ titulo, mensagem, placeholder = '', obrigatorio = true }) {
     return new Promise(resolve => {

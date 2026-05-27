@@ -33,31 +33,6 @@ export default function BuscaScreen() {
   const mostrarProd = aba === 'todos' || aba === 'prod';
   const mostrarServ = aba === 'todos' || aba === 'serv';
 
-  function renderProduto({ item: p }) {
-    const semEstoque = p.estoque <= 0;
-    const estoqueColor = semEstoque ? '#ef4444' : p.estoque <= 2 ? '#f59e0b' : '#10b981';
-    return (
-      <View style={s.card}>
-        <Text style={s.nome}>{p.nome}</Text>
-        <Text style={s.preco}>{fmtV(p.preco_venda)}</Text>
-        <Text style={[s.estoque, { color: estoqueColor }]}>
-          {semEstoque ? 'Sem estoque' : `${p.estoque} ${p.unidade || 'un'} em estoque`}
-        </Text>
-        {p.descricao ? <Text style={s.desc}>{p.descricao}</Text> : null}
-      </View>
-    );
-  }
-
-  function renderServico({ item: s }) {
-    return (
-      <View style={[s.card, sc.cardServ]}>
-        <Text style={s.nome}>{s.nome}</Text>
-        <Text style={[s.preco, sc.precoServ]}>{fmtV(s.preco_base)}</Text>
-        {s.descricao ? <Text style={s.desc}>{s.descricao}</Text> : null}
-      </View>
-    );
-  }
-
   if (loading) return <ActivityIndicator style={{ flex: 1, marginTop: 60 }} size="large" color="#2563eb" />;
 
   return (
@@ -176,4 +151,3 @@ const s = StyleSheet.create({
   imgFechar: { color: '#94a3b8', fontSize: 12, marginTop: 16 },
 });
 
-const sc = StyleSheet.create({});

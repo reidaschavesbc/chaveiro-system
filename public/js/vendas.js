@@ -77,8 +77,7 @@ async function vendasNova(el) {
             <div style="background:#f8fafc;padding:10px;border-radius:10px;border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:6px">
               <div><label style="font-size:10px;color:#64748b">💵 Dinheiro</label><input type="number" id="pay-dinheiro" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
               <div><label style="font-size:10px;color:#64748b">📱 PIX</label><input type="number" id="pay-pix" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
-              <div><label style="font-size:10px;color:#64748b">💳 Cartão 1</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
-              <div><label style="font-size:10px;color:#64748b">💳 Cartão 2</label><input type="number" id="pay-cartao2" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
+              <div><label style="font-size:10px;color:#64748b">💳 Cartão</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" style="padding:6px;width:100%;box-sizing:border-box" oninput="calcularCheckout()"></div>
             </div>
           </div>
           <div class="form-group" style="margin-bottom:12px"><label>Desconto (R$)</label><input type="number" id="venda-desconto" step="0.01" min="0" value="0" oninput="calcularTotal()"></div>
@@ -189,8 +188,7 @@ async function vendasNova(el) {
           <div style="background:#f8fafc;padding:8px;border-radius:10px;border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr;gap:6px">
             <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💵 Dinheiro</label><input type="number" id="pay-dinheiro" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
             <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">📱 PIX</label><input type="number" id="pay-pix" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
-            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💳 Cartão 1</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
-            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💳 Cartão 2</label><input type="number" id="pay-cartao2" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
+            <div class="form-group" style="margin:0"><label style="font-size:10px;color:#64748b">💳 Cartão</label><input type="number" id="pay-cartao1" step="0.01" min="0" value="0" oninput="calcularCheckout()"></div>
           </div>
         </div>
         <div class="form-group" style="margin:0">
@@ -341,9 +339,8 @@ function calcularCheckout() {
   const d = parseFloat(document.getElementById('pay-dinheiro').value) || 0;
   const p = parseFloat(document.getElementById('pay-pix').value) || 0;
   const c1 = parseFloat(document.getElementById('pay-cartao1').value) || 0;
-  const c2 = parseFloat(document.getElementById('pay-cartao2').value) || 0;
 
-  const totalOutros = p + c1 + c2;
+  const totalOutros = p + c1;
   const dinheiroNecessario = Math.max(0, total - totalOutros);
 
   const faltante = Math.max(0, dinheiroNecessario - d);
@@ -412,15 +409,13 @@ async function finalizarVenda() {
   const d = parseFloat(document.getElementById('pay-dinheiro').value) || 0;
   const p = parseFloat(document.getElementById('pay-pix').value) || 0;
   const c1 = parseFloat(document.getElementById('pay-cartao1').value) || 0;
-  const c2 = parseFloat(document.getElementById('pay-cartao2').value) || 0;
 
-  const totalOutros = p + c1 + c2;
+  const totalOutros = p + c1;
   const dinheiroEfetivo = Math.min(d, Math.max(0, total - totalOutros));
 
   if (dinheiroEfetivo > 0) pagamentos.push({ metodo: 'dinheiro', valor: dinheiroEfetivo });
   if (p > 0) pagamentos.push({ metodo: 'pix', valor: p });
   if (c1 > 0) pagamentos.push({ metodo: 'cartao1', valor: c1 });
-  if (c2 > 0) pagamentos.push({ metodo: 'cartao2', valor: c2 });
 
   const body = {
     cliente_id: document.getElementById('venda-cliente').value || null,
@@ -528,12 +523,12 @@ async function cancelarVenda(id, numero) {
 }
 
 async function excluirVenda(id, numero) {
-  const senha = await pedirSenhaExclusao(`Venda ${numero}`);
-  if (senha === null) return;
-  if (!senha.trim()) { toast('Senha é obrigatória!', 'error'); return; }
+  if (!await pedirSenhaGerente()) return;
+  const ok = await modalConfirmar({ titulo: 'Excluir Venda', mensagem: `Excluir permanentemente a <strong>Venda ${numero}</strong>? Esta ação não pode ser desfeita.`, icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Excluir' });
+  if (!ok) return;
 
   try {
-    await api('DELETE', `/vendas/${id}/excluir`, { senha });
+    await api('DELETE', `/vendas/${id}/excluir`, {});
     toast(`Venda ${numero} excluída permanentemente!`);
     carregarVendas();
   } catch (e) {
@@ -567,7 +562,7 @@ async function visualizarVenda(id) {
         <td style="text-align:right;font-weight:600">${formatCurrency(it.subtotal || it.quantidade * it.preco_unitario)}</td>
       </tr>`).join('');
 
-    const pgLabels = { dinheiro:'Dinheiro', pix:'PIX', credito:'Cartão Crédito', debito:'Cartão Débito', cartao1:'Cartão 1', cartao2:'Cartão 2' };
+    const pgLabels = { dinheiro:'Dinheiro', pix:'PIX', cartao1:'Cartão', cartao2:'Cartão', credito:'Cartão', debito:'Cartão', misto:'Misto' };
     const pgHtml = (v.pagamentos || []).map(pg => `
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
         <span>${pgLabels[pg.metodo] || pg.metodo}</span>

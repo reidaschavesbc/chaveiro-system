@@ -49,7 +49,28 @@ router.get('/dashboard', (req, res) => {
     const totalClientes  = db.prepare('SELECT COUNT(*) as qtd FROM clientes WHERE ativo = 1 AND loja_id = ?').get(lojaId);
     const aReceber       = db.prepare(`SELECT COUNT(*) as qtd, COALESCE(SUM(valor - COALESCE(valor_pago,0)),0) as total FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND loja_id = ?${fU_sub}`).get(lojaId, ...ph);
     const aReceberVencido = db.prepare(`SELECT COUNT(*) as qtd FROM ordens_servico WHERE a_receber = 1 AND a_receber_pago = 0 AND data_vencimento < ? AND loja_id = ?${fU_sub}`).get(hoje, lojaId, ...ph);
-    const gastosMes      = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE strftime('%Y-%m', data) = ? AND loja_id = ?`).get(mesAtual, lojaId);
+    const gastosMesVar   = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos WHERE strftime('%Y-%m', data) = ? AND loja_id = ?`).get(mesAtual, lojaId);
+    const gastosMesFixo  = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos_fixos WHERE ativo = 1 AND loja_id = ?`).get(lojaId);
+    const gastosMes      = { total: gastosMesVar.total + gastosMesFixo.total, qtd: gastosMesVar.qtd + gastosMesFixo.qtd };
+
+    const plantaoMes = db.prepare(`
+        SELECT
+            COALESCE(SUM(os.valor), 0) as faturamento,
+            COALESCE(SUM(os.custo_materiais), 0) as custo,
+            COALESCE(SUM(os.valor * COALESCE(v.percentual_plantao, 0) / 100.0), 0) as comissao,
+            COUNT(*) as qtd
+        FROM ordens_servico os
+        LEFT JOIN vendedores v ON os.vendedor_id = v.id
+        WHERE os.is_plantao = 1 AND os.status = 'concluida'
+          AND strftime('%Y-%m', os.data_entrada) = ? AND os.loja_id = ?
+    `).get(mesAtual, lojaId);
+
+    const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
+    const afiacaoMes = db.prepare(`
+        SELECT COALESCE(SUM(valor), 0) as faturamento, COALESCE(SUM(quantidade), 0) as qtd_pecas, COUNT(*) as qtd
+        FROM afiacao
+        WHERE status = 'entregue' AND strftime('%Y-%m', data_entrega) = ? AND loja_id = ?
+    `).get(mesAtual, lojaId);
 
     const ultimasVendas = db.prepare(`SELECT v.*, c.nome as cliente_nome, ven.nome as vendedor_nome FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
@@ -66,7 +87,15 @@ router.get('/dashboard', (req, res) => {
         produtos_baixo_estoque: produtosBaixoEstoque.qtd, total_clientes: totalClientes.qtd,
         ultimas_vendas: ultimasVendas, ultimas_os: ultimasOS,
         a_receber: { qtd: aReceber.qtd, total: aReceber.total, vencidos: aReceberVencido.qtd },
-        gastos_mes: { total: gastosMes.total, qtd: gastosMes.qtd }
+        gastos_mes: { total: gastosMes.total, qtd: gastosMes.qtd },
+        lucro_plantao_mes: {
+            lucro: plantaoMes.faturamento - plantaoMes.custo - plantaoMes.comissao,
+            qtd: plantaoMes.qtd
+        },
+        lucro_afiacao_mes: {
+            lucro: afiacaoMes.faturamento - (afiacaoMes.qtd_pecas * valorAfiador),
+            qtd: afiacaoMes.qtd
+        }
     });
 });
 
@@ -150,11 +179,19 @@ router.get('/geral', (req, res) => {
         LEFT JOIN vendedores ven ON v.vendedor_id = ven.id
         WHERE date(v.data) BETWEEN ? AND ? AND v.status != 'cancelada' AND v.loja_id = ?${fU_v}`).all(di, df, lojaId, ...ph);
 
-    const os = db.prepare(`SELECT os.id, os.numero, os.data_entrada as data, os.valor, os.forma_pagamento, 'os' as tipo, c.nome as cliente_nome, ven.nome as vendedor_nome
+    // OS pagas na hora (sem cobrança): data_entrada
+    // OS cobranças pagas: data_recebimento (só entra quando pago)
+    const osBase = `SELECT os.id, os.numero, os.valor, os.forma_pagamento, 'os' as tipo, c.nome as cliente_nome, ven.nome as vendedor_nome
         FROM ordens_servico os
         LEFT JOIN clientes c ON os.cliente_id = c.id
-        LEFT JOIN vendedores ven ON os.vendedor_id = ven.id
-        WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}`).all(di, df, lojaId, ...ph);
+        LEFT JOIN vendedores ven ON os.vendedor_id = ven.id`;
+    const osDir = db.prepare(`${osBase}
+        WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND COALESCE(os.a_receber,0) = 0 AND os.loja_id = ?${fU_os}`)
+        .all(di, df, lojaId, ...ph).map(r => ({ ...r, data: r.data_entrada || di }));
+    const osCob = db.prepare(`${osBase}
+        WHERE date(os.data_recebimento) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.a_receber = 1 AND os.a_receber_pago = 1 AND os.loja_id = ?${fU_os}`)
+        .all(di, df, lojaId, ...ph).map(r => ({ ...r, data: r.data_recebimento || di }));
+    const os = [...osDir, ...osCob];
 
     const list = [...vendas, ...os].sort((a, b) => new Date(b.data) - new Date(a.data));
 
@@ -165,15 +202,20 @@ router.get('/geral', (req, res) => {
 
     const totaisOS = db.prepare(`
         SELECT COALESCE(metodo, 'outros') as forma_pagamento, SUM(valor) as total FROM (
+            -- OS sem cobrança: usa data_entrada
             SELECT po.metodo, po.valor FROM pagamentos_os po
             JOIN ordens_servico os ON po.ordem_id = os.id
-            WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
+            WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND COALESCE(os.a_receber,0) = 0 AND os.loja_id = ?${fU_os}
             UNION ALL
             SELECT os.forma_pagamento, os.valor FROM ordens_servico os
-            WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.loja_id = ?${fU_os}
+            WHERE date(os.data_entrada) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND COALESCE(os.a_receber,0) = 0 AND os.loja_id = ?${fU_os}
             AND os.id NOT IN (SELECT DISTINCT ordem_id FROM pagamentos_os)
+            UNION ALL
+            -- OS cobranças pagas: usa data_recebimento
+            SELECT os.forma_pagamento, os.valor FROM ordens_servico os
+            WHERE date(os.data_recebimento) BETWEEN ? AND ? AND os.status = 'concluida' AND COALESCE(os.is_plantao,0) = 0 AND os.a_receber = 1 AND os.a_receber_pago = 1 AND os.loja_id = ?${fU_os}
         ) GROUP BY COALESCE(metodo, 'outros')
-    `).all(di, df, lojaId, ...ph, di, df, lojaId, ...ph);
+    `).all(di, df, lojaId, ...ph, di, df, lojaId, ...ph, di, df, lojaId, ...ph);
 
     const map = {};
     [...totaisVendas, ...totaisOS].forEach(t => {
@@ -183,7 +225,9 @@ router.get('/geral', (req, res) => {
     const totais = Object.keys(map).map(met => ({ forma_pagamento: met, total: map[met] }));
 
     const fU_sum = filtroId ? ' AND usuario_id = ?' : '';
-    const _sumOS      = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(data_entrada) BETWEEN ? AND ? AND status='concluida' AND COALESCE(is_plantao,0) = 0 AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
+    const _sumOSDir  = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(data_entrada) BETWEEN ? AND ? AND status='concluida' AND COALESCE(is_plantao,0) = 0 AND COALESCE(a_receber,0) = 0 AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
+    const _sumOSCob  = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE date(data_recebimento) BETWEEN ? AND ? AND status='concluida' AND COALESCE(is_plantao,0) = 0 AND a_receber = 1 AND a_receber_pago = 1 AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
+    const _sumOS     = { t: _sumOSDir.t + _sumOSCob.t };
     const _sumVendas  = db.prepare(`SELECT COALESCE(SUM(total_final),0) as t FROM vendas WHERE date(data) BETWEEN ? AND ? AND status != 'cancelada' AND loja_id = ?${fU_sum}`).get(di, df, lojaId, ...ph);
     const _sumAfiacao = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM afiacao WHERE date(data_entrega) BETWEEN ? AND ? AND status='entregue' AND loja_id = ?`).get(di, df, lojaId);
     const faturamentoBruto = _sumOS.t + _sumVendas.t + _sumAfiacao.t;
@@ -193,7 +237,9 @@ router.get('/geral', (req, res) => {
         FROM gastos WHERE date(data) BETWEEN ? AND ? AND loja_id = ?
         GROUP BY categoria ORDER BY total DESC
     `).all(di, df, lojaId);
-    const totalGastos = gastos.reduce((s, g) => s + g.total, 0);
+    const totalGastosVar = gastos.reduce((s, g) => s + g.total, 0);
+    const gastosFixos = db.prepare(`SELECT COALESCE(SUM(valor), 0) as total, COUNT(*) as qtd FROM gastos_fixos WHERE ativo = 1 AND loja_id = ?`).get(lojaId);
+    const totalGastos = totalGastosVar + gastosFixos.total;
 
     const funcionarios = db.prepare(`
         SELECT v.id, v.nome, v.salario_base, v.percentual_comissao, v.meta, v.bonus_meta,
@@ -203,11 +249,16 @@ router.get('/geral', (req, res) => {
         FROM vendedores v
         LEFT JOIN ordens_servico os ON os.vendedor_id = v.id
             AND os.status = 'concluida'
-            AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ?
+            AND COALESCE(os.is_plantao, 0) = 0
             AND os.loja_id = ?
+            AND (
+                (COALESCE(os.a_receber, 0) = 0 AND date(COALESCE(os.data_conclusao, os.data_entrada)) BETWEEN ? AND ?)
+                OR
+                (os.a_receber = 1 AND os.a_receber_pago = 1 AND date(os.data_recebimento) BETWEEN ? AND ?)
+            )
         WHERE v.ativo = 1 AND v.loja_id = ?
         GROUP BY v.id ORDER BY v.nome
-    `).all(di, df, lojaId, lojaId).map(f => ({ ...f, bonus: (f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0 }));
+    `).all(lojaId, di, df, di, df, lojaId).map(f => ({ ...f, bonus: (f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0 }));
 
     const valesMap = {};
     db.prepare(`
@@ -217,29 +268,44 @@ router.get('/geral', (req, res) => {
         GROUP BY v.vendedor_id
     `).all(di, df, lojaId).forEach(v => { valesMap[v.nome] = v.total_vales; });
 
+    const extrasMap = {};
+    const extrasDetalhe = {};
+    db.prepare(`
+        SELECT ef.vendedor_id, ef.id, ef.descricao, ef.valor, ef.data
+        FROM extras_funcionario ef
+        WHERE date(ef.data) BETWEEN ? AND ? AND ef.loja_id = ?
+        ORDER BY ef.data DESC
+    `).all(di, df, lojaId).forEach(e => {
+        extrasMap[e.vendedor_id] = (extrasMap[e.vendedor_id] || 0) + e.valor;
+        if (!extrasDetalhe[e.vendedor_id]) extrasDetalhe[e.vendedor_id] = [];
+        extrasDetalhe[e.vendedor_id].push(e);
+    });
+
     const funcionariosComVales = funcionarios.map(f => {
         const vales = valesMap[f.nome] || 0;
-        const bruto = f.salario_base + f.comissao + ((f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0);
+        const extras = extrasMap[f.id] || 0;
+        const bruto = f.salario_base + f.comissao + ((f.meta > 0 && f.total_os >= f.meta) ? f.bonus_meta : 0) + extras;
         const excedente = Math.max(0, vales - bruto);
-        return { ...f, vales, total_a_pagar: Math.max(0, bruto - vales), excedente };
+        return { ...f, vales, extras, extras_detalhe: extrasDetalhe[f.id] || [], total_a_pagar: Math.max(0, bruto - vales), excedente };
     });
 
     const totalSalarios  = funcionarios.reduce((s, f) => s + f.salario_base, 0);
     const totalComissoes = funcionarios.reduce((s, f) => s + f.comissao, 0);
     const totalBonus     = funcionarios.reduce((s, f) => s + f.bonus, 0);
+    const totalExtras    = Object.values(extrasMap).reduce((s, v) => s + v, 0);
     const totalVales     = Object.values(valesMap).reduce((s, v) => s + v, 0);
     const totalExcedenteVales = funcionariosComVales.reduce((s, f) => s + f.excedente, 0);
-    const resultadoLiquido = faturamentoBruto - totalGastos - totalSalarios - totalComissoes - totalBonus - totalExcedenteVales;
+    const resultadoLiquido = faturamentoBruto - totalGastos - totalSalarios - totalComissoes - totalBonus - totalExtras - totalExcedenteVales;
 
     res.json({
         list, totais,
         resultado: {
             faturamento_bruto: faturamentoBruto,
             faturamento_afiacao: _sumAfiacao.t,
-            gastos, total_gastos: totalGastos,
+            gastos, gastos_fixos_total: gastosFixos.total, total_gastos: totalGastos,
             funcionarios: funcionariosComVales,
             total_salarios: totalSalarios, total_comissoes: totalComissoes,
-            total_bonus: totalBonus, total_vales: totalVales, total_excedente_vales: totalExcedenteVales,
+            total_bonus: totalBonus, total_extras: totalExtras, total_vales: totalVales, total_excedente_vales: totalExcedenteVales,
             resultado_liquido: resultadoLiquido,
             margem: faturamentoBruto > 0 ? ((resultadoLiquido / faturamentoBruto) * 100).toFixed(1) : 0
         }

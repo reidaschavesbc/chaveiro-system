@@ -1,6 +1,11 @@
 let valesList = [];
 let valesVendedores = [];
 
+async function navegarVales() {
+  if (!await pedirSenhaAdm()) return;
+  navigateTo('vales');
+}
+
 async function vales(el) {
     valesVendedores = await api('GET', '/vendedores');
     const hoje = new Date();
@@ -124,7 +129,7 @@ function renderVales() {
         </table>`;
 }
 
-function abrirModalVale() {
+async function abrirModalVale() {
     document.getElementById('vale-vendedor').value = '';
     document.getElementById('vale-valor').value = '';
     document.getElementById('vale-data').value = new Date().toLocaleDateString('en-CA');

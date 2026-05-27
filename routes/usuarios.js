@@ -74,6 +74,20 @@ router.put('/:id', apenasAdmin, (req, res) => {
     res.json({ ok: true });
 });
 
+// DELETE /api/usuarios/:id — exclui sub-usuário
+router.delete('/:id', apenasAdmin, (req, res) => {
+    const { id } = req.params;
+
+    if (Number(id) === req.user.id) return res.status(400).json({ error: 'Você não pode excluir seu próprio usuário' });
+
+    const usuario = db.prepare('SELECT id, principal FROM usuarios WHERE id = ?').get(id);
+    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (usuario.principal) return res.status(400).json({ error: 'Não é possível excluir o usuário principal da loja' });
+
+    db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
+    res.json({ ok: true });
+});
+
 // PUT /api/usuarios/:id/senha — redefine senha do usuário
 router.put('/:id/senha', apenasAdmin, (req, res) => {
     const { senha } = req.body;

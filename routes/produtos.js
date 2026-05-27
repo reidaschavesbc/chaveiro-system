@@ -93,7 +93,7 @@ router.put('/:id', (req, res) => {
         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, observacao, usuario_id, loja_id)
             VALUES (?, 'ajuste', ?, ?, ?, 'Ajuste manual', ?, ?)`)
             .run(req.params.id, Math.abs(estoque - estoqueAnterior), estoqueAnterior, estoque, req.user?.id||null, loja_id);
-        verificarEstoqueBaixo(parseInt(req.params.id));
+        verificarEstoqueBaixo(parseInt(req.params.id), loja_id);
     }
     res.json({ ok: true });
 });

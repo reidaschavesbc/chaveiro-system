@@ -51,7 +51,7 @@ router.post('/', (req, res) => {
         db.prepare('UPDATE produtos SET estoque = ? WHERE id = ? AND loja_id = ?').run(novoEstoque, produto_id, loja_id);
         db.prepare(`INSERT INTO movimentacoes_estoque (produto_id, tipo, quantidade, estoque_anterior, estoque_posterior, referencia, observacao, usuario_id, loja_id)
             VALUES (?, 'consumo_interno', ?, ?, ?, ?, ?, ?, ?)`).run(produto_id, quantidade, p.estoque, novoEstoque, categoria, obs, usuario_id, loja_id);
-        verificarEstoqueBaixo(produto_id);
+        verificarEstoqueBaixo(produto_id, loja_id);
         res.status(201).json({ ok: true, estoque_anterior: p.estoque, estoque_atual: novoEstoque });
     } else {
         const anterior = getQtdUsuario(usuario_id, produto_id);

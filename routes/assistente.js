@@ -835,7 +835,7 @@ function executarRegistrarConsumoInterno({ produto_nome, quantidade, categoria, 
     VALUES (?, 'consumo_interno', ?, ?, ?, ?, ?, ?, ?)
   `).run(produto.id, quantidade, produto.estoque, novoEstoque, cat, obs, ctx.id, ctx.loja_id)
 
-  verificarEstoqueBaixo(produto.id)
+  verificarEstoqueBaixo(produto.id, ctx.loja_id)
 
   return { ok: true, status_execucao: 'CONCLUIDO', produto: produto.nome, quantidade, estoque_anterior: produto.estoque, estoque_atual: novoEstoque, unidade: produto.unidade }
 }
@@ -945,7 +945,7 @@ function executarAjustarEstoque({ produto_nome, modo, quantidade, motivo }, ctx)
     VALUES (?, 'ajuste_manual', ?, ?, ?, 'ajuste', ?, ?, ?)
   `).run(produto.id, Math.abs(novoEstoque - produto.estoque), produto.estoque, novoEstoque, motivo || 'Ajuste via assistente', ctx.id, ctx.loja_id)
 
-  verificarEstoqueBaixo(produto.id)
+  verificarEstoqueBaixo(produto.id, ctx.loja_id)
   return { ok: true, status_execucao: 'CONCLUIDO', produto: produto.nome, estoque_anterior: produto.estoque, estoque_atual: novoEstoque }
 }
 

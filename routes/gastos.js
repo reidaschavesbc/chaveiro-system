@@ -10,6 +10,7 @@ function verificarSenhaGerente(senha, hash) {
 }
 
 const CATEGORIAS = ['material', 'combustivel', 'alimentacao', 'manutencao', 'servicos', 'outros'];
+const FORMAS_PAG = ['dinheiro', 'cartao', 'pix'];
 
 router.get('/', (req, res) => {
     const loja_id = req.user.loja_id;
@@ -36,17 +37,18 @@ router.get('/', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-    const { descricao, valor, categoria, data, observacoes } = req.body;
+    const { descricao, valor, categoria, forma_pagamento, data, observacoes } = req.body;
     if (!descricao?.trim()) return res.status(400).json({ error: 'Descrição é obrigatória' });
     const v = parseFloat(valor);
     if (!v || v <= 0) return res.status(400).json({ error: 'Valor deve ser maior que zero' });
 
     const cat = CATEGORIAS.includes(categoria) ? categoria : 'outros';
+    const fp  = FORMAS_PAG.includes(forma_pagamento) ? forma_pagamento : 'dinheiro';
     const dataGasto = data || new Date().toLocaleDateString('en-CA');
 
     const result = db.prepare(
-        `INSERT INTO gastos (descricao, valor, categoria, data, observacoes, loja_id) VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(descricao.trim(), v, cat, dataGasto, observacoes?.trim()||null, req.user.loja_id);
+        `INSERT INTO gastos (descricao, valor, categoria, forma_pagamento, data, observacoes, loja_id) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(descricao.trim(), v, cat, fp, dataGasto, observacoes?.trim()||null, req.user.loja_id);
 
     res.json({ id: result.lastInsertRowid, ok: true });
 });
@@ -56,26 +58,21 @@ router.put('/:id', (req, res) => {
     const g = db.prepare('SELECT id FROM gastos WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!g) return res.status(404).json({ error: 'Gasto não encontrado' });
 
-    const { descricao, valor, categoria, data, observacoes } = req.body;
+    const { descricao, valor, categoria, forma_pagamento, data, observacoes } = req.body;
     if (!descricao?.trim()) return res.status(400).json({ error: 'Descrição é obrigatória' });
     const v = parseFloat(valor);
     if (!v || v <= 0) return res.status(400).json({ error: 'Valor deve ser maior que zero' });
 
     const cat = CATEGORIAS.includes(categoria) ? categoria : 'outros';
-    db.prepare(`UPDATE gastos SET descricao=?,valor=?,categoria=?,data=?,observacoes=? WHERE id=? AND loja_id=?`)
-        .run(descricao.trim(), v, cat, data, observacoes?.trim()||null, req.params.id, loja_id);
+    const fp  = FORMAS_PAG.includes(forma_pagamento) ? forma_pagamento : 'dinheiro';
+    db.prepare(`UPDATE gastos SET descricao=?,valor=?,categoria=?,forma_pagamento=?,data=?,observacoes=? WHERE id=? AND loja_id=?`)
+        .run(descricao.trim(), v, cat, fp, data, observacoes?.trim()||null, req.params.id, loja_id);
 
     res.json({ ok: true });
 });
 
 router.delete('/:id', (req, res) => {
     const loja_id = req.user.loja_id;
-    const { senha } = req.body;
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    if (cfg && cfg.valor) {
-        if (!senha) return res.status(403).json({ error: 'Senha do gerente obrigatória' });
-        if (!verificarSenhaGerente(senha, cfg.valor)) return res.status(403).json({ error: 'Senha incorreta' });
-    }
     const g = db.prepare('SELECT id FROM gastos WHERE id = ? AND loja_id = ?').get(req.params.id, loja_id);
     if (!g) return res.status(404).json({ error: 'Gasto não encontrado' });
     db.prepare('DELETE FROM gastos WHERE id = ? AND loja_id = ?').run(req.params.id, loja_id);
