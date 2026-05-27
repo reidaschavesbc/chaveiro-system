@@ -397,10 +397,12 @@ function migrate() {
   addCol('vendedores',           'loja_id',  'INTEGER');
   addCol('ordens_servico',       'loja_id',  'INTEGER');
   addCol('vendas',               'loja_id',  'INTEGER');
-  addCol('gastos',               'loja_id',  'INTEGER');
+  addCol('gastos',               'loja_id',          'INTEGER');
+  addCol('gastos',               'forma_pagamento',  "TEXT NOT NULL DEFAULT 'dinheiro'");
   addCol('vales',                'loja_id',  'INTEGER');
   addCol('fechamentos_comissao', 'loja_id',  'INTEGER');
   addCol('lembretes',            'loja_id',  'INTEGER');
+  addCol('lembretes',            'origem',   "TEXT NOT NULL DEFAULT 'web'");
   addCol('pedidos_compra',       'loja_id',  'INTEGER');
   addCol('orcamentos',           'loja_id',  'INTEGER');
   addCol('movimentacoes_estoque','loja_id',  'INTEGER');
@@ -533,6 +535,30 @@ function migrate() {
       data_fim TEXT,
       observacao TEXT,
       pago_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS extras_funcionario (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      vendedor_id INTEGER NOT NULL,
+      descricao TEXT NOT NULL,
+      valor REAL NOT NULL DEFAULT 0,
+      data TEXT NOT NULL DEFAULT (date('now','localtime')),
+      loja_id INTEGER NOT NULL,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS gastos_fixos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      descricao TEXT NOT NULL,
+      valor REAL NOT NULL DEFAULT 0,
+      categoria TEXT NOT NULL DEFAULT 'outros',
+      ativo INTEGER NOT NULL DEFAULT 1,
+      loja_id INTEGER NOT NULL,
       criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
     );
   `);

@@ -5,7 +5,7 @@ const db = require('../database/db');
 router.get('/', (req, res) => {
     const loja_id = req.user.loja_id;
     const { status } = req.query;
-    let sql = `SELECT * FROM lembretes WHERE loja_id = ?`;
+    let sql = `SELECT * FROM lembretes WHERE loja_id = ? AND COALESCE(origem,'web') != 'mobile'`;
     const params = [loja_id];
     if (status) { sql += ` AND status = ?`; params.push(status); }
     sql += ` ORDER BY data_envio DESC`;
@@ -33,7 +33,7 @@ router.post('/', (req, res) => {
     if (!mensagem?.trim()) return res.status(400).json({ error: 'Mensagem é obrigatória' });
     if (!data_envio) return res.status(400).json({ error: 'Data e hora são obrigatórias' });
     const dest = destinatarios === 'todos' || !destinatarios ? 'todos' : destinatarios;
-    const r = db.prepare(`INSERT INTO lembretes (mensagem, data_envio, destinatarios, loja_id) VALUES (?, ?, ?, ?)`)
+    const r = db.prepare(`INSERT INTO lembretes (mensagem, data_envio, destinatarios, loja_id, origem) VALUES (?, ?, ?, ?, 'web')`)
         .run(mensagem.trim(), data_envio, dest, req.user.loja_id);
     res.json({ id: r.lastInsertRowid, ok: true });
 });

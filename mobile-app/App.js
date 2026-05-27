@@ -25,6 +25,7 @@ import OSNovaScreen from './screens/OSNovaScreen';
 import BuscaScreen from './screens/BuscaScreen';
 import AdminScreen from './screens/AdminScreen';
 import AfiacaoScreen from './screens/AfiacaoScreen';
+import LembretesScreen from './screens/LembretesScreen';
 import api from './services/api';
 
 Notifications.setNotificationHandler({
@@ -173,6 +174,11 @@ export default function App() {
             name="Afiacao"
             component={AfiacaoScreen}
             options={{ title: '✂️ Afiação', headerBackTitle: 'Voltar', headerTintColor: '#6366f1' }}
+          />
+          <Stack.Screen
+            name="Lembretes"
+            component={LembretesScreen}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="Admin"

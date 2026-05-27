@@ -507,6 +507,77 @@ router.post('/afiacao-pagar', authFuncionario, (req, res) => {
   res.json({ ok: true, total, qtd: fichas.length });
 });
 
+// ── Lembretes mobile ─────────────────────────────────────────────────────────
+
+// GET /api/app/lembretes
+router.get('/lembretes', authFuncionario, (req, res) => {
+  const { status } = req.query;
+  const isAdmin = req.funcionario.is_admin;
+  const meuId = String(req.funcionario.id);
+
+  // ADM vê todos da loja; técnico vê só os seus próprios
+  let sql = `SELECT * FROM lembretes WHERE loja_id = ? AND origem = 'mobile'`;
+  const params = [req.funcionario.loja_id];
+  if (!isAdmin) { sql += ` AND destinatarios = ?`; params.push(meuId); }
+  if (status) { sql += ` AND status = ?`; params.push(status); }
+  sql += ` ORDER BY data_envio DESC`;
+  const lembretes = db.prepare(sql).all(...params);
+
+  // ADM recebe lista de vendedores para seleção; técnico recebe vazio
+  const vendedores = isAdmin
+    ? db.prepare(`SELECT id, nome, telefone FROM vendedores WHERE ativo = 1 AND loja_id = ? ORDER BY nome`).all(req.funcionario.loja_id)
+    : [];
+
+  const result = lembretes.map(l => {
+    let destinatarios_nomes;
+    if (l.destinatarios === 'todos') {
+      destinatarios_nomes = 'Todos os funcionários';
+    } else {
+      const ids = l.destinatarios.split(',').map(Number);
+      const nomes = vendedores.filter(v => ids.includes(v.id)).map(v => v.nome);
+      destinatarios_nomes = nomes.length ? nomes.join(', ') : 'Eu mesmo';
+    }
+    return { ...l, destinatarios_nomes };
+  });
+
+  res.json({ lembretes: result, vendedores });
+});
+
+// POST /api/app/lembretes
+router.post('/lembretes', authFuncionario, (req, res) => {
+  const { mensagem, data_envio, destinatarios } = req.body;
+  if (!mensagem?.trim()) return res.status(400).json({ error: 'Mensagem é obrigatória' });
+  if (!data_envio) return res.status(400).json({ error: 'Data e hora são obrigatórias' });
+
+  // Técnico só pode agendar para si mesmo
+  const dest = req.funcionario.is_admin
+    ? (destinatarios === 'todos' || !destinatarios ? 'todos' : destinatarios)
+    : String(req.funcionario.id);
+
+  const r = db.prepare(
+    `INSERT INTO lembretes (mensagem, data_envio, destinatarios, loja_id, origem) VALUES (?, ?, ?, ?, 'mobile')`
+  ).run(mensagem.trim(), data_envio, dest, req.funcionario.loja_id);
+  res.json({ id: r.lastInsertRowid, ok: true });
+});
+
+// DELETE /api/app/lembretes/:id
+router.delete('/lembretes/:id', authFuncionario, (req, res) => {
+  const meuId = String(req.funcionario.id);
+  const l = db.prepare(
+    `SELECT * FROM lembretes WHERE id = ? AND loja_id = ? AND origem = 'mobile'`
+  ).get(req.params.id, req.funcionario.loja_id);
+  if (!l) return res.status(404).json({ error: 'Lembrete não encontrado' });
+  // Técnico só pode excluir os próprios
+  if (!req.funcionario.is_admin && l.destinatarios !== meuId) return res.status(403).json({ error: 'Sem permissão' });
+  if (l.status === 'pendente') {
+    db.prepare(`UPDATE lembretes SET status = 'cancelado' WHERE id = ?`).run(req.params.id);
+    res.json({ ok: true, acao: 'cancelado' });
+  } else {
+    db.prepare('DELETE FROM lembretes WHERE id = ?').run(req.params.id);
+    res.json({ ok: true, acao: 'excluido' });
+  }
+});
+
 // Função exportada para notificar funcionário quando OS é criada/atribuída
 async function notificarFuncionario(vendedorId, titulo, mensagem) {
   const func = db.prepare(`SELECT expo_push_token FROM vendedores WHERE id = ?`).get(vendedorId);
