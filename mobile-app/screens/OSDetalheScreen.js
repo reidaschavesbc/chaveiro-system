@@ -86,6 +86,7 @@ export default function OSDetalheScreen({ route, navigation }) {
   const [endRua, setEndRua] = useState('');
   const [endNumero, setEndNumero] = useState('');
   const [endCidade, setEndCidade] = useState('');
+  const [endReferencia, setEndReferencia] = useState('');
   const [editandoEnd, setEditandoEnd] = useState(false);
 
   // Edição contato
@@ -140,6 +141,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setEndRua(data.cliente_avulso_rua || '');
       setEndNumero(data.cliente_avulso_numero || '');
       setEndCidade(data.cliente_avulso_cidade || '');
+      setEndReferencia(data.cliente_avulso_referencia || '');
       setContato(data.contato_cliente || '');
     } catch {
       Alert.alert('Erro', 'Não foi possível carregar a OS');
@@ -187,6 +189,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         cliente_avulso_rua: endRua.trim() || null,
         cliente_avulso_numero: endNumero.trim() || null,
         cliente_avulso_cidade: endCidade.trim() || null,
+        cliente_avulso_referencia: endReferencia.trim() || null,
       });
       await carregarOS();
       setEditandoEnd(false);
@@ -588,11 +591,19 @@ export default function OSDetalheScreen({ route, navigation }) {
                     placeholderTextColor="#999"
                   />
                 </View>
+                <UpperTextInput
+                  style={[s.obsInput, { minHeight: 0, paddingVertical: 10, marginBottom: 6 }]}
+                  value={endReferencia}
+                  onChangeText={setEndReferencia}
+                  placeholder="Referência (perto de, cor da casa...)"
+                  placeholderTextColor="#999"
+                />
                 <View style={s.row}>
                   <TouchableOpacity style={s.cancelBtn} onPress={() => {
                     setEndRua(os.cliente_avulso_rua || '');
                     setEndNumero(os.cliente_avulso_numero || '');
                     setEndCidade(os.cliente_avulso_cidade || '');
+                    setEndReferencia(os.cliente_avulso_referencia || '');
                     setEditandoEnd(false);
                   }}>
                     <Text style={s.cancelBtnText}>Cancelar</Text>
@@ -603,7 +614,15 @@ export default function OSDetalheScreen({ route, navigation }) {
                 </View>
               </>
             ) : (
-              (() => { const end = os.cliente_endereco || [os.cliente_avulso_rua, os.cliente_avulso_numero, os.cliente_avulso_cidade].filter(Boolean).join(', '); return end ? <Text style={s.secSub}>📍 {end}</Text> : <Text style={[s.secSub, { color: '#cbd5e1' }]}>Sem endereço</Text>; })()
+              (() => {
+                const end = os.cliente_endereco || [os.cliente_avulso_rua, os.cliente_avulso_numero, os.cliente_avulso_cidade].filter(Boolean).join(', ');
+                return (
+                  <>
+                    {end ? <Text style={s.secSub}>📍 {end}</Text> : <Text style={[s.secSub, { color: '#cbd5e1' }]}>Sem endereço</Text>}
+                    {os.cliente_avulso_referencia ? <Text style={s.secSub}>🏠 {os.cliente_avulso_referencia}</Text> : null}
+                  </>
+                );
+              })()
             )}
           </View>
 

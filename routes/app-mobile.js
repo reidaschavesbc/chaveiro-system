@@ -5,6 +5,27 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const admin = require('firebase-admin');
 const gerarNumeroOS = require('../utils/gerarNumeroOS');
+const wa = require('../services/whatsapp');
+
+function _normalizeFone(phone) {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  return (digits.startsWith('55') && digits.length >= 12) ? digits : '55' + digits;
+}
+
+function _getConfig(chave) {
+  const row = db.prepare('SELECT valor FROM configuracoes WHERE chave = ?').get(chave);
+  return row?.valor || '';
+}
+
+async function _notificarClienteAfiacao(ficha) {
+  const tel = _normalizeFone(ficha.cliente_telefone);
+  if (!tel) return;
+  const empresa = _getConfig('empresa_nome') || 'Chaveiro';
+  const msg = `✂️ Olá${ficha.cliente_nome ? ', ' + ficha.cliente_nome : ''}! Sua afiação (ficha #${ficha.numero}) está pronta para retirada. Obrigado, ${empresa}!`;
+  await wa.enviarMensagem(tel, msg);
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'chaveiro_super_secret_key_2024';
 
@@ -270,7 +291,11 @@ router.put('/os/:id', authFuncionario, (req, res) => {
     : db.prepare(`SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ? AND vendedor_id = ?`).get(req.params.id, req.funcionario.loja_id, req.funcionario.id);
   if (!os) return res.status(404).json({ error: 'OS não encontrada' });
 
-  const { status, observacoes, descricao, desconto, pagamentos, a_receber, data_vencimento } = req.body;
+  const {
+    status, observacoes, descricao, desconto, pagamentos, a_receber, data_vencimento,
+    contato_cliente,
+    cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_cidade, cliente_avulso_referencia,
+  } = req.body;
 
   const STATUSES = ['aberta', 'em_andamento', 'concluida', 'cancelada'];
   if (status && !STATUSES.includes(status)) return res.status(400).json({ error: 'Status inválido' });
@@ -296,28 +321,39 @@ router.put('/os/:id', authFuncionario, (req, res) => {
 
   const novoDesconto = desconto !== undefined ? Number(desconto) : null;
 
-  db.prepare(`
-    UPDATE ordens_servico SET
-      status           = COALESCE(?, status),
-      observacoes      = COALESCE(?, observacoes),
-      descricao        = COALESCE(?, descricao),
-      desconto         = COALESCE(?, desconto),
-      forma_pagamento  = COALESCE(?, forma_pagamento),
-      a_receber        = COALESCE(?, a_receber),
-      data_vencimento  = COALESCE(?, data_vencimento),
-      data_conclusao   = ?
-    WHERE id = ?
-  `).run(
-    status || null,
-    observacoes || null,
-    descricao || null,
-    novoDesconto,
-    formaFinal,
-    novoAReceber,
-    data_vencimento || null,
-    data_conclusao,
-    os.id
-  );
+  // Para campos opcionais que podem ser limpos (enviados como null/vazio),
+  // usamos 'in req.body' para distinguir "não enviado" de "enviado como vazio".
+  const b = req.body;
+  const novoContato      = 'contato_cliente'           in b ? (contato_cliente?.trim() || null)           : undefined;
+  const novaRua          = 'cliente_avulso_rua'        in b ? (cliente_avulso_rua?.trim() || null)        : undefined;
+  const novoNumero       = 'cliente_avulso_numero'     in b ? (cliente_avulso_numero?.trim() || null)     : undefined;
+  const novaCidade       = 'cliente_avulso_cidade'     in b ? (cliente_avulso_cidade?.trim() || null)     : undefined;
+  const novaReferencia   = 'cliente_avulso_referencia' in b ? (cliente_avulso_referencia?.trim() || null) : undefined;
+
+  const setClauses = [
+    'status          = COALESCE(?, status)',
+    'observacoes     = COALESCE(?, observacoes)',
+    'descricao       = COALESCE(?, descricao)',
+    'desconto        = COALESCE(?, desconto)',
+    'forma_pagamento = COALESCE(?, forma_pagamento)',
+    'a_receber       = COALESCE(?, a_receber)',
+    'data_vencimento = COALESCE(?, data_vencimento)',
+    'data_conclusao  = ?',
+  ];
+  const params = [
+    status || null, observacoes || null, descricao || null,
+    novoDesconto, formaFinal, novoAReceber,
+    data_vencimento || null, data_conclusao,
+  ];
+
+  if (novoContato !== undefined)    { setClauses.push('contato_cliente           = ?'); params.push(novoContato); }
+  if (novaRua !== undefined)        { setClauses.push('cliente_avulso_rua        = ?'); params.push(novaRua); }
+  if (novoNumero !== undefined)     { setClauses.push('cliente_avulso_numero     = ?'); params.push(novoNumero); }
+  if (novaCidade !== undefined)     { setClauses.push('cliente_avulso_cidade     = ?'); params.push(novaCidade); }
+  if (novaReferencia !== undefined) { setClauses.push('cliente_avulso_referencia = ?'); params.push(novaReferencia); }
+
+  params.push(os.id);
+  db.prepare(`UPDATE ordens_servico SET ${setClauses.join(', ')} WHERE id = ?`).run(...params);
 
   if (desconto !== undefined) recalcularValorOS(os.id);
 
@@ -451,7 +487,7 @@ router.get('/afiacao', authFuncionario, (req, res) => {
 });
 
 // PUT /api/app/afiacao/:id/status — avança status de uma ficha (admin ou afiador)
-router.put('/afiacao/:id/status', authFuncionario, (req, res) => {
+router.put('/afiacao/:id/status', authFuncionario, async (req, res) => {
   const lojaAlvo = req.funcionario.loja_id;
   if (req.funcionario.tipo !== 'afiador' && !verificarAcessoAdm(req, lojaAlvo)) return res.status(403).json({ error: 'Sem permissão' });
   const { status } = req.body;
@@ -465,6 +501,7 @@ router.put('/afiacao/:id/status', authFuncionario, (req, res) => {
   `).run(...(status === 'entregue' ? [status, agora, req.params.id, lojaAlvo] : [status, req.params.id, lojaAlvo]));
   const ficha = db.prepare('SELECT * FROM afiacao WHERE id = ?').get(req.params.id);
   if (!ficha) return res.status(404).json({ error: 'Ficha não encontrada' });
+  if (status === 'entregue') _notificarClienteAfiacao(ficha).catch(() => {});
   res.json(ficha);
 });
 
@@ -486,7 +523,8 @@ router.get('/afiacao-pendente', authFuncionario, (req, res) => {
     ORDER BY COALESCE(data_entrega, criado_em) ASC
   `).all(lojaAlvo);
   const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
-  res.json({ qtd: fichas.length, total: fichas.length * valorAfiador, valor_por_ficha: valorAfiador });
+  const totalQtd = fichas.reduce((s, f) => s + Number(f.quantidade || 0), 0);
+  res.json({ qtd: fichas.length, total: totalQtd * valorAfiador, valor_por_ficha: valorAfiador });
 });
 
 // POST /api/app/afiacao-pagar — registra pagamento ao afiador (admin only)
@@ -498,7 +536,7 @@ router.post('/afiacao-pagar', authFuncionario, (req, res) => {
   `).all(lojaAlvo);
   if (!fichas.length) return res.status(400).json({ erro: 'Nenhuma ficha pendente' });
   const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
-  const total = fichas.length * valorAfiador;
+  const total = fichas.reduce((s, f) => s + Number(f.quantidade || 0), 0) * valorAfiador;
   const datas = fichas.map(f => f.data_entrega || f.criado_em).filter(Boolean).sort();
   const info = db.prepare(`
     INSERT INTO pagamentos_afiador (loja_id, valor, qtd_fichas, data_inicio, data_fim)
