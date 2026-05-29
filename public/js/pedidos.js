@@ -407,6 +407,7 @@ async function pedidosReabrirPendente(id) {
 }
 
 async function pedidosExcluir(id) {
+  if (!await pedirSenhaGerente()) return;
   if (!await modalConfirmar({ titulo: 'Remover Pedido', mensagem: 'Deseja remover este pedido da lista?', icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Remover' })) return;
   try {
     await api('DELETE', `/pedidos/${id}`);
@@ -460,6 +461,7 @@ function pedidosAtualizarContador() {
 
 async function pedidosExcluirSelecionados() {
   if (!pedidosSelecionados.size) return;
+  if (!await pedirSenhaGerente()) return;
   const ok = await modalConfirmar({
     titulo: 'Excluir Pedidos',
     mensagem: `Excluir <strong>${pedidosSelecionados.size} pedido(s)</strong> selecionado(s)? Esta ação não pode ser desfeita.`,
