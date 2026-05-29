@@ -44,10 +44,18 @@ function aplicarMascaraCPFCNPJ(valor) {
 
 function getToken() { return localStorage.getItem('token'); }
 function getUser() { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
-function authHeaders() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() }; }
+function authHeaders(method) {
+    const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() };
+    // Só envia e consome o autorizador em chamadas que modificam dados
+    if (window.__autorizador && method && method !== 'GET') {
+        h['X-Autorizador'] = window.__autorizador;
+        window.__autorizador = null;
+    }
+    return h;
+}
 
 async function api(method, path, body, timeoutMs = 10000) {
-    const opts = { method, headers: authHeaders(), signal: AbortSignal.timeout(timeoutMs) };
+    const opts = { method, headers: authHeaders(method), signal: AbortSignal.timeout(timeoutMs) };
     if (body) opts.body = JSON.stringify(body);
     let res;
     try {
@@ -110,12 +118,12 @@ async function pedirSenhaAdm() {
         overlay.innerHTML = `
         <div class="modal" style="max-width:380px;width:100%" onclick="event.stopPropagation()">
             <div class="modal-header">
-                <span class="modal-title">🔑 Senha ADM</span>
+                <span class="modal-title">🔒 Senha do Gerente</span>
                 <button class="modal-close" id="btn-sa-fechar">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta área requer a senha ADM.</p>
-                <input type="password" id="sa-senha" placeholder="Digite a senha ADM" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
+                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta ação requer senha do gerente ou administrador.</p>
+                <input type="password" id="sa-senha" placeholder="Senha do gerente ou administrador" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
                 <div id="sa-erro" style="display:none;color:#dc2626;font-size:12px;margin-top:8px">Senha incorreta.</div>
             </div>
             <div class="modal-footer">
@@ -138,7 +146,7 @@ async function pedirSenhaAdm() {
             const senha = senhaInput.value;
             try {
                 const data = await api('POST', '/auth/verificar-adm', { senha });
-                if (data.ok) { fechar(true); }
+                if (data.ok) { if (data.autorizador) window.__autorizador = data.autorizador; fechar(true); }
                 else { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
             } catch (e) { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
         };
@@ -170,8 +178,8 @@ async function pedirSenhaGerente() {
                 <button class="modal-close" id="btn-sg-fechar">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta ação requer autorização do gerente.</p>
-                <input type="password" id="sg-senha" placeholder="Digite a senha" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
+                <p style="font-size:13px;color:#64748b;margin:0 0 14px">Esta ação requer senha do gerente ou administrador.</p>
+                <input type="password" id="sg-senha" placeholder="Senha do gerente ou administrador" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;box-sizing:border-box">
                 <div id="sg-erro" style="display:none;color:#dc2626;font-size:12px;margin-top:8px">Senha incorreta.</div>
             </div>
             <div class="modal-footer">
@@ -195,7 +203,7 @@ async function pedirSenhaGerente() {
             const senha = senhaInput.value;
             try {
                 const data = await api('POST', '/auth/verificar-gerente', { senha });
-                if (data.ok) { fechar(true); }
+                if (data.ok) { if (data.autorizador) window.__autorizador = data.autorizador; fechar(true); }
                 else { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
             } catch (e) { erroEl.style.display = 'block'; senhaInput.value = ''; senhaInput.focus(); }
         };
@@ -372,7 +380,7 @@ function pedirSenhaExclusao(descricao) {
                     <p style="color:#7f1d1d;margin:6px 0 0;font-size:13px"><strong>${descricao}</strong> será excluído(a) permanentemente e não poderá ser recuperado(a).</p>
                 </div>
                 <div class="form-group">
-                    <label>Senha do gerente</label>
+                    <label>Senha do gerente ou administrador</label>
                     <input type="password" id="input-senha-excl">
                 </div>
             </div>
