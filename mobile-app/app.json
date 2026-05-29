@@ -38,11 +38,6 @@
         }
       ]
     ],
-    "extra": {
-      "eas": {
-        "projectId": "7d16350f-015f-460a-bcab-40ea4bad4d12"
-      }
-    },
     "owner": "marciodsl"
   }
 }
