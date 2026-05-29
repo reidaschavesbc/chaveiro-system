@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../database/db');
+const { registrarExclusao } = require('../utils/historico');
 
 function apenasAdmin(req, res, next) {
     if (req.user.perfil !== 'admin') return res.status(403).json({ error: 'Acesso restrito a administradores' });
@@ -80,11 +81,25 @@ router.delete('/:id', apenasAdmin, (req, res) => {
 
     if (Number(id) === req.user.id) return res.status(400).json({ error: 'Você não pode excluir seu próprio usuário' });
 
-    const usuario = db.prepare('SELECT id, principal FROM usuarios WHERE id = ?').get(id);
-    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
-    if (usuario.principal) return res.status(400).json({ error: 'Não é possível excluir o usuário principal da loja' });
+    const u = db.prepare('SELECT id, nome, email, principal FROM usuarios WHERE id = ?').get(id);
+    if (!u) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (u.principal) return res.status(400).json({ error: 'Não é possível excluir o usuário principal da loja' });
 
-    db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
+    try {
+        db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
+    } catch (e) {
+        if (e.message.includes('FOREIGN KEY')) return res.status(400).json({ error: 'Usuário possui registros vinculados e não pode ser excluído' });
+        throw e;
+    }
+    registrarExclusao({
+        loja_id: req.user.loja_id,
+        tipo: 'usuario',
+        registro_id: u.id,
+        descricao: `Usuário: ${u.nome} (${u.email})`,
+        usuario_id: req.user.id,
+        usuario_nome: req.user.nome,
+        req
+    });
     res.json({ ok: true });
 });
 

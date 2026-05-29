@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
+const { registrarExclusao } = require('../utils/historico');
 
 const CATEGORIAS = ['material', 'combustivel', 'alimentacao', 'manutencao', 'servicos', 'outros'];
 
@@ -21,6 +22,7 @@ router.get('/', apenasAdmin, (req, res) => {
 // POST /api/gastos-fixos
 router.post('/', apenasAdmin, (req, res) => {
     const { descricao, valor, categoria } = req.body;
+    if (!req.user.loja_id) return res.status(400).json({ error: 'Sessão sem loja vinculada' });
     if (!descricao?.trim()) return res.status(400).json({ error: 'Descrição é obrigatória' });
     const v = parseFloat(valor);
     if (!v || v <= 0) return res.status(400).json({ error: 'Valor deve ser maior que zero' });
@@ -54,9 +56,18 @@ router.put('/:id', apenasAdmin, (req, res) => {
 
 // DELETE /api/gastos-fixos/:id
 router.delete('/:id', apenasAdmin, (req, res) => {
-    const g = db.prepare('SELECT id FROM gastos_fixos WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    const g = db.prepare('SELECT id, descricao, valor FROM gastos_fixos WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!g) return res.status(404).json({ error: 'Gasto fixo não encontrado' });
     db.prepare('DELETE FROM gastos_fixos WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
+    registrarExclusao({
+        loja_id: req.user.loja_id,
+        tipo: 'gasto_fixo',
+        registro_id: g.id,
+        descricao: `Gasto fixo: ${g.descricao} — R$ ${(g.valor||0).toFixed(2)}`,
+        usuario_id: req.user.id,
+        usuario_nome: req.user.nome,
+        req
+    });
     res.json({ ok: true });
 });
 

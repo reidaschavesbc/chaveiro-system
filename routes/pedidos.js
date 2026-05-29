@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const wa = require('../services/whatsapp');
+const { registrarExclusao } = require('../utils/historico');
 
 const PRIORIDADES = ['alta', 'media', 'baixa'];
 
@@ -240,7 +241,19 @@ router.put('/:id', (req, res) => {
 
 // DELETE /api/pedidos/:id
 router.delete('/:id', (req, res) => {
+    const p = db.prepare('SELECT id, descricao, quantidade FROM pedidos_compra WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     db.prepare('DELETE FROM pedidos_compra WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
+    if (p) {
+        registrarExclusao({
+            loja_id: req.user.loja_id,
+            tipo: 'pedido_compra',
+            registro_id: p.id,
+            descricao: `Pedido #${p.id}: ${p.produto_nome || p.descricao || '?'} (${p.quantidade})`,
+            usuario_id: req.user.id,
+            usuario_nome: req.user.nome,
+        req
+    });
+    }
     res.json({ ok: true });
 });
 
@@ -249,7 +262,19 @@ router.delete('/', (req, res) => {
     const { ids } = req.body;
     if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'Nenhum id informado' });
     const placeholders = ids.map(() => '?').join(',');
+    const pedidos = db.prepare(`SELECT id, produto_nome, descricao, quantidade FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).all(...ids, req.user.loja_id);
     db.prepare(`DELETE FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).run(...ids, req.user.loja_id);
+    for (const p of pedidos) {
+        registrarExclusao({
+            loja_id: req.user.loja_id,
+            tipo: 'pedido_compra',
+            registro_id: p.id,
+            descricao: `Pedido #${p.id}: ${p.produto_nome || p.descricao || '?'} (${p.quantidade})`,
+            usuario_id: req.user.id,
+            usuario_nome: req.user.nome,
+        req
+    });
+    }
     res.json({ ok: true, removidos: ids.length });
 });
 
