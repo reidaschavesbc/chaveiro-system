@@ -196,6 +196,7 @@ async function salvarVendedor() {
 }
 
 async function excluirVendedor(id) {
+  if (!await pedirSenhaGerente()) return;
   if (!await modalConfirmar({ titulo: 'Desativar Funcionário', mensagem: 'Deseja realmente desativar este funcionário?', icone: '⚠️', corBotao: '#dc2626', textoBotao: 'Desativar' })) return;
   try {
     await api('DELETE', `/vendedores/${id}`);

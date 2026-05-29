@@ -351,6 +351,7 @@ async function salvarEntradaEstoque() {
 }
 
 async function excluirProduto(id) {
+    if (!await pedirSenhaGerente()) return;
     if (!await confirmDialog('Confirma exclusão do produto?')) return;
     try {
         await api('DELETE', `/produtos/${id}`);

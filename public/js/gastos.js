@@ -266,6 +266,7 @@ async function gastosSalvar() {
 }
 
 async function gastosExcluir(id, descricao) {
+  if (!await pedirSenhaGerente()) return;
   const ok = await modalConfirmar({ titulo: 'Excluir Gasto', mensagem: `Excluir o gasto <strong>${descricao}</strong>?`, icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Excluir' });
   if (!ok) return;
   try {

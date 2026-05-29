@@ -216,6 +216,7 @@ async function salvarServico() {
 }
 
 async function excluirServico(id) {
+    if (!await pedirSenhaGerente()) return;
     if (!await confirmDialog('Confirma exclusão do serviço?')) return;
     await api('DELETE', `/servicos/${id}`);
     toast('Serviço excluído!');

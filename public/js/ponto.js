@@ -165,7 +165,7 @@ async function pontoRenderHoje(el) {
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:12px;border-top:1px solid #f1f5f9">
                 ${Object.entries(TIPO_LABEL).map(([k, v]) => `
-                    <button class="pt-btn-reg" onclick="pontoBater(${f.id},'${k}')"
+                    <button class="pt-btn-reg" onclick="pontoBater(${f.id},'${k}','${f.nome.replace(/'/g,"\\'")}')"
                         style="border-color:${v.border};color:${v.cor};background:${v.bg}">
                         <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:${v.cor}">${v.svg}</svg>
                         ${v.label}
@@ -184,16 +184,61 @@ async function pontoRenderHoje(el) {
     }).join('')}</div>`;
 }
 
-async function pontoBater(vendedorId, tipo) {
+function modalPedirPin(nome, tipo) {
+    return new Promise(resolve => {
+        const cfg = TIPO_LABEL[tipo];
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999';
+        ov.innerHTML = `
+        <div style="background:#fff;border-radius:20px;padding:32px 28px;width:300px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.25)">
+            <div style="width:48px;height:48px;border-radius:50%;background:${cfg.bg};border:2px solid ${cfg.border};display:flex;align-items:center;justify-content:center;margin:0 auto 14px">
+                <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:${cfg.cor}">${cfg.svg}</svg>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:2px">${cfg.label}</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:18px">${nome}</div>
+            <input type="password" id="pt-pin-inp" inputmode="numeric" maxlength="6" placeholder="Digite seu PIN"
+                style="width:100%;text-align:center;font-size:22px;letter-spacing:10px;padding:12px;border:2px solid #e2e8f0;border-radius:12px;outline:none;box-sizing:border-box;transition:border .15s"
+                onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#e2e8f0'">
+            <div id="pt-pin-erro" style="color:#ef4444;font-size:12px;min-height:18px;margin-top:8px"></div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+                <button id="pt-pin-cancel" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:#64748b">Cancelar</button>
+                <button id="pt-pin-ok" style="flex:1;padding:11px;border:none;border-radius:10px;background:${cfg.cor};color:#fff;font-size:13px;font-weight:700;cursor:pointer">Confirmar</button>
+            </div>
+        </div>`;
+        document.body.appendChild(ov);
+
+        const inp = ov.querySelector('#pt-pin-inp');
+        const erro = ov.querySelector('#pt-pin-erro');
+        inp.focus();
+
+        function fechar(val) { ov.remove(); resolve(val); }
+
+        function confirmar() {
+            const pin = inp.value.trim();
+            if (!pin || !/^\d{4,6}$/.test(pin)) { erro.textContent = 'PIN deve ter 4 a 6 dígitos'; inp.focus(); return; }
+            fechar(pin);
+        }
+
+        ov.querySelector('#pt-pin-cancel').onclick = () => fechar(null);
+        ov.querySelector('#pt-pin-ok').onclick = confirmar;
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmar(); else if (e.key === 'Escape') fechar(null); });
+        ov.addEventListener('click', e => { if (e.target === ov) fechar(null); });
+    });
+}
+
+async function pontoBater(vendedorId, tipo, nome) {
+    const pin = await modalPedirPin(nome, tipo);
+    if (pin === null) return;
     try {
-        const r = await api('POST', '/ponto/registrar', { usuario_id: vendedorId, tipo });
+        const r = await api('POST', '/ponto/registrar', { usuario_id: vendedorId, tipo, pin });
         toast(`${TIPO_LABEL[tipo].label} — ${r.nome} às ${fmtHora(r.data_hora)}`);
         pontoAba('hoje');
     } catch (e) { toast(e.message, 'error'); }
 }
 
 async function pontoExcluir(id) {
-    if (!confirm('Remover este registro de ponto?')) return;
+    if (!await pedirSenhaGerente()) return;
+    if (!await modalConfirmar({ titulo: 'Remover Ponto', mensagem: 'Remover este registro de ponto?', icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Remover' })) return;
     try {
         await api('DELETE', `/ponto/${id}`);
         toast('Registro removido');

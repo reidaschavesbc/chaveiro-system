@@ -329,6 +329,7 @@ async function salvarCliente() {
 }
 
 async function excluirCliente(id) {
+    if (!await pedirSenhaGerente()) return;
     if (!await confirmDialog('Confirma exclusão do cliente?')) return;
     try {
         await api('DELETE', `/clientes/${id}`);
@@ -415,6 +416,7 @@ async function adicionarAutorizado() {
 }
 
 async function removerAutorizado(autId) {
+    if (!await pedirSenhaGerente()) return;
     if (!await modalConfirmar({ titulo: 'Remover Autorizado', mensagem: 'Deseja remover este autorizado?', icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Remover' })) return;
     try {
         await api('DELETE', `/clientes/${_autClienteId}/autorizados/${autId}`);

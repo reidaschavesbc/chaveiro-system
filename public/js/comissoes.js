@@ -261,6 +261,7 @@ async function verDetalheFechamento(id, mesNome, ano) {
 }
 
 async function excluirFechamento(id, mesNome, ano) {
+  if (!await pedirSenhaGerente()) return;
   if (!await modalConfirmar({ titulo: 'Excluir Fechamento', mensagem: `Deseja excluir o fechamento de <strong>${mesNome}/${ano}</strong> do histórico?<br><small style="color:#6b7280">Os vales deste período serão liberados.</small>`, icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Excluir' })) return;
   try {
     await api('DELETE', `/comissoes/${id}`);

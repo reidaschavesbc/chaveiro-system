@@ -648,6 +648,7 @@ async function visualizarOrc(id) {
 }
 
 async function excluirOrc(id, numero) {
+    if (!await pedirSenhaGerente()) return;
     if (!await modalConfirmar({ titulo: 'Excluir Orçamento', mensagem: `Excluir o orçamento <strong>${numero}</strong>?`, icone: '🗑️', corBotao: '#dc2626', textoBotao: 'Excluir' })) return;
     try {
         await api('DELETE', `/orcamentos/${id}`);

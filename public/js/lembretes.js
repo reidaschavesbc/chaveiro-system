@@ -213,6 +213,7 @@ async function lembretesSalvar() {
 }
 
 async function lembretesExcluir(id, status) {
+    if (!await pedirSenhaGerente()) return;
     const acao = status === 'pendente' ? 'cancelar este lembrete' : 'excluir este lembrete';
     if (!await modalConfirmar({ titulo: 'Confirmar', mensagem: `Deseja ${acao}?`, icone: '❓', corBotao: '#dc2626', textoBotao: 'Confirmar' })) return;
     try {
