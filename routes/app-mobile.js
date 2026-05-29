@@ -250,7 +250,11 @@ router.get('/adm-stats', authFuncionario, (req, res) => {
     abertas:       db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'aberta'`).get(lojaAlvo).n,
     finalizadas:   db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND date(data_conclusao) = ?`).get(lojaAlvo, hoje).n,
     canceladas:    db.prepare(`SELECT COUNT(*) as n FROM ordens_servico WHERE loja_id = ? AND status = 'cancelada' AND date(data_entrada) = ?`).get(lojaAlvo, hoje).n,
-    valor_hoje:    db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND status = 'concluida' AND a_receber != 1 AND date(data_conclusao) = ?`).get(lojaAlvo, hoje).t,
+    valor_hoje: (() => {
+      const direto   = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE loja_id=? AND status='concluida' AND a_receber=0 AND date(data_conclusao)=?`).get(lojaAlvo, hoje).t;
+      const cobranca = db.prepare(`SELECT COALESCE(SUM(valor),0) as t FROM ordens_servico WHERE loja_id=? AND a_receber=1 AND a_receber_pago=1 AND date(data_recebimento)=?`).get(lojaAlvo, hoje).t;
+      return direto + cobranca;
+    })(),
     cobrancas_hoje: db.prepare(`SELECT COALESCE(SUM(valor), 0) as t FROM ordens_servico WHERE loja_id = ? AND a_receber = 1 AND a_receber_pago = 1 AND date(data_recebimento) = ?`).get(lojaAlvo, hoje).t,
   };
   res.json(stats);
