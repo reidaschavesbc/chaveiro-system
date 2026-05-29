@@ -262,7 +262,7 @@ router.delete('/', (req, res) => {
     const { ids } = req.body;
     if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'Nenhum id informado' });
     const placeholders = ids.map(() => '?').join(',');
-    const pedidos = db.prepare(`SELECT id, produto_nome, descricao, quantidade FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).all(...ids, req.user.loja_id);
+    const pedidos = db.prepare(`SELECT id, descricao, quantidade FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).all(...ids, req.user.loja_id);
     db.prepare(`DELETE FROM pedidos_compra WHERE id IN (${placeholders}) AND loja_id = ?`).run(...ids, req.user.loja_id);
     for (const p of pedidos) {
         registrarExclusao({
