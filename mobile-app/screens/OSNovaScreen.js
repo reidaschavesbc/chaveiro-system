@@ -189,29 +189,42 @@ export default function OSNovaScreen({ navigation, route }) {
         {/* Cliente */}
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Cliente</Text>
-          <UpperTextInput style={s.input} placeholder="Nome do cliente (opcional)" value={clienteNome} onChangeText={setClienteNome} />
-          <TextInput style={s.input} placeholder="Telefone (opcional)" value={clienteTel} onChangeText={setClienteTel} keyboardType="phone-pad" />
-          <TextInput style={s.input} placeholder="📞 Contato desta OS (tel/WhatsApp)" value={contatoCliente} onChangeText={setContatoCliente} keyboardType="phone-pad" />
+          <Text style={s.fieldLabel}>Nome do cliente</Text>
+          <UpperTextInput style={s.input} placeholder="Opcional" value={clienteNome} onChangeText={setClienteNome} />
+          <Text style={s.fieldLabel}>Telefone do cliente</Text>
+          <TextInput style={s.input} placeholder="Opcional" value={clienteTel} onChangeText={setClienteTel} keyboardType="phone-pad" />
+          <Text style={s.fieldLabel}>Contato desta OS</Text>
+          <TextInput style={s.input} placeholder="Tel / WhatsApp para esta OS" value={contatoCliente} onChangeText={setContatoCliente} keyboardType="phone-pad" />
         </View>
 
         {/* Endereço */}
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Endereço{isPlantao ? ' *' : ' (opcional)'}</Text>
-          <UpperTextInput style={s.input} placeholder="Rua / Av." value={rua} onChangeText={setRua} />
+          <Text style={s.fieldLabel}>Rua / Avenida</Text>
+          <UpperTextInput style={s.input} placeholder="Ex: Rua das Flores" value={rua} onChangeText={setRua} />
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TextInput style={[s.input, { flex: 1 }]} placeholder="Nº" value={numero} onChangeText={setNumero} keyboardType="numeric" />
-            <UpperTextInput style={[s.input, { flex: 2 }]} placeholder="Complemento" value={complemento} onChangeText={setComplemento} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.fieldLabel}>Número</Text>
+              <TextInput style={s.input} placeholder="Ex: 123" value={numero} onChangeText={setNumero} keyboardType="numeric" />
+            </View>
+            <View style={{ flex: 2 }}>
+              <Text style={s.fieldLabel}>Complemento</Text>
+              <UpperTextInput style={s.input} placeholder="Apto, bloco..." value={complemento} onChangeText={setComplemento} />
+            </View>
           </View>
-          <UpperTextInput style={s.input} placeholder="Cidade" value={cidade} onChangeText={setCidade} />
-          <UpperTextInput style={s.input} placeholder="Referência (perto de, cor da casa...)" value={referencia} onChangeText={setReferencia} />
+          <Text style={s.fieldLabel}>Cidade</Text>
+          <UpperTextInput style={s.input} placeholder="Ex: São Paulo" value={cidade} onChangeText={setCidade} />
+          <Text style={s.fieldLabel}>Referência</Text>
+          <UpperTextInput style={s.input} placeholder="Perto de, cor da casa..." value={referencia} onChangeText={setReferencia} />
         </View>
 
         {/* Descrição */}
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>{isPlantao ? 'Observação (opcional)' : 'Descrição *'}</Text>
+          <Text style={s.fieldLabel}>{isPlantao ? 'Observações sobre o plantão' : 'Descreva o serviço a ser realizado'}</Text>
           <UpperTextInput
             style={[s.input, s.textarea]}
-            placeholder={isPlantao ? 'Observações sobre o plantão...' : 'Descreva o serviço...'}
+            placeholder={isPlantao ? 'Ex: cliente solicitou abertura de porta...' : 'Ex: troca de cilindro, cópia de chave...'}
             value={descricao}
             onChangeText={setDescricao}
             multiline
@@ -369,6 +382,7 @@ const s = StyleSheet.create({
 
   secao: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 14, elevation: 1 },
   secaoTitulo: { fontSize: 12, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 4, marginTop: 4 },
   input: {
     borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10,
     padding: 12, fontSize: 14, color: '#1e293b', backgroundColor: '#f8fafc', marginBottom: 8,
