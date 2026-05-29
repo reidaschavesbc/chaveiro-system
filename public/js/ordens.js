@@ -124,7 +124,9 @@ async function ordens(el) {
               <option value="">-- A definir --</option>
               <option value="dinheiro">Dinheiro</option>
               <option value="pix">PIX</option>
-              <option value="cartao1">Cartão</option>
+              <option value="debito">Débito</option>
+              <option value="credito">Crédito</option>
+              <option value="misto">Misto</option>
             </select>
           </div>
           <div class="form-group form-full">
@@ -296,7 +298,7 @@ function renderOrdens(list) {
           <button class="btn btn-sm btn-secondary" onclick="abrirPDF(${o.id})" title="Gerar PDF"><svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v2h-1.5V7h3v1.5zM9 9.5h1v-1H9v1zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm10 5.5h1v-3h-1v3z"/></svg></button>
           <button class="btn btn-sm btn-secondary btn-icon" title="Editar" onclick="editarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
           ${o.a_receber && !o.a_receber_pago ? `<button class="btn btn-sm" style="background:#16a34a;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Marcar como Recebido" onclick="receberOS(${o.id},'${o.numero}',${o.valor})">✔ Receber</button>` : ''}
-          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NF ${o.nfse_numero}</button><button class="btn btn-sm" style="background:#25d366;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Enviar NF via WhatsApp" onclick="enviarNfseWhatsapp(${o.id})">📱 NF WA</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 NFS-e</button>`) : ''}
+          ${o.status === 'concluida' ? (o.nfse_numero ? `<button class="btn btn-sm" style="background:#0ea5e9;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="NFS-e emitida: ${o.nfse_numero}" onclick="verNfse(${o.id},'${o.nfse_chave_acesso}')">📄 NF ${o.nfse_numero}</button><button class="btn btn-sm" style="background:#25d366;color:white;padding:5px 8px;font-size:11px;white-space:nowrap;margin-left:6px" title="Enviar NF via WhatsApp" onclick="enviarNfseWhatsapp(${o.id})">📱 NF WA</button>` : `<button class="btn btn-sm" style="background:#7c3aed;color:white;padding:5px 8px;font-size:11px;white-space:nowrap" title="Emitir NFS-e" onclick="emitirNfse(${o.id},'${o.numero}')">📄 NFS-e</button>`) : ''}
           ${o.status !== 'cancelada' ? `<button class="btn btn-sm btn-danger btn-icon" title="Cancelar" onclick="cancelarOS(${o.id})"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/></svg></button>` : ''}
           <button class="btn btn-sm btn-danger btn-icon" title="Excluir permanentemente" onclick="excluirOS(${o.id},'${o.numero}','${o.nfse_status||''}')"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
         </div></td>
@@ -374,7 +376,7 @@ function _pgRender() {
   const el = document.getElementById('pg-modal-overlay');
   if (!el) return;
   const fmtV = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
-  const labels = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', cartao1:'💳 Cartão' };
+  const labels = { dinheiro:'💵 Dinheiro', pix:'📱 PIX', cartao1:'💳 Cartão', cartao2:'💳 Cartão', debito:'💳 Débito', credito:'💳 Crédito', misto:'🔀 Misto' };
   const pago = _pgPagamentos.reduce((s, p) => s + p.valor, 0);
   const restante = Math.max(0, _pgTotal - pago);
   const coberto = restante < 0.01;
@@ -1115,7 +1117,7 @@ async function cancelarOS(id) {
 
 async function receberOS(id, numero, valor) {
   const fmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão' };
+  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', misto: 'Misto' };
   const opts = Object.entries(pgMap).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
 
   const html = `

@@ -6,6 +6,7 @@ async function navegarCobrancas() {
 }
 
 const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' };
+const AR_PG_OPTS = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', misto: 'Misto' };
 const arFmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
 const arFmtDate = s => s ? s.slice(0,10).split('-').reverse().join('/') : '—';
 
@@ -168,7 +169,7 @@ function arHistoricoHtml(historico) {
 }
 
 function arModaisHtml() {
-  const opts = Object.entries(AR_PG).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+  const opts = Object.entries(AR_PG_OPTS).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
   return `
     <div id="ar-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;align-items:center;justify-content:center" onclick="if(event.target===this)arFecharModal()">
       <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2)" onclick="event.stopPropagation()">
@@ -199,7 +200,7 @@ function arAbrirModal(titulo, sub, bodyHtml, onOk) {
 
 // ─── Ações ────────────────────────────────────────────────────────────────────
 
-const pgOpts = () => Object.entries(AR_PG).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+const pgOpts = () => Object.entries(AR_PG_OPTS).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
 
 async function arReceber(id, numero, restante) {
   arAbrirModal(
