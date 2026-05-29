@@ -124,8 +124,7 @@ async function ordens(el) {
               <option value="">-- A definir --</option>
               <option value="dinheiro">Dinheiro</option>
               <option value="pix">PIX</option>
-              <option value="debito">Débito</option>
-              <option value="credito">Crédito</option>
+              <option value="debito">Cartão</option>
               <option value="misto">Misto</option>
             </select>
           </div>
@@ -1117,7 +1116,7 @@ async function cancelarOS(id) {
 
 async function receberOS(id, numero, valor) {
   const fmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.',',');
-  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', misto: 'Misto' };
+  const pgMap = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão', credito: 'Cartão', cartao1: 'Cartão', cartao2: 'Cartão', misto: 'Misto' };
   const opts = Object.entries(pgMap).map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
 
   const html = `

@@ -6,7 +6,7 @@ async function navegarCobrancas() {
 }
 
 const AR_PG = { dinheiro: 'Dinheiro', pix: 'PIX', cartao1: 'Cartão', cartao2: 'Cartão', credito: 'Cartão', debito: 'Cartão', misto: 'Misto' };
-const AR_PG_OPTS = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Débito', credito: 'Crédito', misto: 'Misto' };
+const AR_PG_OPTS = { dinheiro: 'Dinheiro', pix: 'PIX', debito: 'Cartão', misto: 'Misto' };
 const arFmtVal = v => 'R$ ' + parseFloat(v||0).toFixed(2).replace('.', ',');
 const arFmtDate = s => s ? s.slice(0,10).split('-').reverse().join('/') : '—';
 
