@@ -14,9 +14,9 @@ function authMiddleware(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = db.prepare('SELECT id FROM usuarios WHERE id = ? AND ativo = 1').get(decoded.id);
+        const user = db.prepare('SELECT id, nome FROM usuarios WHERE id = ? AND ativo = 1').get(decoded.id);
         if (!user) return res.status(401).json({ error: 'Sessão inválida, faça login novamente' });
-        req.user = decoded;
+        req.user = { ...decoded, nome: user.nome };
         next();
     } catch (err) {
         return res.status(401).json({ error: 'Token inválido ou expirado' });

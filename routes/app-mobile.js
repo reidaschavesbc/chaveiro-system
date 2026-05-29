@@ -45,7 +45,10 @@ function authFuncionario(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Token não fornecido' });
   try {
-    req.funcionario = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const func = db.prepare('SELECT nome FROM vendedores WHERE id = ? AND ativo = 1').get(decoded.id);
+    if (!func) return res.status(401).json({ error: 'Sessão inválida' });
+    req.funcionario = { ...decoded, nome: func.nome };
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido' });
