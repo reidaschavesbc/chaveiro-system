@@ -71,7 +71,9 @@ app.get('/download-app', (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.download(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'), `ChaveiroOS-${version}.apk`);
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', `attachment; filename="ChaveiroOS-${version}.apk"`);
+  res.sendFile(path.join(__dirname, 'public/downloads/ChaveiroOS.apk'));
 });
 
 app.get('/api/version', (req, res) => {
@@ -118,6 +120,7 @@ app.use('/api/consumo', auth, require('./routes/consumo'));
 app.use('/api/vales', auth, require('./routes/vales'));
 app.use('/api/usuarios', auth, require('./routes/usuarios'));
 app.use('/api/lojas', auth, require('./routes/lojas'));
+app.use('/api/historico', auth, require('./routes/historico'));
 app.use('/api/estoque', auth, require('./routes/estoque').router);
 app.use('/api/nfse', auth, require('./routes/nfse'));
 app.use('/api/afiacao', auth, require('./routes/afiacao'));
@@ -133,7 +136,6 @@ app.get('/api/config', auth, (req, res) => {
     delete cfg.senha_exclusao;
     cfg.senha_gerente_configurada = !!cfg.senha_gerente;
     delete cfg.senha_gerente;
-    cfg.senha_adm_configurada = !!cfg.senha_adm;
     delete cfg.senha_adm;
     res.json(cfg);
 });
@@ -144,38 +146,41 @@ app.put('/api/config', auth, (req, res) => {
     Object.entries(resto).forEach(([k, v]) => stmt.run(k, v));
     res.json({ ok: true });
 });
-// POST /api/auth/verificar-gerente — aceita senha_gerente OU senha_adm
+// Verifica se a senha bate com algum admin ativo da loja do usuário
+function verificarAdminLoja(senha, lojaId) {
+    if (!lojaId) return null;
+    const admins = db.prepare('SELECT nome, senha FROM admins_loja WHERE loja_id = ? AND ativo = 1').all(lojaId);
+    const match = admins.find(a => a.senha && bcrypt.compareSync(senha, a.senha));
+    return match ? match.nome : null;
+}
+
+// POST /api/auth/verificar-gerente — aceita senha_gerente ou senha de admin da loja
 app.post('/api/auth/verificar-gerente', auth, (req, res) => {
     const { senha } = req.body;
     const cfgGerente = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_gerente'").get();
-    const cfgAdm     = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
-    if (!cfgGerente?.valor && !cfgAdm?.valor) return res.json({ ok: true });
-    if (cfgGerente?.valor && verificarSenhaGerente(senha, cfgGerente.valor)) return res.json({ ok: true });
-    if (cfgAdm?.valor     && verificarSenhaGerente(senha, cfgAdm.valor))     return res.json({ ok: true });
+    const temAdmins  = req.user.loja_id
+        ? db.prepare('SELECT COUNT(*) as n FROM admins_loja WHERE loja_id = ? AND ativo = 1').get(req.user.loja_id).n > 0
+        : false;
+    if (!cfgGerente?.valor && !temAdmins) return res.json({ ok: true, autorizador: null });
+    if (cfgGerente?.valor && verificarSenhaGerente(senha, cfgGerente.valor)) return res.json({ ok: true, autorizador: 'Gerente' });
+    const adminNome = verificarAdminLoja(senha, req.user.loja_id);
+    if (adminNome) return res.json({ ok: true, autorizador: adminNome });
     res.json({ ok: false });
 });
 
-// POST /api/auth/verificar-adm — verifica SOMENTE senha_adm
+// POST /api/auth/verificar-adm — aceita SOMENTE senha de admin da loja (gerente não autorizado)
 app.post('/api/auth/verificar-adm', auth, (req, res) => {
     const { senha } = req.body;
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
-    if (!cfg?.valor) return res.json({ ok: true });
-    res.json({ ok: verificarSenhaGerente(senha, cfg.valor) });
+    const temAdmins = req.user.loja_id
+        ? db.prepare('SELECT COUNT(*) as n FROM admins_loja WHERE loja_id = ? AND ativo = 1').get(req.user.loja_id).n > 0
+        : false;
+    if (!temAdmins) return res.json({ ok: true, autorizador: null });
+    const adminNome = verificarAdminLoja(senha, req.user.loja_id);
+    if (adminNome) return res.json({ ok: true, autorizador: adminNome });
+    res.json({ ok: false });
 });
 
 // PUT /api/config/senha-adm — define/altera senha ADM da loja
-app.put('/api/config/senha-adm', auth, (req, res) => {
-    const { senha_atual, senha_nova } = req.body;
-    if (!senha_nova) return res.status(400).json({ error: 'Nova senha é obrigatória' });
-    if (senha_nova.length < 4) return res.status(400).json({ error: 'A senha deve ter pelo menos 4 caracteres' });
-    const cfg = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'senha_adm'").get();
-    if (cfg?.valor) {
-        if (!senha_atual) return res.status(400).json({ error: 'Senha atual é obrigatória' });
-        if (!verificarSenhaGerente(senha_atual, cfg.valor)) return res.status(422).json({ error: 'Senha atual incorreta' });
-    }
-    db.prepare('INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES (?, ?)').run('senha_adm', bcrypt.hashSync(senha_nova, 10));
-    res.json({ ok: true });
-});
 
 app.put('/api/config/senha-gerente', auth, (req, res) => {
     const { senha_atual, senha_nova } = req.body;
@@ -384,6 +389,12 @@ cron.schedule('* * * * *', async () => {
     }
 });
 
+// Cron: limpa lembretes enviados há mais de 1 dia (roda toda madrugada)
+cron.schedule('0 3 * * *', () => {
+    const resultado = db.prepare(`DELETE FROM lembretes WHERE status = 'enviado' AND enviado_em <= datetime('now', '-1 day', 'localtime')`).run();
+    if (resultado.changes > 0) console.log(`🗑️ ${resultado.changes} lembrete(s) antigo(s) removido(s)`);
+});
+
 // Cron: lembrete 30 min antes da OS
 cron.schedule('* * * * *', async () => {
     const agora = new Date();
@@ -465,6 +476,19 @@ cron.schedule('* * * * *', async () => {
     }
 });
 
+// Cron: limpa histórico de exclusões com mais de 30 dias (roda 1x por dia à meia-noite)
+cron.schedule('0 0 * * *', () => {
+    try {
+        const info = db.prepare(`
+            DELETE FROM historico_exclusoes
+            WHERE datetime(criado_em) <= datetime('now', 'localtime', '-30 days')
+        `).run();
+        if (info.changes > 0) console.log(`🗑️  Limpeza histórico: ${info.changes} registro(s) removido(s)`);
+    } catch (e) {
+        console.error('Cron limpeza historico_exclusoes:', e.message);
+    }
+});
+
 // CEP lookup via ViaCEP
 app.get('/api/cnpj/:cnpj', auth, async (req, res) => {
     const cnpj = req.params.cnpj.replace(/\D/g, '');
@@ -501,8 +525,14 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
 // Global error handler — sempre retorna JSON (nunca HTML)
 app.use((err, req, res, next) => {
+    if (res.headersSent) return; // resposta já enviada, não tenta de novo
     console.error('Erro não tratado:', err.message);
     res.status(err.status || 500).json({ error: err.message || 'Erro interno do servidor' });
+});
+
+// Captura promessas rejeitadas fora de rotas (ex: timeout do WhatsApp)
+process.on('unhandledRejection', (reason) => {
+    console.error('UnhandledRejection:', reason?.message || reason);
 });
 
 app.listen(PORT, () => {
