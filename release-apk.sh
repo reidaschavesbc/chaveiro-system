@@ -52,6 +52,12 @@ for i in $(seq 1 50); do
     find "$DOWNLOADS" -name "*.apk" ! -name "ChaveiroOS.apk" ! -name "ChaveiroOS.apk.bak" -exec mv {} "$DOWNLOADS/ChaveiroOS.apk" \;
     echo "{\"version\":\"$VERSION\"}" > "$DOWNLOADS/version-apk.json"
     echo "Pronto! APK $VERSION disponível para download."
+    # Força re-login de todos os usuários do app
+    node -e "
+      const db = require('better-sqlite3')('./database/chaveiro.db');
+      db.prepare(\"INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES ('app_force_login_since', ?)\").run(Date.now().toString());
+      console.log('Force login ativado para todos os usuários do app.');
+    " 2>/dev/null || true
     exit 0
   fi
   echo "  Aguardando... (${i}/50)"

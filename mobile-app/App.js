@@ -42,27 +42,24 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [funcionario, setFuncionario] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [atualizacaoObrigatoria, setAtualizacaoObrigatoria] = useState(null);
   const notifListener = useRef();
   const responseListener = useRef();
-
-  const atualizacaoMostradaRef = useRef(false);
 
   useEffect(() => {
     verificarLogin();
     configurarNotificacoes();
+    verificarVersao();
 
-    const timer = setTimeout(() => verificarAtualizacao(), 3000);
-    const intervalo = setInterval(() => verificarAtualizacao(), 5 * 60 * 1000);
-
+    const intervalo = setInterval(() => verificarVersao(), 5 * 60 * 1000);
     return () => {
-      clearTimeout(timer);
       clearInterval(intervalo);
       Notifications.removeNotificationSubscription(notifListener.current);
       Notifications.removeNotificationSubscription(responseListener.current);
     };
   }, []);
 
-  async function verificarAtualizacao() {
+  async function verificarVersao() {
     try {
       const serverUrl = api.defaults.baseURL.replace('/api/app', '');
       const controller = new AbortController();
@@ -72,16 +69,10 @@ export default function App() {
       if (!resp.ok) return;
       const { version: versaoServidor } = await resp.json();
       const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
-      if (versaoServidor && versaoServidor !== versaoApp && !atualizacaoMostradaRef.current) {
-        atualizacaoMostradaRef.current = true;
-        showConfirm({
-          titulo: '🆕 Atualização disponível',
-          mensagem: `Nova versão ${versaoServidor} disponível. Deseja atualizar agora?`,
-          textoBotao: 'Atualizar',
-          corBotao: '#16a34a',
-          onConfirm: () => Linking.openURL(`${serverUrl}/download-app`),
-          onCancel: () => { atualizacaoMostradaRef.current = false; },
-        });
+      if (versaoServidor && versaoServidor !== versaoApp) {
+        setAtualizacaoObrigatoria({ versaoServidor, serverUrl });
+      } else {
+        setAtualizacaoObrigatoria(null);
       }
     } catch (_) {}
   }
@@ -126,6 +117,32 @@ export default function App() {
   }
 
   if (loading) return null;
+
+  if (atualizacaoObrigatoria) {
+    return (
+      <SafeAreaProvider>
+        <View style={{ flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 64, marginBottom: 24 }}>🔑</Text>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', marginBottom: 8, textAlign: 'center' }}>Atualização obrigatória</Text>
+          <Text style={{ fontSize: 14, color: '#94a3b8', textAlign: 'center', marginBottom: 8 }}>
+            Versão disponível: <Text style={{ color: '#fff', fontWeight: '700' }}>{atualizacaoObrigatoria.versaoServidor}</Text>
+          </Text>
+          <Text style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: 36 }}>
+            Para continuar usando o sistema, atualize o app.
+          </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`${atualizacaoObrigatoria.serverUrl}/download-app`)}
+            style={{ backgroundColor: '#2563eb', borderRadius: 14, paddingVertical: 16, paddingHorizontal: 40 }}>
+            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 16 }}>Baixar atualização</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={verificarVersao} style={{ marginTop: 16, padding: 12 }}>
+            <Text style={{ color: '#475569', fontSize: 13 }}>Verificar novamente</Text>
+          </TouchableOpacity>
+        </View>
+        <AppAlert ref={alertRef} />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
