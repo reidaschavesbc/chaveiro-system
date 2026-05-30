@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, Alert, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions, Linking, Animated
+  TextInput, ActivityIndicator, Modal, KeyboardAvoidingView, Platform, Dimensions, Linking, Animated
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
 import UpperTextInput from '../components/UpperTextInput';
+import { showToast, showConfirm } from '../components/AppAlert';
 
 const STATUS_LABEL = {
   aberta:       { label: 'Aberta',       color: '#f59e0b' },
@@ -144,7 +145,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setEndReferencia(data.cliente_avulso_referencia || '');
       setContato(data.contato_cliente || '');
     } catch {
-      Alert.alert('Erro', 'Não foi possível carregar a OS');
+      showToast('Não foi possível carregar a OS');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -154,13 +155,13 @@ export default function OSDetalheScreen({ route, navigation }) {
   // ── Edições de campo ────────────────────────────────────────────────────────
 
   async function salvarDescricao() {
-    if (!desc.trim()) { Alert.alert('Atenção', 'Descrição não pode ser vazia'); return; }
+    if (!desc.trim()) { showToast('Descrição não pode ser vazia', 'warning'); return; }
     setSalvando(true);
     try {
       await api.put(`/os/${osId}`, { descricao: desc.trim() });
       setOs(prev => ({ ...prev, descricao: desc.trim() }));
       setEditandoDesc(false);
-    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    } catch { showToast('Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
 
@@ -170,7 +171,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       await api.put(`/os/${osId}`, { contato_cliente: contato.trim() || null });
       setOs(prev => ({ ...prev, contato_cliente: contato.trim() || null }));
       setEditandoContato(false);
-    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    } catch { showToast('Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
 
@@ -193,7 +194,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       });
       await carregarOS();
       setEditandoEnd(false);
-    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    } catch { showToast('Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
 
@@ -203,7 +204,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       await api.put(`/os/${osId}`, { observacoes: obs });
       setOs(prev => ({ ...prev, observacoes: obs }));
       setEditandoObs(false);
-    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    } catch { showToast('Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
 
@@ -214,7 +215,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       const { data } = await api.put(`/os/${osId}`, { desconto: val });
       await carregarOS();
       setEditandoDesconto(false);
-    } catch { Alert.alert('Erro', 'Não foi possível salvar'); }
+    } catch { showToast('Não foi possível salvar'); }
     finally { setSalvando(false); }
   }
 
@@ -225,7 +226,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setOs(prev => ({ ...prev, status: novoStatus }));
       showToast({ icon: '✅', title: 'OS Atualizada', subtitle: `Marcada como ${STATUS_LABEL[novoStatus]?.label}`, color: STATUS_LABEL[novoStatus]?.color || '#3b82f6' });
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao atualizar');
+      showToast(e.response?.data?.error || 'Falha ao atualizar');
     } finally { setSalvando(false); }
   }
 
@@ -240,7 +241,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       const [rP, rS] = await Promise.all([api.get('/produtos'), api.get('/servicos')]);
       setProdutos(rP.data);
       setServicos(rS.data);
-    } catch { Alert.alert('Erro', 'Não foi possível carregar produtos/serviços'); }
+    } catch { showToast('Não foi possível carregar produtos/serviços'); }
     finally { setLoadingItens(false); }
   }
 
@@ -262,7 +263,7 @@ export default function OSDetalheScreen({ route, navigation }) {
 
     let body;
     if (tabItem === 'manual') {
-      if (!itemDescManual.trim()) { Alert.alert('Atenção', 'Informe a descrição'); return; }
+      if (!itemDescManual.trim()) { showToast('Informe a descrição', 'warning'); return; }
       body = { descricao: itemDescManual.trim(), quantidade: qty, preco_unitario: preco };
     } else if (itemSel) {
       body = {
@@ -272,7 +273,7 @@ export default function OSDetalheScreen({ route, navigation }) {
         preco_unitario: preco,
       };
     } else {
-      Alert.alert('Atenção', 'Selecione um item'); return;
+      showToast('Selecione um item', 'warning'); return;
     }
 
     setSalvando(true);
@@ -281,7 +282,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       setModalItem(false);
       await carregarOS();
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao adicionar item');
+      showToast(e.response?.data?.error || 'Falha ao adicionar item');
     } finally { setSalvando(false); }
   }
 
@@ -301,25 +302,25 @@ export default function OSDetalheScreen({ route, navigation }) {
       setModalEditItem(false);
       await carregarOS();
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao editar item');
+      showToast(e.response?.data?.error || 'Falha ao editar item');
     } finally { setSalvando(false); }
   }
 
   async function removerItem(itemId) {
-    Alert.alert('Remover item', 'Tem certeza?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Remover', style: 'destructive',
-        onPress: async () => {
-          try {
-            await api.delete(`/os/${osId}/item/${itemId}`);
-            await carregarOS();
-          } catch (e) {
-            Alert.alert('Erro', e.response?.data?.error || 'Falha ao remover');
-          }
+    showConfirm({
+      titulo: 'Remover item',
+      mensagem: 'Tem certeza que deseja remover este item?',
+      textoBotao: 'Remover',
+      corBotao: '#dc2626',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/os/${osId}/item/${itemId}`);
+          await carregarOS();
+        } catch (e) {
+          showToast(e.response?.data?.error || 'Falha ao remover');
         }
-      }
-    ]);
+      },
+    });
   }
 
   // ── Finalizar ───────────────────────────────────────────────────────────────
@@ -357,16 +358,16 @@ export default function OSDetalheScreen({ route, navigation }) {
         showToast({ icon: '✅', title: 'OS Finalizada!', subtitle: 'Marcada como A Receber.', color: '#10b981' });
         await verificarEAbrirEstoque(osId, os?.is_plantao);
       } catch (e) {
-        Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
+        showToast(e.response?.data?.error || 'Falha ao finalizar');
       } finally { setSalvando(false); }
       return;
     }
 
-    if (pagamentos.length === 0) { Alert.alert('Atenção', 'Adicione pelo menos uma forma de pagamento'); return; }
+    if (pagamentos.length === 0) { showToast('Adicione pelo menos uma forma de pagamento', 'warning'); return; }
 
     const soma = pagamentos.reduce((s, p) => s + (parseFloat(String(p.valor).replace(',', '.')) || 0), 0);
     if (Math.abs(soma - total) > 0.01) {
-      Alert.alert('Atenção', `Soma dos pagamentos (${fmtVal(soma)}) deve ser igual ao total (${fmtVal(total)})`);
+      showToast(`Soma dos pagamentos (${fmtVal(soma)}) deve ser igual ao total (${fmtVal(total)})`, 'warning');
       return;
     }
 
@@ -383,7 +384,7 @@ export default function OSDetalheScreen({ route, navigation }) {
       showToast({ icon: '✅', title: 'OS Finalizada!', subtitle: 'Pagamento registrado.', color: '#10b981' });
       await verificarEAbrirEstoque(osId, os?.is_plantao);
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao finalizar');
+      showToast(e.response?.data?.error || 'Falha ao finalizar');
     } finally { setSalvando(false); }
   }
 
@@ -415,27 +416,27 @@ export default function OSDetalheScreen({ route, navigation }) {
       const itensCusto = await abrirModalEstoque(osIdLocal, 'custo');
       if (itensCusto && itensCusto.length) {
         try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensCusto, registrar_custo: true }); }
-        catch { Alert.alert('Erro', 'Falha ao registrar material com custo'); }
+        catch { showToast('Falha ao registrar material com custo'); }
       }
       // 2º modal: retirada de estoque sem custo
       const itensEst = await abrirModalEstoque(osIdLocal, 'estoque');
       if (itensEst && itensEst.length) {
         try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens: itensEst, registrar_custo: false }); }
-        catch { Alert.alert('Erro', 'Falha ao registrar retirada de estoque'); }
+        catch { showToast('Falha ao registrar retirada de estoque'); }
       }
     } else {
       const itens = await abrirModalEstoque(osIdLocal, 'normal');
       if (itens && itens.length) {
         try { await api.post(`/os/${osIdLocal}/consumo-estoque`, { itens }); }
-        catch { Alert.alert('Erro', 'Não foi possível registrar consumo'); }
+        catch { showToast('Não foi possível registrar consumo'); }
       }
     }
   }
 
   function adicionarItemEstoque() {
-    if (!estoqueProdSel) { Alert.alert('Atenção', 'Selecione um produto'); return; }
+    if (!estoqueProdSel) { showToast('Selecione um produto', 'warning'); return; }
     const qtd = parseFloat(String(estoqueQtd).replace(',', '.')) || 0;
-    if (qtd <= 0) { Alert.alert('Atenção', 'Informe uma quantidade válida'); return; }
+    if (qtd <= 0) { showToast('Informe uma quantidade válida', 'warning'); return; }
     setEstoqueItens(prev => {
       const idx = prev.findIndex(i => i.produto_id === estoqueProdSel.id);
       if (idx >= 0) {

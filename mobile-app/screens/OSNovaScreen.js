@@ -7,6 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import UpperTextInput from '../components/UpperTextInput';
+import { showToast } from '../components/AppAlert';
 
 function fmtVal(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -36,6 +37,7 @@ export default function OSNovaScreen({ navigation, route }) {
 
   const [isPlantao, setIsPlantao]         = useState(false);
   const [chaveAuto, setChaveAuto]         = useState(false);
+  const [aReceber, setAReceber]           = useState(false);
   const [clienteNome, setClienteNome]     = useState('');
   const [contatoCliente, setContatoCliente] = useState('');
   const [rua, setRua]                     = useState('');
@@ -55,10 +57,18 @@ export default function OSNovaScreen({ navigation, route }) {
   const [isAdmin, setIsAdmin]                 = useState(false);
   const [disponibilidade, setDisponibilidade] = useState([]);
   const [loadingDisp, setLoadingDisp]         = useState(false);
+  const [tecnicos, setTecnicos]               = useState([]);
+  const [vendedorSel, setVendedorSel]         = useState(vendedorId);
+
+  // Busca de cliente
+  const [clienteId, setClienteId]           = useState(null);
+  const [clienteBusca, setClienteBusca]     = useState('');
+  const [clientes, setClientes]             = useState([]);
+  const [clienteSugestoes, setClienteSugestoes] = useState([]);
 
   const [itens, setItens] = useState([]);
 
-  useEffect(() => { carregarDisponibilidade(); }, []);
+  useEffect(() => { carregarDisponibilidade(); carregarClientes(); }, []);
 
   async function carregarDisponibilidade() {
     const f = await AsyncStorage.getItem('funcionario');
@@ -68,10 +78,54 @@ export default function OSNovaScreen({ navigation, route }) {
     setLoadingDisp(true);
     try {
       const params = func.loja_id ? { loja_id: func.loja_id } : {};
-      const { data } = await api.get('/disponibilidade', { params });
-      setDisponibilidade(data);
+      const [dispData, tecData] = await Promise.all([
+        api.get('/disponibilidade', { params }),
+        api.get('/vendedores'),
+      ]);
+      setDisponibilidade(dispData.data);
+      setTecnicos(tecData.data);
     } catch (_) {}
     finally { setLoadingDisp(false); }
+  }
+
+  async function carregarClientes() {
+    try {
+      const { data } = await api.get('/clientes');
+      setClientes(data);
+    } catch (_) {}
+  }
+
+  function buscarCliente(texto) {
+    setClienteBusca(texto);
+    setClienteId(null);
+    if (!texto.trim()) { setClienteSugestoes([]); return; }
+    const q = texto.trim().toLowerCase();
+    setClienteSugestoes(
+      clientes.filter(c =>
+        (c.nome || '').toLowerCase().includes(q) ||
+        (c.nome_fantasia || '').toLowerCase().includes(q) ||
+        (c.telefone || '').includes(q)
+      ).slice(0, 6)
+    );
+  }
+
+  function selecionarCliente(c) {
+    setClienteId(c.id);
+    setClienteBusca(c.nome_fantasia || c.nome);
+    setClienteSugestoes([]);
+    // Preenche endereço automaticamente
+    if (c.endereco) setRua(c.endereco);
+    if (c.numero)   setNumero(c.numero);
+    if (c.complemento) setComplemento(c.complemento);
+    if (c.cidade)   setCidade(c.cidade);
+    if (c.referencia) setReferencia(c.referencia);
+    if (c.telefone) setContatoCliente(c.telefone);
+  }
+
+  function limparCliente() {
+    setClienteId(null);
+    setClienteBusca('');
+    setClienteSugestoes([]);
   }
 
   // Modal catálogo
@@ -90,7 +144,7 @@ export default function OSNovaScreen({ navigation, route }) {
       const { data } = await api.get(tipo === 'servico' ? '/servicos' : '/produtos');
       setCatalogo(data);
     } catch {
-      Alert.alert('Erro', 'Não foi possível carregar o catálogo');
+      showToast('Não foi possível carregar o catálogo');
       setModalTipo(null);
     } finally { setLoadingCat(false); }
   }
@@ -127,10 +181,10 @@ export default function OSNovaScreen({ navigation, route }) {
 
   async function criar() {
     if (!isPlantao && !descricao.trim()) {
-      Alert.alert('Atenção', 'Informe a descrição do serviço'); return;
+      showToast('Informe a descrição do serviço', 'warning'); return;
     }
     if (isPlantao && !rua.trim()) {
-      Alert.alert('Atenção', 'Informe o endereço do plantão'); return;
+      showToast('Informe o endereço do plantão', 'warning'); return;
     }
     setSalvando(true);
     try {
@@ -139,7 +193,8 @@ export default function OSNovaScreen({ navigation, route }) {
         dp = dataPrevista.trim() + (horaPrevista.trim() ? ' ' + horaPrevista.trim() : '');
       }
       const { data } = await api.post('/os', {
-        cliente_nome_avulso:        clienteNome.trim()      || null,
+        cliente_id:                 clienteId               || null,
+        cliente_nome_avulso:        !clienteId ? (clienteBusca.trim() || null) : null,
         cliente_avulso_rua:         rua.trim()              || null,
         cliente_avulso_numero:      numero.trim()           || null,
         cliente_avulso_complemento: complemento.trim()      || null,
@@ -153,7 +208,8 @@ export default function OSNovaScreen({ navigation, route }) {
         observacoes:                observacoes.trim()      || null,
         is_plantao:  isPlantao,
         chave_auto:  chaveAuto,
-        vendedor_id: vendedorId,
+        a_receber:   aReceber ? 1 : 0,
+        vendedor_id: vendedorSel,
         tempo_estimado: tempoEstimado,
       });
 
@@ -169,7 +225,7 @@ export default function OSNovaScreen({ navigation, route }) {
 
       navigation.replace('OSDetalhe', { osId: data.id });
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Não foi possível criar a OS');
+      showToast(e.response?.data?.error || 'Não foi possível criar a OS');
     } finally { setSalvando(false); }
   }
 
@@ -180,6 +236,22 @@ export default function OSNovaScreen({ navigation, route }) {
         {vendedorNome && (
           <View style={s.funcBanner}>
             <Text style={s.funcBannerText}>👤 Para: <Text style={{ fontWeight: '700' }}>{vendedorNome}</Text></Text>
+          </View>
+        )}
+
+        {/* Seletor de técnico — só ADM sem técnico pré-selecionado */}
+        {isAdmin && !vendedorNome && tecnicos.length > 0 && (
+          <View style={s.secao}>
+            <Text style={s.secaoTitulo}>Funcionário / Técnico</Text>
+            <View style={s.chips}>
+              {tecnicos.map(t => (
+                <TouchableOpacity key={t.id}
+                  style={[s.chip, vendedorSel === t.id && s.chipAtivo]}
+                  onPress={() => setVendedorSel(vendedorSel === t.id ? null : t.id)}>
+                  <Text style={[s.chipText, vendedorSel === t.id && s.chipTextAtivo]}>{t.nome}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         )}
 
@@ -222,13 +294,52 @@ export default function OSNovaScreen({ navigation, route }) {
                 trackColor={{ false: '#e2e8f0', true: '#f59e0b' }} thumbColor="#fff" />
             </View>
           )}
+          <View style={[s.toggleRow, s.toggleSep]}>
+            <View>
+              <Text style={s.cobrancaLabel}>💰 Cobrança</Text>
+              <Text style={s.toggleSub}>Marcar como valor a receber</Text>
+            </View>
+            <Switch value={aReceber} onValueChange={setAReceber}
+              trackColor={{ false: '#e2e8f0', true: '#dc2626' }} thumbColor="#fff" />
+          </View>
         </View>
 
         {/* Cliente */}
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Cliente</Text>
-          <Text style={s.fieldLabel}>Nome do cliente</Text>
-          <UpperTextInput style={s.input} placeholder="Opcional" value={clienteNome} onChangeText={setClienteNome} />
+          <Text style={s.fieldLabel}>Pesquisar cliente</Text>
+          <View style={{ position: 'relative' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                style={[s.input, { flex: 1, marginBottom: clienteId ? 8 : 0 }]}
+                placeholder="Pesquisar cliente... (ou deixe em branco para avulso)"
+                placeholderTextColor="#aaa"
+                value={clienteBusca}
+                onChangeText={buscarCliente}
+                autoCapitalize="words"
+              />
+              {clienteId && (
+                <TouchableOpacity onPress={limparCliente} style={{ padding: 8, marginLeft: 4 }}>
+                  <Text style={{ fontSize: 18, color: '#94a3b8' }}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {clienteId && (
+              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 8, padding: 8, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#16a34a' }}>
+                <Text style={{ fontSize: 12, color: '#16a34a', fontWeight: '700' }}>✓ Cliente selecionado — endereço preenchido automaticamente</Text>
+              </View>
+            )}
+            {clienteSugestoes.length > 0 && (
+              <View style={s.sugestoes}>
+                {clienteSugestoes.map(c => (
+                  <TouchableOpacity key={c.id} style={s.sugestaoItem} onPress={() => selecionarCliente(c)}>
+                    <Text style={s.sugestaoNome}>{c.nome_fantasia || c.nome}</Text>
+                    {c.telefone ? <Text style={s.sugestaoSub}>{c.telefone}</Text> : null}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
           <Text style={s.fieldLabel}>📞 Contato desta OS (tel/WhatsApp — opcional)</Text>
           <TextInput style={s.input} placeholder="Opcional" value={contatoCliente} onChangeText={setContatoCliente} keyboardType="phone-pad" />
         </View>
@@ -428,15 +539,21 @@ const s = StyleSheet.create({
   togglesCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, elevation: 1 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   toggleSep: { borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12, marginTop: 4 },
-  plantaoLabel: { fontSize: 15, fontWeight: '700', color: '#7c3aed' },
-  chaveLabel:   { fontSize: 15, fontWeight: '700', color: '#b45309' },
-  toggleSub:    { fontSize: 12, color: '#94a3b8', marginTop: 2 },
+  plantaoLabel:  { fontSize: 15, fontWeight: '700', color: '#7c3aed' },
+  chaveLabel:    { fontSize: 15, fontWeight: '700', color: '#b45309' },
+  cobrancaLabel: { fontSize: 15, fontWeight: '700', color: '#dc2626' },
+  toggleSub:     { fontSize: 12, color: '#94a3b8', marginTop: 2 },
 
   secao: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 14, elevation: 1 },
   secaoTitulo: { fontSize: 12, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
   fieldLabel: { fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 4, marginTop: 4 },
   input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 14, color: '#1e293b', backgroundColor: '#f8fafc', marginBottom: 8 },
   textarea: { minHeight: 80 },
+
+  sugestoes: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, marginBottom: 8, elevation: 4 },
+  sugestaoItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  sugestaoNome: { fontSize: 14, fontWeight: '600', color: '#1e293b' },
+  sugestaoSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, AppState, Alert
+  RefreshControl, ActivityIndicator, AppState, Modal
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,11 +70,14 @@ export default function OSListScreen({ navigation, onLogout }) {
     }
   }
 
+  const [modalLojas, setModalLojas] = useState(false);
+  const [lojasAdmList, setLojasAdmList] = useState([]);
+
   const multiLoja = funcionario && (funcionario.outras_lojas?.length > 0);
 
   function abrirAdmin() {
     const lojasAdm = [
-      { loja_id: funcionario.loja_id, nome: 'Minha loja', funcionario_id: funcionario.id },
+      { loja_id: funcionario.loja_id, nome: funcionario.loja_nome || `Loja ${funcionario.loja_id}`, funcionario_id: funcionario.id },
       ...(funcionario.outras_lojas || []).filter(l => l.is_admin).map(l => ({ loja_id: l.id, nome: l.nome || `Loja ${l.id}`, funcionario_id: l.funcionario_id })),
       ...(funcionario.lojas_adm || []).map(l => ({ loja_id: l.id, nome: l.nome || `Loja ${l.id}`, funcionario_id: funcionario.id })),
     ];
@@ -82,14 +85,8 @@ export default function OSListScreen({ navigation, onLogout }) {
       navigation.navigate('Admin', { loja_id: funcionario.loja_id, funcionario_id: funcionario.id });
       return;
     }
-    Alert.alert(
-      '👑 Qual loja?',
-      'Selecione o painel que deseja abrir:',
-      lojasAdm.map(l => ({
-        text: l.nome,
-        onPress: () => navigation.navigate('Admin', { loja_id: l.loja_id, funcionario_id: l.funcionario_id }),
-      }))
-    );
+    setLojasAdmList(lojasAdm);
+    setModalLojas(true);
   }
 
   function renderOS({ item }) {
@@ -173,6 +170,33 @@ export default function OSListScreen({ navigation, onLogout }) {
       <TouchableOpacity style={[s.fab, { bottom: Math.max((insets.bottom || 0) + 24, 80) }]} onPress={() => navigation.navigate('OSNova')}>
         <Text style={s.fabText}>+ Nova OS</Text>
       </TouchableOpacity>
+
+      {/* Modal seleção de loja ADM */}
+      <Modal visible={modalLojas} transparent animationType="slide" onRequestClose={() => setModalLojas(false)}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setModalLojas(false)}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitulo}>👑 Selecionar painel</Text>
+            <Text style={s.modalSub}>Qual loja você deseja gerenciar?</Text>
+            {lojasAdmList.map((l, i) => (
+              <TouchableOpacity
+                key={i}
+                style={s.lojaBtn}
+                onPress={() => {
+                  setModalLojas(false);
+                  navigation.navigate('Admin', { loja_id: l.loja_id, funcionario_id: l.funcionario_id });
+                }}>
+                <Text style={s.lojaBtnIcon}>🏪</Text>
+                <Text style={s.lojaBtnNome}>{l.nome}</Text>
+                <Text style={s.lojaBtnSeta}>›</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={s.cancelarBtn} onPress={() => setModalLojas(false)}>
+              <Text style={s.cancelarText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -221,4 +245,26 @@ const s = StyleSheet.create({
     elevation: 6, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
   },
   fabText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 36,
+  },
+  modalHandle: { width: 40, height: 4, backgroundColor: '#e2e8f0', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitulo: { fontSize: 20, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
+  modalSub: { fontSize: 13, color: '#94a3b8', marginBottom: 20 },
+  lojaBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#f8fafc', borderRadius: 14, padding: 16,
+    marginBottom: 10, borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  lojaBtnIcon: { fontSize: 22 },
+  lojaBtnNome: { flex: 1, fontSize: 16, fontWeight: '700', color: '#1e293b' },
+  lojaBtnSeta: { fontSize: 20, color: '#94a3b8', fontWeight: '300' },
+  cancelarBtn: {
+    marginTop: 8, padding: 16, alignItems: 'center',
+    backgroundColor: '#f1f5f9', borderRadius: 14,
+  },
+  cancelarText: { fontSize: 15, fontWeight: '700', color: '#64748b' },
 });

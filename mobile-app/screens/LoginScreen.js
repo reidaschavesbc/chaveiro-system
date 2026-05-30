@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image
+  ActivityIndicator, KeyboardAvoidingView, Platform, Image
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { showToast } from '../components/AppAlert';
 
 export default function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ export default function LoginScreen({ onLogin }) {
 
   async function handleLogin() {
     if (!email.trim() || !senha.trim()) {
-      Alert.alert('Atenção', 'Preencha e-mail e senha');
+      showToast('Preencha usuário e senha', 'warning');
       return;
     }
     setLoading(true);
@@ -23,7 +24,7 @@ export default function LoginScreen({ onLogin }) {
       await AsyncStorage.setItem('funcionario', JSON.stringify(data.funcionario));
       onLogin(data.funcionario);
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Não foi possível conectar ao servidor');
+      showToast(e.response?.data?.error || 'Não foi possível conectar ao servidor');
     } finally {
       setLoading(false);
     }

@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Alert, Modal,
+  ActivityIndicator, RefreshControl, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
+import { showToast } from '../components/AppAlert';
 
 function fmtVal(v) {
   return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -73,7 +74,7 @@ export default function AfiacaoScreen({ isAfiador }) {
       await api.put(`/afiacao/${ficha.id}/status`, { status: novoStatus });
       await carregar();
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Não foi possível atualizar');
+      showToast(e.response?.data?.error || 'Não foi possível atualizar');
     } finally {
       setAvancando(null);
     }
@@ -100,10 +101,10 @@ export default function AfiacaoScreen({ isAfiador }) {
         setPagando(true);
         try {
           await api.post('/afiacao-pagar', {});
-          Alert.alert('✅ Pago!', 'Pagamento registrado com sucesso.');
+          showToast('Pagamento registrado com sucesso!', 'success');
           carregar();
         } catch (e) {
-          Alert.alert('Erro', e.response?.data?.erro || 'Não foi possível registrar');
+          showToast(e.response?.data?.erro || 'Não foi possível registrar');
         } finally {
           setPagando(false);
         }

@@ -2,12 +2,13 @@ import React, { useState, useCallback, useLayoutEffect } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   RefreshControl, ActivityIndicator, Modal, TextInput,
-  ScrollView, Alert, Platform, KeyboardAvoidingView
+  ScrollView, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { showToast, showConfirm } from '../components/AppAlert';
 
 const STATUS = {
   pendente:  { label: 'Pendente',  bg: '#fef3c7', color: '#92400e' },
@@ -83,7 +84,7 @@ export default function LembretesScreen({ navigation }) {
       setLembretes(resp.lembretes || []);
       setVendedores(resp.vendedores || []);
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao carregar lembretes');
+      showToast(e.response?.data?.error || 'Falha ao carregar lembretes');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -128,15 +129,15 @@ export default function LembretesScreen({ navigation }) {
   }
 
   async function salvar() {
-    if (!mensagem.trim()) { Alert.alert('Atenção', 'Digite a mensagem'); return; }
+    if (!mensagem.trim()) { showToast('Digite a mensagem', 'warning'); return; }
     const parsedData = parseDataDisplay(dataDisplay);
-    if (!parsedData || !hora) { Alert.alert('Atenção', 'Informe a data (DD/MM/AA) e hora'); return; }
+    if (!parsedData || !hora) { showToast('Informe a data (DD/MM/AA) e hora', 'warning'); return; }
     if (isAdmin && !destTodos && destSelecionados.length === 0) {
-      Alert.alert('Atenção', 'Selecione ao menos um destinatário');
+      showToast('Selecione ao menos um destinatário', 'warning');
       return;
     }
     const dataHoraEnvio = new Date(`${parsedData}T${hora}`);
-    if (dataHoraEnvio <= new Date()) { Alert.alert('Atenção', 'A data/hora deve ser no futuro'); return; }
+    if (dataHoraEnvio <= new Date()) { showToast('A data/hora deve ser no futuro', 'warning'); return; }
 
     const destinatarios = !isAdmin ? null : (destTodos ? 'todos' : destSelecionados.join(','));
     setSalvando(true);
@@ -147,7 +148,7 @@ export default function LembretesScreen({ navigation }) {
       setLoading(true);
       await carregar();
     } catch (e) {
-      Alert.alert('Erro', e.response?.data?.error || 'Falha ao salvar');
+      showToast(e.response?.data?.error || 'Falha ao salvar');
     } finally {
       setSalvando(false);
     }
@@ -155,19 +156,20 @@ export default function LembretesScreen({ navigation }) {
 
   async function excluir(item) {
     const acao = item.status === 'pendente' ? 'cancelar' : 'excluir';
-    Alert.alert('Confirmar', `Deseja ${acao} este lembrete?`, [
-      { text: 'Não', style: 'cancel' },
-      {
-        text: 'Sim', style: 'destructive', onPress: async () => {
-          try {
-            await api.delete(`/lembretes/${item.id}`);
-            await carregar();
-          } catch (e) {
-            Alert.alert('Erro', e.response?.data?.error || 'Falha');
-          }
+    showConfirm({
+      titulo: 'Confirmar',
+      mensagem: `Deseja ${acao} este lembrete?`,
+      textoBotao: acao === 'cancelar' ? 'Cancelar lembrete' : 'Excluir',
+      corBotao: '#dc2626',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/lembretes/${item.id}`);
+          await carregar();
+        } catch (e) {
+          showToast(e.response?.data?.error || 'Falha');
         }
-      }
-    ]);
+      },
+    });
   }
 
   function renderItem({ item }) {

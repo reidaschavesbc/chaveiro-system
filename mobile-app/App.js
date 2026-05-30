@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform, Alert, Linking, TouchableOpacity, Text, AppState } from 'react-native';
+import { Platform, Linking, TouchableOpacity, Text, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,6 +18,7 @@ if (Platform.OS === 'android') {
 }
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AppAlert, { alertRef, showConfirm } from './components/AppAlert';
 import LoginScreen from './screens/LoginScreen';
 import OSListScreen from './screens/OSListScreen';
 import OSDetalheScreen from './screens/OSDetalheScreen';
@@ -73,14 +74,14 @@ export default function App() {
       const versaoApp = Constants.default?.expoConfig?.version || Constants.expoConfig?.version || Constants.manifest?.version || '1.0.0';
       if (versaoServidor && versaoServidor !== versaoApp && !atualizacaoMostradaRef.current) {
         atualizacaoMostradaRef.current = true;
-        Alert.alert(
-          'Atualização disponível',
-          `Nova versão ${versaoServidor} disponível. Deseja atualizar agora?`,
-          [
-            { text: 'Agora não', style: 'cancel', onPress: () => { atualizacaoMostradaRef.current = false; } },
-            { text: 'Atualizar', onPress: () => Linking.openURL(`${serverUrl}/download-app`) },
-          ]
-        );
+        showConfirm({
+          titulo: '🆕 Atualização disponível',
+          mensagem: `Nova versão ${versaoServidor} disponível. Deseja atualizar agora?`,
+          textoBotao: 'Atualizar',
+          corBotao: '#16a34a',
+          onConfirm: () => Linking.openURL(`${serverUrl}/download-app`),
+          onCancel: () => { atualizacaoMostradaRef.current = false; },
+        });
       }
     } catch (_) {}
   }
@@ -213,6 +214,7 @@ export default function App() {
         <LoginScreen onLogin={handleLogin} />
       )}
     </NavigationContainer>
+    <AppAlert ref={alertRef} />
     </SafeAreaProvider>
   );
 }
