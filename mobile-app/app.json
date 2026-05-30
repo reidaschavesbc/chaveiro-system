@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chaveiro OS",
     "slug": "chaveiro-app",
-    "version": "1.0.84",
+    "version": "1.0.85",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
