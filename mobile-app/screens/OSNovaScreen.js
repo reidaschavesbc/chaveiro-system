@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView, Platform, Modal, FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import UpperTextInput from '../components/UpperTextInput';
 import { showToast } from '../components/AppAlert';
@@ -315,7 +314,7 @@ export default function OSNovaScreen({ navigation, route }) {
               autoCapitalize="words"
             />
             <TouchableOpacity onPress={() => setShowClienteModal(true)} style={s.clientePickerBtn}>
-              <Ionicons name="person-circle-outline" size={30} color="#2563eb" />
+              <Text style={{ fontSize: 22 }}>👤</Text>
             </TouchableOpacity>
           </View>
           {clienteId && (
@@ -481,7 +480,7 @@ export default function OSNovaScreen({ navigation, route }) {
                     <Text style={s.catalogoNome}>{item.nome_fantasia || item.nome}</Text>
                     {item.telefone ? <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{item.telefone}</Text> : null}
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#cbd5e1" />
+                  <Text style={{ fontSize: 14, color: '#cbd5e1' }}>›</Text>
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#f1f5f9' }} />}
