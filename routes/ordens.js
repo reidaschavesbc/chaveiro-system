@@ -7,6 +7,7 @@ const { ajustarEstoqueUsuario, getQtdUsuario } = require('./estoque');
 const { notificarFuncionario } = require('./app-mobile');
 const { fmtVal, fmtDH, fmtAddr } = require('../utils/formatters');
 const gerarNumeroOS = require('../utils/gerarNumeroOS');
+const { registrarExclusao } = require('../utils/historico');
 
 // Deduz estoque de produtos diretos e produtos vinculados a serviços
 // Itens com perguntar_estoque=1 são pulados — serão tratados via modal de consumo
@@ -95,6 +96,25 @@ router.get('/', (req, res) => {
     res.json(db.prepare(query).all(...params));
 });
 
+// GET /api/ordens/agenda
+router.get('/agenda', (req, res) => {
+    const { data } = req.query;
+    if (!data) return res.status(400).json({ error: 'Data obrigatória' });
+    const os = db.prepare(`
+        SELECT os.id, os.numero, os.descricao, os.status, os.valor,
+               os.data_prevista, os.tempo_estimado, os.vendedor_id,
+               os.data_inicio_real, os.tempo_real,
+               COALESCE(c.nome_fantasia, c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+               v.nome as vendedor_nome
+        FROM ordens_servico os
+        LEFT JOIN clientes c ON os.cliente_id = c.id
+        LEFT JOIN vendedores v ON os.vendedor_id = v.id
+        WHERE os.loja_id = ? AND date(os.data_prevista) = ? AND os.vendedor_id IS NOT NULL AND os.status NOT IN ('concluida', 'cancelada') AND os.is_plantao = 0
+        ORDER BY os.data_prevista ASC
+    `).all(req.user.loja_id, data);
+    res.json(os);
+});
+
 // GET /api/ordens/:id
 router.get('/:id', (req, res) => {
     const os = db.prepare(`SELECT os.*,
@@ -122,18 +142,20 @@ router.get('/:id', (req, res) => {
 
 // POST /api/ordens
 router.post('/', (req, res) => {
-    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, status, is_plantao, contato_cliente } = req.body;
+    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, valor, data_prevista, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, status, is_plantao, contato_cliente, tempo_estimado } = req.body;
     const lojaId = req.user.loja_id;
     const STATUSES = ['aberta', 'em_andamento', 'reagendar', 'concluida', 'cancelada'];
     const statusFinal = STATUSES.includes(status) ? status : 'aberta';
-    const dc = statusFinal === 'concluida' ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null;
+    const agoraPost = () => { const n = new Date(); return n.toLocaleDateString('en-CA') + ' ' + n.toLocaleTimeString('pt-BR'); };
+    const dc = statusFinal === 'concluida' ? agoraPost() : null;
+    const dataInicioRealPost = statusFinal === 'em_andamento' ? agoraPost() : null;
 
     const insertOS = db.transaction(() => {
         const numero = gerarNumeroOS(); // dentro da transação para garantir unicidade
         const result = db.prepare(`
-            INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao, contato_cliente, usuario_id, loja_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, statusFinal, valor || 0, data_prevista || null, dc, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, contato_cliente || null, req.user?.id || null, lojaId);
+            INSERT INTO ordens_servico (numero, cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao, contato_cliente, usuario_id, loja_id, tempo_estimado, data_inicio_real)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(numero, cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, statusFinal, valor || 0, data_prevista || null, dc, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, contato_cliente || null, req.user?.id || null, lojaId, tempo_estimado ? parseInt(tempo_estimado) : null, dataInicioRealPost);
 
         const osId = result.lastInsertRowid;
 
@@ -217,21 +239,32 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!os) return res.status(404).json({ error: 'OS não encontrada' });
-    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao, contato_cliente } = req.body;
+    const { cliente_id, cliente_nome_avulso, cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento, cliente_avulso_cidade, cliente_avulso_referencia, tipo_servico_id, vendedor_id, descricao, status, valor, data_prevista, data_conclusao, observacoes, forma_pagamento, itens, a_receber, data_vencimento, solicitado_por, chave_auto, orcamento, is_plantao, contato_cliente, tempo_estimado } = req.body;
 
     // Preserva data_conclusao existente; só define se está concluindo pela primeira vez;
     // limpa se estiver saindo do status concluida
+    const agoraStrPut = () => { const n = new Date(); return n.toLocaleDateString('en-CA') + ' ' + n.toLocaleTimeString('pt-BR'); };
     let dc = os.data_conclusao || null;
-    if (status === 'concluida' && !os.data_conclusao) {
-        const now = new Date();
-        dc = now.toLocaleDateString('en-CA') + ' ' + now.toLocaleTimeString('pt-BR');
-    } else if (status !== 'concluida') {
-        dc = null;
+    if (status === 'concluida' && !os.data_conclusao) dc = agoraStrPut();
+    else if (status !== 'concluida') dc = null;
+
+    // Rastreamento de tempo real
+    let dataInicioReal = os.data_inicio_real;
+    let tempoReal = os.tempo_real;
+    if (status === 'em_andamento' && os.status !== 'em_andamento') {
+        dataInicioReal = agoraStrPut();
+    } else if (status === 'aberta' || status === 'reagendar') {
+        dataInicioReal = null;
+        tempoReal = null;
+    }
+    if (status === 'concluida' && os.status !== 'concluida' && dataInicioReal) {
+        const inicio = new Date(dataInicioReal.replace(' ', 'T'));
+        tempoReal = Math.max(1, Math.round((Date.now() - inicio.getTime()) / 60000));
     }
 
     const updateOS = db.transaction(() => {
-        db.prepare(`UPDATE ordens_servico SET cliente_id=?, cliente_nome_avulso=?, cliente_avulso_rua=?, cliente_avulso_numero=?, cliente_avulso_complemento=?, cliente_avulso_cidade=?, cliente_avulso_referencia=?, tipo_servico_id=?, vendedor_id=?, descricao=?, status=?, valor=?, data_prevista=?, data_conclusao=?, observacoes=?, forma_pagamento=?, a_receber=?, data_vencimento=?, solicitado_por=?, chave_auto=?, orcamento=?, is_plantao=?, contato_cliente=? WHERE id=? AND loja_id=?`)
-            .run(cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, status || 'aberta', valor || 0, data_prevista || null, dc || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, contato_cliente || null, req.params.id, req.user.loja_id);
+        db.prepare(`UPDATE ordens_servico SET cliente_id=?, cliente_nome_avulso=?, cliente_avulso_rua=?, cliente_avulso_numero=?, cliente_avulso_complemento=?, cliente_avulso_cidade=?, cliente_avulso_referencia=?, tipo_servico_id=?, vendedor_id=?, descricao=?, status=?, valor=?, data_prevista=?, data_conclusao=?, observacoes=?, forma_pagamento=?, a_receber=?, data_vencimento=?, solicitado_por=?, chave_auto=?, orcamento=?, is_plantao=?, contato_cliente=?, tempo_estimado=?, data_inicio_real=?, tempo_real=? WHERE id=? AND loja_id=?`)
+            .run(cliente_id || null, cliente_nome_avulso || null, cliente_avulso_rua || null, cliente_avulso_numero || null, cliente_avulso_complemento || null, cliente_avulso_cidade || null, cliente_avulso_referencia || null, tipo_servico_id || null, vendedor_id || null, descricao, status || 'aberta', valor || 0, data_prevista || null, dc || null, observacoes || null, forma_pagamento || null, a_receber ? 1 : 0, data_vencimento || null, solicitado_por || null, chave_auto ? 1 : 0, orcamento ? 1 : 0, is_plantao ? 1 : 0, contato_cliente || null, tempo_estimado ? parseInt(tempo_estimado) : null, dataInicioReal, tempoReal, req.params.id, req.user.loja_id);
 
         if (itens) {
             db.prepare('DELETE FROM itens_ordem_servico WHERE ordem_id = ?').run(req.params.id);
@@ -284,10 +317,23 @@ router.patch('/:id/status', (req, res) => {
     const STATUSES = ['aberta', 'em_andamento', 'reagendar', 'concluida', 'cancelada'];
     if (!STATUSES.includes(status)) return res.status(400).json({ error: 'Status inválido' });
 
+    const agoraStr = () => { const n = new Date(); return n.toLocaleDateString('en-CA') + ' ' + n.toLocaleTimeString('pt-BR'); };
+
     let dc = os.data_conclusao;
-    if (status === 'concluida' && !os.data_conclusao) {
-        const now = new Date();
-        dc = now.toLocaleDateString('en-CA') + ' ' + now.toLocaleTimeString('pt-BR');
+    if (status === 'concluida' && !os.data_conclusao) dc = agoraStr();
+
+    // Rastreamento de tempo real
+    let dataInicioReal = os.data_inicio_real;
+    let tempoReal = os.tempo_real;
+    if (status === 'em_andamento' && os.status !== 'em_andamento') {
+        dataInicioReal = agoraStr();
+    } else if (status === 'aberta' || status === 'reagendar') {
+        dataInicioReal = null; // reseta se voltou atrás
+        tempoReal = null;
+    }
+    if (status === 'concluida' && os.status !== 'concluida' && dataInicioReal) {
+        const inicio = new Date(dataInicioReal.replace(' ', 'T'));
+        tempoReal = Math.max(1, Math.round((Date.now() - inicio.getTime()) / 60000));
     }
 
     // forma_pagamento fica com o método principal (ou o único)
@@ -296,8 +342,8 @@ router.patch('/:id/status', (req, res) => {
     else if (pagamentos && pagamentos.length > 1) fp = pagamentos[0].metodo;
 
     db.transaction(() => {
-        db.prepare(`UPDATE ordens_servico SET status = ?, data_conclusao = ?, forma_pagamento = ? WHERE id = ? AND loja_id = ?`)
-            .run(status, dc, fp, req.params.id, req.user.loja_id);
+        db.prepare(`UPDATE ordens_servico SET status=?, data_conclusao=?, forma_pagamento=?, data_inicio_real=?, tempo_real=? WHERE id=? AND loja_id=?`)
+            .run(status, dc, fp, dataInicioReal, tempoReal, req.params.id, req.user.loja_id);
 
         // Registra pagamentos split se fornecidos
         if (pagamentos && pagamentos.length > 0) {
@@ -313,7 +359,7 @@ router.patch('/:id/status', (req, res) => {
     })();
 
     const tem_pergunta_estoque = (status === 'concluida' && os.status !== 'concluida') ? verificarPerguntaEstoque(req.params.id) : false;
-    res.json({ ok: true, status, data_conclusao: dc, tem_pergunta_estoque });
+    res.json({ ok: true, status, data_conclusao: dc, data_inicio_real: dataInicioReal, tempo_real: tempoReal, tem_pergunta_estoque });
 });
 
 // PUT /api/ordens/:id/pausar-cobranca
@@ -448,7 +494,21 @@ router.post('/:id/consumo-estoque', (req, res) => {
 router.delete('/:id', (req, res) => {
     const { motivo } = req.body;
     if (!motivo) return res.status(400).json({ error: 'Motivo é obrigatório para cancelamento' });
+    const os = db.prepare('SELECT id, numero AS numero_os, cliente_nome_avulso, valor AS total, status FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    const clienteNome = os ? (db.prepare('SELECT nome FROM clientes WHERE id = (SELECT cliente_id FROM ordens_servico WHERE id = ?)').get(req.params.id)?.nome || os.cliente_nome_avulso || 'Cliente avulso') : null;
     db.prepare("UPDATE ordens_servico SET status = 'cancelada', motivo_cancelamento = ? WHERE id = ? AND loja_id = ?").run(motivo, req.params.id, req.user.loja_id);
+    if (os) {
+        registrarExclusao({
+            loja_id: req.user.loja_id,
+            tipo: 'cancelamento_os',
+            registro_id: os.id,
+            descricao: `OS #${os.numero_os || os.id} — ${clienteNome} — R$ ${(os.total||0).toFixed(2)}`,
+            dados: { motivo },
+            usuario_id: req.user.id,
+            usuario_nome: req.user.nome,
+        req
+    });
+    }
     res.json({ ok: true });
 });
 
@@ -456,8 +516,12 @@ router.delete('/:id', (req, res) => {
 router.delete('/:id/excluir', (req, res) => {
     if (!req.user.principal) return res.status(403).json({ error: 'Apenas o usuário principal pode excluir OS permanentemente' });
 
-    const os = db.prepare('SELECT * FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
+    const os = db.prepare('SELECT id, numero AS numero_os, cliente_id, cliente_nome_avulso, valor AS total, status FROM ordens_servico WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     if (!os) return res.status(404).json({ error: 'OS não encontrada' });
+
+    const clienteNome = os.cliente_id
+        ? (db.prepare('SELECT nome FROM clientes WHERE id = ?').get(os.cliente_id)?.nome || os.cliente_nome_avulso || 'Cliente avulso')
+        : (os.cliente_nome_avulso || 'Cliente avulso');
 
     db.transaction(() => {
         db.prepare('DELETE FROM itens_ordem_servico WHERE ordem_id = ?').run(req.params.id);
@@ -467,7 +531,17 @@ router.delete('/:id/excluir', (req, res) => {
         db.prepare('DELETE FROM ordens_servico WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
     })();
 
-    res.json({ ok: true, numero: os.numero });
+    registrarExclusao({
+        loja_id: req.user.loja_id,
+        tipo: 'ordem_servico',
+        registro_id: os.id,
+        descricao: `OS #${os.numero_os || os.id} — ${clienteNome} — R$ ${(os.total||0).toFixed(2)}`,
+        usuario_id: req.user.id,
+        usuario_nome: req.user.nome,
+        req
+    });
+
+    res.json({ ok: true, numero: os.numero_os });
 });
 
 module.exports = router;

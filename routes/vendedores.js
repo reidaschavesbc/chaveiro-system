@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database/db');
 const bcrypt = require('bcryptjs');
+const { registrarExclusao } = require('../utils/historico');
 
 router.get('/', (req, res) => {
     const soTecnico = req.query.tecnico === '1';
@@ -47,7 +48,19 @@ router.put('/:id', (req, res) => {
 });
 
 router.delete('/:id', (req, res) => {
+    const v = db.prepare('SELECT id, nome FROM vendedores WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
     db.prepare('UPDATE vendedores SET ativo = 0, email = NULL, senha = NULL, expo_push_token = NULL WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
+    if (v) {
+        registrarExclusao({
+            loja_id: req.user.loja_id,
+            tipo: 'vendedor',
+            registro_id: v.id,
+            descricao: `Vendedor: ${v.nome}`,
+            usuario_id: req.user.id,
+            usuario_nome: req.user.nome,
+        req
+    });
+    }
     res.json({ ok: true });
 });
 
@@ -77,6 +90,61 @@ router.put('/:id/acesso-app', (req, res) => {
         db.prepare('UPDATE vendedores SET email = ? WHERE id = ? AND loja_id = ?').run(email, req.params.id, req.user.loja_id);
     }
     res.json({ ok: true });
+});
+
+router.get('/disponibilidade', (req, res) => {
+    const lojaId = req.user.loja_id;
+    const vendedores = db.prepare(`SELECT id, nome FROM vendedores WHERE loja_id = ? AND ativo = 1 AND pode_trabalhar = 1 AND tecnico = 1 ORDER BY nome`).all(lojaId);
+    const agora = new Date();
+    const hoje = agora.toLocaleDateString('en-CA');
+
+    const result = vendedores.map(v => {
+        // 1. OS efetivamente em andamento agora (usa data_inicio_real como base real)
+        const osEmAndamento = db.prepare(`
+            SELECT numero, data_inicio_real, tempo_estimado
+            FROM ordens_servico
+            WHERE vendedor_id = ? AND loja_id = ? AND status = 'em_andamento'
+            ORDER BY data_entrada DESC LIMIT 1
+        `).get(v.id, lojaId);
+
+        if (osEmAndamento) {
+            if (osEmAndamento.data_inicio_real && osEmAndamento.tempo_estimado > 0) {
+                const inicio = new Date(osEmAndamento.data_inicio_real.replace(' ', 'T'));
+                const livreEm = new Date(inicio.getTime() + osEmAndamento.tempo_estimado * 60000);
+                if (livreEm > agora) {
+                    const hh = String(livreEm.getHours()).padStart(2, '0');
+                    const mm = String(livreEm.getMinutes()).padStart(2, '0');
+                    return { id: v.id, nome: v.nome, status: 'ocupado', livre_as: `${hh}:${mm}`, os_numero: osEmAndamento.numero };
+                }
+            }
+            // em andamento mas sem previsão de término (sem horário ou tempo indefinido)
+            return { id: v.id, nome: v.nome, status: 'ocupado', livre_as: null, os_numero: osEmAndamento.numero };
+        }
+
+        // 2. OS agendada para hoje ainda não iniciada (data_prevista com hora no futuro)
+        const osAgendada = db.prepare(`
+            SELECT numero, data_prevista
+            FROM ordens_servico
+            WHERE vendedor_id = ? AND loja_id = ? AND status = 'aberta'
+              AND data_prevista IS NOT NULL AND length(data_prevista) > 10
+              AND date(data_prevista) = ?
+              AND data_prevista > datetime('now', 'localtime')
+            ORDER BY data_prevista ASC LIMIT 1
+        `).get(v.id, lojaId, hoje);
+
+        if (osAgendada) {
+            const dp = new Date(osAgendada.data_prevista.replace(' ', 'T'));
+            const umHoraAntes = new Date(dp.getTime() - 60 * 60000);
+            if (agora >= umHoraAntes) {
+                const hh = String(dp.getHours()).padStart(2, '0');
+                const mm = String(dp.getMinutes()).padStart(2, '0');
+                return { id: v.id, nome: v.nome, status: 'agendado', agendado_as: `${hh}:${mm}`, os_numero: osAgendada.numero };
+            }
+        }
+
+        return { id: v.id, nome: v.nome, status: 'livre' };
+    });
+    res.json(result);
 });
 
 module.exports = router;

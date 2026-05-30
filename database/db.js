@@ -525,6 +525,7 @@ function migrate() {
 
   addCol('afiacao', 'afiador_pago',  'INTEGER NOT NULL DEFAULT 0');
   addCol('afiacao', 'pagamento_id',  'INTEGER');
+  addCol('ordens_servico', 'tempo_estimado', 'INTEGER'); // minutos
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS pagamentos_afiador (
@@ -581,6 +582,38 @@ function migrate() {
   addCol('usuarios', 'expo_push_token', 'TEXT');
   addCol('vendedores', 'senha_ponto', 'TEXT');
   addCol('ponto', 'vendedor_id', 'INTEGER REFERENCES vendedores(id)');
+  addCol('lojas', 'senha', 'TEXT');
+
+  addCol('historico_exclusoes', 'admin_nome', 'TEXT');
+
+  addCol('ordens_servico', 'data_inicio_real', 'TEXT');    // quando o serviço efetivamente começou
+  addCol('ordens_servico', 'tempo_real',        'INTEGER'); // duração real em minutos
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admins_loja (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loja_id INTEGER NOT NULL,
+      nome TEXT NOT NULL,
+      senha TEXT NOT NULL,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      FOREIGN KEY (loja_id) REFERENCES lojas(id)
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS historico_exclusoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      loja_id INTEGER,
+      tipo TEXT NOT NULL,
+      registro_id INTEGER,
+      descricao TEXT NOT NULL,
+      dados_json TEXT,
+      usuario_id INTEGER,
+      usuario_nome TEXT,
+      criado_em TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+  `);
 
   console.log('✅ Banco de dados inicializado com sucesso!');
 }

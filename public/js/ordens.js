@@ -168,6 +168,11 @@ async function ordens(el) {
             </label>
           </div>
 
+          <div id="os-timing" class="form-group form-full" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px">
+            <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:6px">⏱ Rastreamento de tempo</div>
+            <div id="os-timing-body" style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#15803d"></div>
+          </div>
+
           <div class="form-full divider" id="os-secao-divider"></div>
 
           <div class="form-full" id="os-secao-itens">
@@ -1044,6 +1049,31 @@ async function editarOS(id) {
   togglePlantao();
   document.getElementById('os-tempo-estimado').value = o.tempo_estimado > 0 ? o.tempo_estimado : -1;
   document.getElementById('modal-os-title').textContent = 'Editar OS ' + o.numero;
+
+  // Painel de rastreamento de tempo
+  const timingEl = document.getElementById('os-timing');
+  const timingBody = document.getElementById('os-timing-body');
+  if (o.data_inicio_real || o.tempo_real) {
+    const fmtMin = m => { const h = Math.floor(m/60), r = m%60; return h > 0 ? `${h}h${String(r).padStart(2,'0')}min` : `${r}min`; };
+    const fmtDt  = s => s ? s.slice(0,16).replace('T',' ') : '—';
+    let partes = [];
+    if (o.data_inicio_real) partes.push(`<span><b>Início real:</b> ${fmtDt(o.data_inicio_real)}</span>`);
+    if (o.tempo_real)       partes.push(`<span><b>Duração real:</b> ${fmtMin(o.tempo_real)}</span>`);
+    if (o.tempo_estimado > 0 && o.tempo_real) {
+      const diff = o.tempo_real - o.tempo_estimado;
+      const cor  = diff > 0 ? '#dc2626' : '#16a34a';
+      partes.push(`<span style="color:${cor}"><b>${diff > 0 ? '+' : ''}${fmtMin(Math.abs(diff))}</b> vs estimado</span>`);
+    }
+    if (o.status === 'em_andamento' && o.data_inicio_real) {
+      const inicio = new Date(o.data_inicio_real.replace(' ', 'T'));
+      const elapsed = Math.max(0, Math.floor((Date.now() - inicio.getTime()) / 60000));
+      partes.push(`<span><b>Em andamento há:</b> ${fmtMin(elapsed)}</span>`);
+    }
+    timingBody.innerHTML = partes.join('<span style="color:#bbf7d0">│</span>');
+    timingEl.style.display = '';
+  } else {
+    timingEl.style.display = 'none';
+  }
 
   osItens = o.itens || [];
   renderItensOS();
