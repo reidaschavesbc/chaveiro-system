@@ -92,6 +92,19 @@ async function ordens(el) {
             <select id="os-vendedor">
               <option value="">-- Selecione --</option>${vendedorOptions}
             </select>
+            <div id="os-disponibilidade" style="margin-top:8px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;display:none"></div>
+          </div>
+          <div class="form-group">
+            <label>Tempo estimado do serviço</label>
+            <select id="os-tempo-estimado">
+              <option value="-1">-- Não informado (indefinido) --</option>
+              <option value="30">30 min</option>
+              <option value="60">1h</option>
+              <option value="90">1h30</option>
+              <option value="120">2h</option>
+              <option value="150">2h30</option>
+              <option value="180">3h</option>
+            </select>
           </div>
           <div class="form-group form-full">
             <label>Descrição do Problema / Serviço</label>
@@ -787,11 +800,33 @@ function abrirModalOS() {
   document.getElementById('os-plantao').checked = false;
   togglePlantao();
   document.getElementById('modal-os-title').textContent = 'Nova Ordem de Serviço';
-
+  document.getElementById('os-tempo-estimado').value = '';
   osItens = [];
   renderItensOS();
   preencherSelectsOS();
+  carregarDisponibilidadeOS();
   openModal('modal-os');
+}
+
+async function carregarDisponibilidadeOS() {
+  const el = document.getElementById('os-disponibilidade');
+  if (!el) return;
+  el.style.display = 'block';
+  el.innerHTML = '<span style="color:#94a3b8">Carregando disponibilidade...</span>';
+  try {
+    const lista = await api('GET', '/vendedores/disponibilidade');
+    if (!lista.length) { el.style.display = 'none'; return; }
+    el.innerHTML = '<div style="font-weight:700;color:#475569;margin-bottom:6px;text-transform:uppercase;font-size:10px;letter-spacing:.5px">Disponibilidade agora</div>' +
+      lista.map(v => {
+        const cor = v.status === 'livre' ? '#10b981' : v.status === 'agendado' ? '#f59e0b' : '#ef4444';
+        const txt = v.status === 'livre' ? 'LIVRE' : v.status === 'agendado' ? `OS AGENDADA ÀS ${v.agendado_as}` : v.livre_as ? `OCUPADO ATÉ ${v.livre_as}` : 'OCUPADO';
+        return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+          <span style="color:${cor};font-size:14px">●</span>
+          <span style="font-weight:700;color:#1e293b;flex:1;text-transform:uppercase">${v.nome}</span>
+          <span style="color:${cor};font-weight:700">${txt}</span>
+        </div>`;
+      }).join('');
+  } catch (_) { el.style.display = 'none'; }
 }
 
 function preencherSelectsOS() {
@@ -1007,6 +1042,7 @@ async function editarOS(id) {
   document.getElementById('os-chave-auto').checked = !!o.chave_auto;
   document.getElementById('os-plantao').checked = !!o.is_plantao;
   togglePlantao();
+  document.getElementById('os-tempo-estimado').value = o.tempo_estimado > 0 ? o.tempo_estimado : -1;
   document.getElementById('modal-os-title').textContent = 'Editar OS ' + o.numero;
 
   osItens = o.itens || [];
@@ -1040,7 +1076,8 @@ async function salvarOS() {
     chave_auto: document.getElementById('os-chave-auto').checked ? 1 : 0,
     is_plantao: document.getElementById('os-plantao').checked ? 1 : 0,
     orcamento: 0,
-    itens: osItens
+    itens: osItens,
+    tempo_estimado: parseInt(document.getElementById('os-tempo-estimado').value),
   };
   if (!body.cliente_id && body.cliente_nome_avulso && !avulsoRua) { toast('Informe a rua do endereço do cliente', 'error'); return; }
   if (!body.is_plantao && !body.chave_auto && osItens.length === 0) { toast('Adicione pelo menos 1 serviço ou produto na OS', 'warning'); return; }
