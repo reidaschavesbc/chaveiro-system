@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  ActivityIndicator, RefreshControl, Alert,
+  ActivityIndicator, RefreshControl, Alert, Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,8 +41,13 @@ export default function AfiacaoScreen({ isAfiador }) {
   const [refreshing, setRefreshing] = useState(false);
   const [pagando, setPagando]       = useState(false);
   const [avancando, setAvancando]   = useState(null);
+  const [modalConfig, setModalConfig] = useState(null);
 
-  useFocusEffect(useCallback(() => { carregar(); }, []));
+  useFocusEffect(useCallback(() => {
+    carregar();
+    const id = setInterval(carregar, 30000);
+    return () => clearInterval(id);
+  }, []));
 
   async function carregar() {
     try {
@@ -75,40 +80,35 @@ export default function AfiacaoScreen({ isAfiador }) {
   }
 
   function confirmarAvancar(ficha, cfg) {
-    Alert.alert(
-      `${cfg.proxLabel} ficha #${ficha.numero}`,
-      `Mover para "${STATUS[cfg.prox].label}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: cfg.proxLabel, onPress: () => avancarStatus(ficha, cfg.prox) },
-      ]
-    );
+    setModalConfig({
+      title: `${cfg.proxLabel} ficha #${ficha.numero}`,
+      subtitle: `Mover para "${STATUS[cfg.prox].label}"?`,
+      confirmLabel: cfg.proxLabel,
+      confirmColor: STATUS[cfg.prox].color,
+      onConfirm: () => avancarStatus(ficha, cfg.prox),
+    });
   }
 
   function confirmarPagar() {
     if (!pendente || pendente.qtd === 0) return;
-    Alert.alert(
-      '💰 Pagar Afiador',
-      `Confirmar pagamento de ${fmtVal(pendente.total)} ao afiador?\n(${pendente.qtd} ficha(s) entregues)`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar Pagamento',
-          onPress: async () => {
-            setPagando(true);
-            try {
-              await api.post('/afiacao-pagar', {});
-              Alert.alert('✅ Pago!', 'Pagamento registrado com sucesso.');
-              carregar();
-            } catch (e) {
-              Alert.alert('Erro', e.response?.data?.erro || 'Não foi possível registrar');
-            } finally {
-              setPagando(false);
-            }
-          },
-        },
-      ]
-    );
+    setModalConfig({
+      title: '💰 Pagar Afiador',
+      subtitle: `Confirmar pagamento de ${fmtVal(pendente.total)} ao afiador?\n${pendente.qtd} ficha(s) entregues`,
+      confirmLabel: 'Confirmar Pagamento',
+      confirmColor: '#10b981',
+      onConfirm: async () => {
+        setPagando(true);
+        try {
+          await api.post('/afiacao-pagar', {});
+          Alert.alert('✅ Pago!', 'Pagamento registrado com sucesso.');
+          carregar();
+        } catch (e) {
+          Alert.alert('Erro', e.response?.data?.erro || 'Não foi possível registrar');
+        } finally {
+          setPagando(false);
+        }
+      },
+    });
   }
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#6366f1" />;
@@ -228,7 +228,7 @@ export default function AfiacaoScreen({ isAfiador }) {
                     <Text style={s.pendenteItemVal}>{pendente.qtd}</Text>
                   </View>
                   <View style={s.pendenteItem}>
-                    <Text style={s.pendenteItemLabel}>Por ficha</Text>
+                    <Text style={s.pendenteItemLabel}>Por afiação</Text>
                     <Text style={s.pendenteItemVal}>{fmtVal(pendente.valor_por_ficha)}</Text>
                   </View>
                   <View style={[s.pendenteItem, s.pendenteItemDestaque]}>
@@ -281,6 +281,32 @@ export default function AfiacaoScreen({ isAfiador }) {
         )}
 
       </ScrollView>
+
+      <Modal
+        transparent
+        visible={!!modalConfig}
+        animationType="fade"
+        onRequestClose={() => setModalConfig(null)}
+      >
+        <TouchableOpacity style={s.overlay} activeOpacity={1} onPress={() => setModalConfig(null)}>
+          <View style={s.modalBox} onStartShouldSetResponder={() => true}>
+            <Text style={s.modalTitle}>{modalConfig?.title}</Text>
+            {modalConfig?.subtitle ? <Text style={s.modalSub}>{modalConfig.subtitle}</Text> : null}
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.modalBtnCancel} onPress={() => setModalConfig(null)}>
+                <Text style={s.modalBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.modalBtnConfirm, { backgroundColor: modalConfig?.confirmColor || '#6366f1' }]}
+                onPress={() => { const cfg = modalConfig; setModalConfig(null); cfg?.onConfirm?.(); }}
+              >
+                <Text style={s.modalBtnConfirmText}>{modalConfig?.confirmLabel} →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </View>
   );
 }
@@ -379,4 +405,26 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 4,
   },
   pagtoBadgeText: { color: '#10b981', fontSize: 11, fontWeight: '700' },
+
+  overlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalBox: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: 24, paddingBottom: 40,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: '#1e293b', marginBottom: 6 },
+  modalSub: { fontSize: 14, color: '#64748b', lineHeight: 20, marginBottom: 22 },
+  modalBtns: { flexDirection: 'row', gap: 10 },
+  modalBtnCancel: {
+    flex: 1, paddingVertical: 13, borderRadius: 10,
+    backgroundColor: '#f1f5f9', alignItems: 'center',
+  },
+  modalBtnCancelText: { fontSize: 14, fontWeight: '600', color: '#64748b' },
+  modalBtnConfirm: {
+    flex: 2, paddingVertical: 13, borderRadius: 10, alignItems: 'center',
+  },
+  modalBtnConfirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, AppState
+  RefreshControl, ActivityIndicator, AppState, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -70,6 +70,28 @@ export default function OSListScreen({ navigation, onLogout }) {
     }
   }
 
+  const multiLoja = funcionario && (funcionario.outras_lojas?.length > 0);
+
+  function abrirAdmin() {
+    const lojasAdm = [
+      { loja_id: funcionario.loja_id, nome: 'Minha loja', funcionario_id: funcionario.id },
+      ...(funcionario.outras_lojas || []).filter(l => l.is_admin).map(l => ({ loja_id: l.id, nome: l.nome || `Loja ${l.id}`, funcionario_id: l.funcionario_id })),
+      ...(funcionario.lojas_adm || []).map(l => ({ loja_id: l.id, nome: l.nome || `Loja ${l.id}`, funcionario_id: funcionario.id })),
+    ];
+    if (lojasAdm.length <= 1) {
+      navigation.navigate('Admin', { loja_id: funcionario.loja_id, funcionario_id: funcionario.id });
+      return;
+    }
+    Alert.alert(
+      '👑 Qual loja?',
+      'Selecione o painel que deseja abrir:',
+      lojasAdm.map(l => ({
+        text: l.nome,
+        onPress: () => navigation.navigate('Admin', { loja_id: l.loja_id, funcionario_id: l.funcionario_id }),
+      }))
+    );
+  }
+
   function renderOS({ item }) {
     const st = STATUS_LABEL[item.status] || { label: item.status, color: '#666' };
     return (
@@ -78,6 +100,9 @@ export default function OSListScreen({ navigation, onLogout }) {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={s.numero}>{item.numero}</Text>
             {item.is_plantao ? <Text style={s.plantaoBadge}>🌙 Plantão</Text> : null}
+            {multiLoja && item.loja_nome ? (
+              <Text style={s.lojaBadge}>{item.loja_nome}</Text>
+            ) : null}
           </View>
           <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
             <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
@@ -105,7 +130,7 @@ export default function OSListScreen({ navigation, onLogout }) {
             <Text style={s.buscaBtnText}>🔔</Text>
           </TouchableOpacity>
           {funcionario?.is_admin && (
-            <TouchableOpacity onPress={() => navigation.navigate('Admin')} style={[s.buscaBtn, { backgroundColor: '#7c3aed22' }]}>
+            <TouchableOpacity onPress={() => abrirAdmin()} style={[s.buscaBtn, { backgroundColor: '#7c3aed22' }]}>
               <Text style={s.buscaBtnText}>👑</Text>
             </TouchableOpacity>
           )}
@@ -187,6 +212,7 @@ const s = StyleSheet.create({
   data: { fontSize: 12, color: '#94a3b8' },
   vazio: { textAlign: 'center', marginTop: 60, color: '#94a3b8', fontSize: 15 },
   plantaoBadge: { fontSize: 11, color: '#7c3aed', backgroundColor: '#f3e8ff', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: '700' },
+  lojaBadge: { fontSize: 10, color: '#0369a1', backgroundColor: '#e0f2fe', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: '700' },
   cardPlantao: { borderLeftWidth: 3, borderLeftColor: '#7c3aed' },
   fab: {
     position: 'absolute', bottom: 24, right: 20,

@@ -42,7 +42,9 @@ function fmtData(d) {
   return `${dia}/${m}/${y}`;
 }
 
-export default function AdminScreen({ navigation }) {
+export default function AdminScreen({ navigation, route }) {
+  const lojaId = route?.params?.loja_id || null;
+  const funcId = route?.params?.funcionario_id || null;
   const insets = useSafeAreaInsets();
   const [stats, setStats]           = useState(null);
   const [loading, setLoading]       = useState(true);
@@ -59,7 +61,8 @@ export default function AdminScreen({ navigation }) {
 
   async function carregar() {
     try {
-      const { data } = await api.get('/adm-stats');
+      const params = lojaId ? { loja_id: lojaId } : {};
+      const { data } = await api.get('/adm-stats', { params });
       setStats(data);
       navigation.setOptions({ title: `ADM — ${data.loja_nome || 'Painel'}` });
     } catch (e) {
@@ -69,7 +72,8 @@ export default function AdminScreen({ navigation }) {
       setRefreshing(false);
     }
     try {
-      const { data: pend } = await api.get('/afiacao-pendente');
+      const params = lojaId ? { loja_id: lojaId } : {};
+      const { data: pend } = await api.get('/afiacao-pendente', { params });
       setAfiacaoPendente(pend);
     } catch {}
   }
@@ -79,6 +83,7 @@ export default function AdminScreen({ navigation }) {
     setLoadingOS(true);
     try {
       const params = { adm: '1', status: card.status, dias };
+      if (lojaId) params.loja_id = lojaId;
       if (func) params.funcionario_id = func.id;
       const { data } = await api.get('/os', { params });
       setOsList(data);
