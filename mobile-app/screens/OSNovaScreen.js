@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Platform, Modal, FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import UpperTextInput from '../components/UpperTextInput';
 import { showToast } from '../components/AppAlert';
@@ -64,7 +65,8 @@ export default function OSNovaScreen({ navigation, route }) {
   const [clienteId, setClienteId]           = useState(null);
   const [clienteBusca, setClienteBusca]     = useState('');
   const [clientes, setClientes]             = useState([]);
-  const [clienteSugestoes, setClienteSugestoes] = useState([]);
+  const [showClienteModal, setShowClienteModal] = useState(false);
+  const [buscaClienteModal, setBuscaClienteModal] = useState('');
 
   const [itens, setItens] = useState([]);
 
@@ -95,37 +97,32 @@ export default function OSNovaScreen({ navigation, route }) {
     } catch (_) {}
   }
 
-  function buscarCliente(texto) {
-    setClienteBusca(texto);
-    setClienteId(null);
-    if (!texto.trim()) { setClienteSugestoes([]); return; }
-    const q = texto.trim().toLowerCase();
-    setClienteSugestoes(
-      clientes.filter(c =>
-        (c.nome || '').toLowerCase().includes(q) ||
-        (c.nome_fantasia || '').toLowerCase().includes(q) ||
-        (c.telefone || '').includes(q)
-      ).slice(0, 6)
-    );
-  }
+  const clientesFiltrados = useMemo(() => {
+    const q = buscaClienteModal.trim().toLowerCase();
+    if (!q) return clientes.slice(0, 50);
+    return clientes.filter(c =>
+      (c.nome || '').toLowerCase().includes(q) ||
+      (c.nome_fantasia || '').toLowerCase().includes(q) ||
+      (c.telefone || '').includes(q)
+    ).slice(0, 30);
+  }, [buscaClienteModal, clientes]);
 
   function selecionarCliente(c) {
     setClienteId(c.id);
     setClienteBusca(c.nome_fantasia || c.nome);
-    setClienteSugestoes([]);
-    // Preenche endereço automaticamente
-    if (c.endereco) setRua(c.endereco);
-    if (c.numero)   setNumero(c.numero);
+    setShowClienteModal(false);
+    setBuscaClienteModal('');
+    if (c.endereco)    setRua(c.endereco);
+    if (c.numero)      setNumero(c.numero);
     if (c.complemento) setComplemento(c.complemento);
-    if (c.cidade)   setCidade(c.cidade);
-    if (c.referencia) setReferencia(c.referencia);
-    if (c.telefone) setContatoCliente(c.telefone);
+    if (c.cidade)      setCidade(c.cidade);
+    if (c.referencia)  setReferencia(c.referencia);
+    if (c.telefone)    setContatoCliente(c.telefone);
   }
 
   function limparCliente() {
     setClienteId(null);
     setClienteBusca('');
-    setClienteSugestoes([]);
   }
 
   // Modal catálogo
@@ -263,10 +260,10 @@ export default function OSNovaScreen({ navigation, route }) {
               ? <ActivityIndicator size="small" color="#2563eb" style={{ marginTop: 4 }} />
               : disponibilidade.map(v => (
                   <View key={v.id} style={s.dispRow}>
-                    <Text style={v.status === 'livre' ? s.dispDotLivre : s.dispDotOcupado}>●</Text>
-                    <Text style={s.dispNome}>{v.nome}</Text>
-                    <Text style={v.status === 'livre' ? s.dispLivre : s.dispOcupado}>
-                      {v.status === 'livre' ? 'livre' : v.livre_as ? `ocupado até ${v.livre_as}` : 'ocupado (sem previsão)'}
+                    <Text style={v.status === 'livre' ? s.dispDotLivre : v.status === 'agendado' ? s.dispDotAgendado : s.dispDotOcupado}>●</Text>
+                    <Text style={s.dispNome}>{v.nome.toUpperCase()}</Text>
+                    <Text style={v.status === 'livre' ? s.dispLivre : v.status === 'agendado' ? s.dispAgendado : s.dispOcupado}>
+                      {v.status === 'livre' ? 'LIVRE' : v.status === 'agendado' ? 'OS AGENDADA EM BREVE' : v.livre_as ? `OCUPADO ATÉ ${v.livre_as}` : 'OCUPADO'}
                     </Text>
                   </View>
                 ))
@@ -287,7 +284,7 @@ export default function OSNovaScreen({ navigation, route }) {
           {!isPlantao && (
             <View style={[s.toggleRow, s.toggleSep]}>
               <View>
-                <Text style={s.chaveLabel}>🔑 Chave Auto</Text>
+                <Text style={s.chaveLabel}>🔑 Auto</Text>
                 <Text style={s.toggleSub}>OS de chave automotiva</Text>
               </View>
               <Switch value={chaveAuto} onValueChange={setChaveAuto}
@@ -307,40 +304,29 @@ export default function OSNovaScreen({ navigation, route }) {
         {/* Cliente */}
         <View style={s.secao}>
           <Text style={s.secaoTitulo}>Cliente</Text>
-          <Text style={s.fieldLabel}>Pesquisar cliente</Text>
-          <View style={{ position: 'relative' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TextInput
-                style={[s.input, { flex: 1, marginBottom: clienteId ? 8 : 0 }]}
-                placeholder="Pesquisar cliente... (ou deixe em branco para avulso)"
-                placeholderTextColor="#aaa"
-                value={clienteBusca}
-                onChangeText={buscarCliente}
-                autoCapitalize="words"
-              />
-              {clienteId && (
-                <TouchableOpacity onPress={limparCliente} style={{ padding: 8, marginLeft: 4 }}>
-                  <Text style={{ fontSize: 18, color: '#94a3b8' }}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {clienteId && (
-              <View style={{ backgroundColor: '#f0fdf4', borderRadius: 8, padding: 8, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#16a34a' }}>
-                <Text style={{ fontSize: 12, color: '#16a34a', fontWeight: '700' }}>✓ Cliente selecionado — endereço preenchido automaticamente</Text>
-              </View>
-            )}
-            {clienteSugestoes.length > 0 && (
-              <View style={s.sugestoes}>
-                {clienteSugestoes.map(c => (
-                  <TouchableOpacity key={c.id} style={s.sugestaoItem} onPress={() => selecionarCliente(c)}>
-                    <Text style={s.sugestaoNome}>{c.nome_fantasia || c.nome}</Text>
-                    {c.telefone ? <Text style={s.sugestaoSub}>{c.telefone}</Text> : null}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+          <Text style={s.fieldLabel}>Nome do Cliente</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <TextInput
+              style={[s.input, { flex: 1, marginBottom: 0 }]}
+              placeholder="Nome do cliente (ou deixe em branco)"
+              placeholderTextColor="#aaa"
+              value={clienteBusca}
+              onChangeText={t => { setClienteBusca(t); setClienteId(null); }}
+              autoCapitalize="words"
+            />
+            <TouchableOpacity onPress={() => setShowClienteModal(true)} style={s.clientePickerBtn}>
+              <Ionicons name="person-circle-outline" size={30} color="#2563eb" />
+            </TouchableOpacity>
           </View>
-          <Text style={s.fieldLabel}>📞 Contato desta OS (tel/WhatsApp — opcional)</Text>
+          {clienteId && (
+            <View style={{ backgroundColor: '#f0fdf4', borderRadius: 8, padding: 8, marginBottom: 8, borderLeftWidth: 3, borderLeftColor: '#16a34a', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 12, color: '#16a34a', fontWeight: '700' }}>✓ Cliente do cadastro selecionado</Text>
+              <TouchableOpacity onPress={limparCliente}>
+                <Text style={{ fontSize: 14, color: '#94a3b8' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <Text style={s.fieldLabel}>📞 Contato desta OS (Tel/WhatsApp — opcional)</Text>
           <TextInput style={s.input} placeholder="Opcional" value={contatoCliente} onChangeText={setContatoCliente} keyboardType="phone-pad" />
         </View>
 
@@ -465,6 +451,45 @@ export default function OSNovaScreen({ navigation, route }) {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* Modal de seleção de cliente */}
+      <Modal visible={showClienteModal} animationType="slide" transparent onRequestClose={() => setShowClienteModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <View style={s.modalHeader}>
+              <Text style={s.modalTitulo}>Selecionar Cliente</Text>
+              <TouchableOpacity onPress={() => { setShowClienteModal(false); setBuscaClienteModal(''); }} style={s.modalFecharBtn}>
+                <Text style={s.modalFecharText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <TextInput
+              style={s.buscaInput}
+              placeholder="Buscar por nome ou telefone..."
+              value={buscaClienteModal}
+              onChangeText={setBuscaClienteModal}
+              autoFocus
+              clearButtonMode="while-editing"
+            />
+            <FlatList
+              data={clientesFiltrados}
+              keyExtractor={c => String(c.id)}
+              style={{ flex: 1 }}
+              keyboardShouldPersistTaps="handled"
+              ListEmptyComponent={<Text style={s.vazio}>Nenhum cliente encontrado</Text>}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={s.catalogoItem} onPress={() => selecionarCliente(item)}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.catalogoNome}>{item.nome_fantasia || item.nome}</Text>
+                    {item.telefone ? <Text style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{item.telefone}</Text> : null}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#cbd5e1" />
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#f1f5f9' }} />}
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal catálogo */}
       <Modal visible={!!modalTipo} animationType="slide" transparent>
         <View style={s.modalOverlay}>
@@ -532,9 +557,11 @@ const s = StyleSheet.create({
   dispRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   dispDotLivre: { fontSize: 14, color: '#10b981' },
   dispDotOcupado: { fontSize: 14, color: '#ef4444' },
-  dispNome: { fontSize: 14, fontWeight: '600', color: '#1e293b', flex: 1 },
-  dispLivre: { fontSize: 13, color: '#10b981', fontWeight: '600' },
-  dispOcupado: { fontSize: 13, color: '#ef4444', fontWeight: '600' },
+  dispDotAgendado: { fontSize: 14, color: '#f59e0b' },
+  dispNome: { fontSize: 14, fontWeight: '700', color: '#1e293b', flex: 1 },
+  dispLivre: { fontSize: 13, color: '#10b981', fontWeight: '700' },
+  dispOcupado: { fontSize: 13, color: '#ef4444', fontWeight: '700' },
+  dispAgendado: { fontSize: 13, color: '#f59e0b', fontWeight: '700' },
 
   togglesCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16, elevation: 1 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -550,10 +577,7 @@ const s = StyleSheet.create({
   input: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12, fontSize: 14, color: '#1e293b', backgroundColor: '#f8fafc', marginBottom: 8 },
   textarea: { minHeight: 80 },
 
-  sugestoes: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, marginBottom: 8, elevation: 4 },
-  sugestaoItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  sugestaoNome: { fontSize: 14, fontWeight: '600', color: '#1e293b' },
-  sugestaoSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  clientePickerBtn: { padding: 4 },
 
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },

@@ -141,6 +141,7 @@ function afiacaoRenderKanban() {
 function afiacaoCard(f, cfg) {
   const dt = new Date(f.criado_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
   const cliente = f.cliente_nome ? `<p style="font-size:12px;color:#94a3b8;margin:3px 0">👤 ${f.cliente_nome}</p>` : '';
+  const tel = f.cliente_telefone ? `<p style="font-size:12px;color:#94a3b8;margin:3px 0">📞 ${aplicarMascaraTelefone(f.cliente_telefone)}</p>` : '';
   const obs = f.observacao ? `<p style="font-size:12px;color:#64748b;margin:3px 0;font-style:italic">${f.observacao}</p>` : '';
   const proxStatus = cfg.prox;
   const proxLabel = proxStatus ? AFIACAO_STATUS[proxStatus].label : null;
@@ -156,9 +157,10 @@ function afiacaoCard(f, cfg) {
       <span style="font-size:11px;color:#64748b">${dt}</span>
     </div>
     <p style="font-size:13px;font-weight:600;color:#e2e8f0;margin:0">Qtd: ${f.quantidade} | R$ ${Number(f.valor).toFixed(2).replace('.', ',')}</p>
-    ${cliente}${obs}
+    ${cliente}${tel}${obs}
     <div style="display:flex;gap:6px;margin-top:10px">
       ${btnProx}
+      <button onclick="afiacaoEditar(${f.id})" title="Editar ficha" style="padding:6px 10px;background:#0f172a;color:#94a3b8;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">✏️</button>
       <button onclick="afiacaoRecibo(${f.id})" title="Imprimir recibo" style="padding:6px 10px;background:#0f172a;color:#94a3b8;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">🖨️</button>
       <button onclick="afiacaoExcluir(${f.id})" title="Excluir" style="padding:6px 10px;background:#0f172a;color:#ef4444;border:1px solid #334155;border-radius:8px;font-size:12px;cursor:pointer">🗑️</button>
     </div>
@@ -348,6 +350,80 @@ async function afiacaoExcluir(id) {
   if (!ok) return;
   await api('DELETE', `/afiacao/${id}`);
   toast('Ficha excluída.');
+  await afiacaoCarregar();
+}
+
+function afiacaoEditar(id) {
+  const f = _afiacaoFichas.find(x => x.id === id);
+  if (!f) return;
+
+  let overlay = document.getElementById('modal-afiacao-editar');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'modal-afiacao-editar';
+    overlay.className = 'modal-overlay';
+    overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:440px;width:100%">
+        <div class="modal-header">
+          <span class="modal-title">✏️ Editar Ficha</span>
+          <button class="modal-close" onclick="document.getElementById('modal-afiacao-editar').remove()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Quantidade <span style="color:#ef4444">*</span></label>
+              <input type="number" id="af-edit-qtd" min="1" style="width:100%">
+            </div>
+            <div class="form-group">
+              <label>Valor cobrado (R$)</label>
+              <input type="number" id="af-edit-valor" min="0" step="0.01" style="width:100%">
+            </div>
+            <div class="form-group form-full">
+              <label>Cliente</label>
+              <input type="text" id="af-edit-cliente" placeholder="Nome do cliente" style="width:100%">
+            </div>
+            <div class="form-group form-full">
+              <label>Telefone do cliente</label>
+              <input type="text" id="af-edit-telefone" placeholder="(00) 00000-0000" oninput="mascaraTelefone(this)" style="width:100%">
+            </div>
+            <div class="form-group form-full">
+              <label>Observação</label>
+              <textarea id="af-edit-obs" rows="3" placeholder="Ex: 3 facas, 2 tesouras..." style="width:100%;resize:vertical"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="document.getElementById('modal-afiacao-editar').remove()">Cancelar</button>
+          <button class="btn btn-primary" id="af-edit-salvar">Salvar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('af-edit-qtd').value = f.quantidade;
+  document.getElementById('af-edit-valor').value = Number(f.valor).toFixed(2);
+  document.getElementById('af-edit-cliente').value = f.cliente_nome || '';
+  document.getElementById('af-edit-telefone').value = aplicarMascaraTelefone(f.cliente_telefone || '');
+  document.getElementById('af-edit-obs').value = f.observacao || '';
+  document.getElementById('af-edit-salvar').onclick = () => afiacaoSalvarEdicao(id);
+
+  overlay.style.display = 'flex';
+}
+
+async function afiacaoSalvarEdicao(id) {
+  const qtd = parseInt(document.getElementById('af-edit-qtd').value);
+  if (!qtd || qtd < 1) { toast('Informe a quantidade', 'erro'); return; }
+  const body = {
+    quantidade: qtd,
+    valor: parseFloat(document.getElementById('af-edit-valor').value) || 0,
+    cliente_nome: document.getElementById('af-edit-cliente').value.trim() || null,
+    cliente_telefone: document.getElementById('af-edit-telefone').value.replace(/\D/g, '') || null,
+    observacao: document.getElementById('af-edit-obs').value.trim() || null,
+  };
+  await api('PUT', `/afiacao/${id}`, body);
+  document.getElementById('modal-afiacao-editar')?.remove();
+  toast('Ficha atualizada!');
   await afiacaoCarregar();
 }
 

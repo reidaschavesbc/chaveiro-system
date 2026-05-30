@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../database/db');
 const wa = require('../services/whatsapp');
 const { notificarAfiadorApp } = require('./app-mobile');
+const { registrarExclusao } = require('../utils/historico');
 
 function gerarNumeroAfiacao(lojaId) {
   const row = db.prepare('SELECT MAX(numero) as max FROM afiacao WHERE loja_id = ?').get(lojaId);
@@ -12,6 +13,10 @@ function gerarNumeroAfiacao(lojaId) {
 function getConfig(chave) {
   const row = db.prepare('SELECT valor FROM configuracoes WHERE chave = ?').get(chave);
   return row?.valor || '';
+}
+
+function somaQtd(fichas) {
+  return fichas.reduce((s, f) => s + Number(f.quantidade || 0), 0);
 }
 
 function normalizePhone(phone) {
@@ -71,7 +76,7 @@ router.get('/relatorio', (req, res) => {
 
   const totalCobrado = fichas.reduce((s, f) => s + Number(f.valor), 0);
   const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
-  const totalAfiador = fichas.length * valorAfiador;
+  const totalAfiador = somaQtd(fichas) * valorAfiador;
 
   const emFila = db.prepare(`SELECT COUNT(*) as n FROM afiacao WHERE loja_id = ? AND status != 'entregue'`).get(lojaId).n;
 
@@ -143,7 +148,7 @@ router.get('/pendente-afiador', (req, res) => {
     fichas,
     qtd: fichas.length,
     valor_por_ficha: valorAfiador,
-    total: fichas.length * valorAfiador,
+    total: somaQtd(fichas) * valorAfiador,
     data_inicio: datas[0]?.slice(0, 10) || null,
     data_fim: datas[datas.length - 1]?.slice(0, 10) || null,
   });
@@ -166,7 +171,7 @@ router.post('/pagamentos-afiador', (req, res) => {
   if (!fichas.length) return res.status(400).json({ erro: 'Nenhuma ficha pendente para pagamento' });
 
   const valorAfiador = parseFloat(db.prepare(`SELECT valor FROM configuracoes WHERE chave = 'valor_afiador'`).get()?.valor) || 0;
-  const total = fichas.length * valorAfiador;
+  const total = somaQtd(fichas) * valorAfiador;
   const datas = fichas.map(f => f.data_entrega || f.criado_em).filter(Boolean).sort();
   const dataInicio = datas[0]?.slice(0, 10) || null;
   const dataFim    = datas[datas.length - 1]?.slice(0, 10) || null;
@@ -215,9 +220,9 @@ router.get('/meus-ganhos', (req, res) => {
     fichas,
     pagamentos,
     valor_por_ficha: valorAfiador,
-    total: fichas.length * valorAfiador,
-    total_pago: pagas.length * valorAfiador,
-    total_pendente: pendentes.length * valorAfiador,
+    total: somaQtd(fichas) * valorAfiador,
+    total_pago: somaQtd(pagas) * valorAfiador,
+    total_pendente: somaQtd(pendentes) * valorAfiador,
     qtd_total: fichas.length,
     qtd_pago: pagas.length,
     qtd_pendente: pendentes.length,
@@ -240,6 +245,24 @@ router.post('/', async (req, res) => {
   const ficha = db.prepare('SELECT * FROM afiacao WHERE id = ?').get(info.lastInsertRowid);
   notificarAfiador(ficha);
   res.json(ficha);
+});
+
+// PUT /api/afiacao/:id — editar dados da ficha
+router.put('/:id', (req, res) => {
+  if (req.user.perfil === 'afiador') return res.status(403).json({ erro: 'Sem permissão' });
+  const lojaId = req.user.loja_id;
+  const ficha = db.prepare('SELECT * FROM afiacao WHERE id = ? AND loja_id = ?').get(req.params.id, lojaId);
+  if (!ficha) return res.status(404).json({ erro: 'Ficha não encontrada' });
+
+  const { quantidade, valor, cliente_nome, cliente_telefone, observacao } = req.body;
+  if (!quantidade || quantidade < 1) return res.status(400).json({ erro: 'Quantidade obrigatória' });
+
+  db.prepare(`
+    UPDATE afiacao SET quantidade = ?, valor = ?, cliente_nome = ?, cliente_telefone = ?, observacao = ?, atualizado_em = datetime('now','localtime')
+    WHERE id = ? AND loja_id = ?
+  `).run(quantidade, valor || 0, cliente_nome || null, cliente_telefone || null, observacao || null, req.params.id, lojaId);
+
+  res.json(db.prepare('SELECT * FROM afiacao WHERE id = ?').get(req.params.id));
 });
 
 // PUT /api/afiacao/:id/status
@@ -268,7 +291,19 @@ router.put('/:id/status', async (req, res) => {
 // DELETE /api/afiacao/:id
 router.delete('/:id', (req, res) => {
   if (req.user.perfil === 'afiador') return res.status(403).json({ erro: 'Sem permissão' });
+  const a = db.prepare('SELECT id, observacao, valor FROM afiacao WHERE id = ? AND loja_id = ?').get(req.params.id, req.user.loja_id);
   db.prepare('DELETE FROM afiacao WHERE id = ? AND loja_id = ?').run(req.params.id, req.user.loja_id);
+  if (a) {
+    registrarExclusao({
+      loja_id: req.user.loja_id,
+      tipo: 'afiacao',
+      registro_id: a.id,
+      descricao: `Afiação #${a.id}${a.observacao ? ' — '+a.observacao : ''} — R$ ${(a.valor||0).toFixed(2)}`,
+      usuario_id: req.user.id,
+      usuario_nome: req.user.nome,
+        req
+    });
+  }
   res.json({ ok: true });
 });
 

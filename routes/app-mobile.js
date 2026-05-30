@@ -46,9 +46,16 @@ function authFuncionario(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Token não fornecido' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const func = db.prepare('SELECT nome FROM vendedores WHERE id = ? AND ativo = 1').get(decoded.id);
+    const forceRow = db.prepare("SELECT valor FROM configuracoes WHERE chave = 'app_force_login_since'").get();
+    if (forceRow?.valor && decoded.iat * 1000 < parseInt(forceRow.valor)) {
+      return res.status(401).json({ error: 'Sessão expirada, faça login novamente' });
+    }
+    const func = db.prepare('SELECT nome, email FROM vendedores WHERE id = ? AND ativo = 1').get(decoded.id);
     if (!func) return res.status(401).json({ error: 'Sessão inválida' });
-    req.funcionario = { ...decoded, nome: func.nome };
+    const outrasLojas = func.email
+      ? db.prepare(`SELECT v.id as funcionario_id, v.loja_id, v.is_admin FROM vendedores v WHERE UPPER(v.email) = UPPER(?) AND v.id != ? AND v.ativo = 1`).all(func.email, decoded.id)
+      : [];
+    req.funcionario = { ...decoded, nome: func.nome, outras_lojas: outrasLojas };
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido' });
@@ -58,6 +65,9 @@ function authFuncionario(req, res, next) {
 function verificarAcessoAdm(req, lojaId) {
   if (!req.funcionario.is_admin) return false;
   if (req.funcionario.loja_id === lojaId) return true;
+  // Verifica se tem cadastro como admin nessa loja via mesmo email (multi-loja)
+  const outrasLojas = req.funcionario.outras_lojas || [];
+  if (outrasLojas.some(o => o.loja_id === lojaId && o.is_admin)) return true;
   return !!db.prepare(`SELECT 1 FROM adm_acesso_externo WHERE funcionario_id = ? AND loja_id = ?`).get(req.funcionario.id, lojaId);
 }
 
@@ -74,21 +84,34 @@ router.post('/login', (req, res) => {
   const { email, senha } = req.body;
   if (!email || !senha) return res.status(400).json({ error: 'Email e senha são obrigatórios' });
 
-  // Tenta vendedores primeiro
-  const func = db.prepare(`SELECT * FROM vendedores WHERE email = ? AND ativo = 1`).get(email);
-  if (func && func.senha && bcrypt.compareSync(senha, func.senha)) {
+  const emailNorm = email.trim().toUpperCase();
+
+  // Busca todos os cadastros com esse email em qualquer loja (case-insensitive)
+  const candidatos = db.prepare(`SELECT * FROM vendedores WHERE UPPER(email) = ? AND ativo = 1`).all(emailNorm);
+  const funcList = candidatos.filter(f => f.senha && bcrypt.compareSync(senha, f.senha));
+
+  if (funcList.length > 0) {
+    // Usa o primeiro cadastro como principal (token)
+    const func = funcList[0];
     const token = jwt.sign(
       { id: func.id, nome: func.nome, loja_id: func.loja_id, tipo: 'funcionario', is_admin: func.is_admin },
       JWT_SECRET, { expiresIn: '30d' }
     );
+    // Lojas extras via adm_acesso_externo
     const lojasAdm = db.prepare(`
       SELECT l.id, l.nome FROM adm_acesso_externo a JOIN lojas l ON a.loja_id = l.id WHERE a.funcionario_id = ?
     `).all(func.id);
-    return res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, is_admin: func.is_admin, lojas_adm: lojasAdm } });
+    // Outras lojas onde o mesmo email está cadastrado (além da loja principal)
+    const outrasLojas = funcList.slice(1).map(f => {
+      const loja = db.prepare(`SELECT nome FROM lojas WHERE id = ?`).get(f.loja_id);
+      return { id: f.loja_id, nome: loja ? loja.nome : String(f.loja_id), funcionario_id: f.id, is_admin: f.is_admin };
+    });
+    const lojaAtual = db.prepare('SELECT nome FROM lojas WHERE id = ?').get(func.loja_id);
+    return res.json({ token, funcionario: { id: func.id, nome: func.nome, email: func.email, loja_id: func.loja_id, loja_nome: lojaAtual?.nome || null, is_admin: func.is_admin, lojas_adm: lojasAdm, outras_lojas: outrasLojas } });
   }
 
   // Tenta afiador (tabela usuarios com perfil = 'afiador')
-  const afiador = db.prepare(`SELECT * FROM usuarios WHERE (email = ? OR nome = ?) AND perfil = 'afiador' AND ativo = 1`).get(email, email);
+  const afiador = db.prepare(`SELECT * FROM usuarios WHERE (UPPER(email) = ? OR UPPER(nome) = ?) AND perfil = 'afiador' AND ativo = 1`).get(emailNorm, emailNorm);
   if (!afiador || !afiador.senha) return res.status(401).json({ error: 'Credenciais inválidas' });
   if (!bcrypt.compareSync(senha, afiador.senha)) return res.status(401).json({ error: 'Credenciais inválidas' });
 
@@ -161,34 +184,98 @@ router.get('/os', authFuncionario, (req, res) => {
     return res.json(db.prepare(sql).all(...params));
   }
 
-  let sql = `
-    SELECT os.id, os.numero, os.descricao, os.valor, os.status,
-           os.data_entrada, os.data_prevista, os.data_conclusao,
-           os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
-           COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
-           c.nome_fantasia as cliente_nome_fantasia,
-           c.telefone as cliente_telefone
-    FROM ordens_servico os
-    LEFT JOIN clientes c ON os.cliente_id = c.id
-    WHERE os.loja_id = ?`;
-  const params = [req.funcionario.loja_id];
+  // Coleta todos os IDs de funcionário vinculados ao mesmo login (multi-loja)
+  const outrasLojas = req.funcionario.outras_lojas || [];
+  const todosIds = [
+    { funcionario_id: req.funcionario.id, loja_id: req.funcionario.loja_id },
+    ...outrasLojas.map(o => ({ funcionario_id: o.funcionario_id, loja_id: o.loja_id }))
+  ];
 
-  sql += ` AND os.vendedor_id = ?`;
-  params.push(req.funcionario.id);
-  if (status) { sql += ` AND os.status = ?`; params.push(status); }
-  else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
+  const resultados = todosIds.flatMap(({ funcionario_id, loja_id }) => {
+    let sql = `
+      SELECT os.id, os.numero, os.descricao, os.valor, os.status,
+             os.data_entrada, os.data_prevista, os.data_conclusao,
+             os.forma_pagamento, os.observacoes, os.a_receber, os.a_receber_pago,
+             COALESCE(c.nome, os.cliente_nome_avulso, 'Avulso') as cliente_nome,
+             c.nome_fantasia as cliente_nome_fantasia,
+             c.telefone as cliente_telefone,
+             l.nome as loja_nome
+      FROM ordens_servico os
+      LEFT JOIN clientes c ON os.cliente_id = c.id
+      LEFT JOIN lojas l ON os.loja_id = l.id
+      WHERE os.loja_id = ? AND os.vendedor_id = ?`;
+    const params = [loja_id, funcionario_id];
+    if (status) { sql += ` AND os.status = ?`; params.push(status); }
+    else { sql += ` AND os.status IN ('aberta', 'em_andamento')`; }
+    sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
+    return db.prepare(sql).all(...params);
+  });
 
-  sql += ` ORDER BY os.data_entrada DESC LIMIT 200`;
-  res.json(db.prepare(sql).all(...params));
+  resultados.sort((a, b) => new Date(b.data_entrada) - new Date(a.data_entrada));
+  res.json(resultados.slice(0, 200));
+});
+
+// GET /api/app/disponibilidade
+router.get('/disponibilidade', authFuncionario, (req, res) => {
+  const lojaId = req.query.loja_id ? parseInt(req.query.loja_id) : req.funcionario.loja_id;
+
+  const vendedores = db.prepare(`
+    SELECT id, nome FROM vendedores
+    WHERE loja_id = ? AND ativo = 1 AND pode_trabalhar = 1 AND tecnico = 1
+    ORDER BY nome
+  `).all(lojaId);
+
+  const agora = new Date();
+
+  const result = vendedores.map(v => {
+    // Verifica se está em andamento
+    const osAtiva = db.prepare(`
+      SELECT numero, descricao, data_entrada, data_prevista, tempo_estimado
+      FROM ordens_servico
+      WHERE vendedor_id = ? AND loja_id = ? AND status = 'em_andamento' AND tempo_estimado IS NOT NULL
+      ORDER BY data_entrada DESC LIMIT 1
+    `).get(v.id, lojaId);
+
+    if (osAtiva) {
+      const base = osAtiva.data_prevista ? new Date(osAtiva.data_prevista) : new Date(osAtiva.data_entrada);
+      if (osAtiva.data_prevista && base.toLocaleDateString('en-CA') !== agora.toLocaleDateString('en-CA')) {
+        // cai fora do if, segue para checar agendada
+      } else {
+        if (osAtiva.tempo_estimado === -1) return { id: v.id, nome: v.nome, status: 'ocupado', livre_as: null };
+        const livreEm = new Date(base.getTime() + osAtiva.tempo_estimado * 60000);
+        if (livreEm > agora) {
+          const hh = String(livreEm.getHours()).padStart(2, '0');
+          const mm = String(livreEm.getMinutes()).padStart(2, '0');
+          return { id: v.id, nome: v.nome, status: 'ocupado', livre_as: `${hh}:${mm}` };
+        }
+      }
+    }
+
+    // Verifica se tem OS aberta agendada para hoje
+    const osAgendada = db.prepare(`
+      SELECT data_prevista FROM ordens_servico
+      WHERE vendedor_id = ? AND loja_id = ? AND status = 'aberta' AND data_prevista IS NOT NULL
+      AND date(data_prevista) = date('now', 'localtime')
+      AND data_prevista > datetime('now', 'localtime')
+      ORDER BY data_prevista ASC LIMIT 1
+    `).get(v.id, lojaId);
+
+    if (osAgendada) return { id: v.id, nome: v.nome, status: 'agendado' };
+
+    return { id: v.id, nome: v.nome, status: 'livre' };
+  });
+
+  res.json(result);
 });
 
 // POST /api/app/os — criar nova OS
 router.post('/os', authFuncionario, (req, res) => {
   const {
-    cliente_nome_avulso, cliente_telefone_avulso,
+    cliente_id, cliente_nome_avulso,
     cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento,
     cliente_avulso_cidade, cliente_avulso_referencia,
-    descricao, contato_cliente, is_plantao, chave_auto, vendedor_id,
+    descricao, contato_cliente, is_plantao, chave_auto, vendedor_id, tempo_estimado,
+    valor, data_prevista, forma_pagamento, observacoes, a_receber,
   } = req.body;
 
   const lojaId = req.funcionario.loja_id;
@@ -202,21 +289,23 @@ router.post('/os', authFuncionario, (req, res) => {
       const numero = gerarNumeroOS();
       const result = db.prepare(`
         INSERT INTO ordens_servico (
-          numero, cliente_nome_avulso, cliente_telefone_avulso,
+          numero, cliente_id, cliente_nome_avulso,
           cliente_avulso_rua, cliente_avulso_numero, cliente_avulso_complemento,
           cliente_avulso_cidade, cliente_avulso_referencia,
           descricao, contato_cliente, is_plantao, chave_auto,
-          vendedor_id, status, valor, loja_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aberta', 0, ?)
+          vendedor_id, status, valor, loja_id, tempo_estimado,
+          data_prevista, forma_pagamento, observacoes, a_receber
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aberta', ?, ?, ?, ?, ?, ?, ?)
       `).run(
         numero,
-        cliente_nome_avulso || null, cliente_telefone_avulso || null,
+        cliente_id || null, cliente_nome_avulso || null,
         cliente_avulso_rua || null, cliente_avulso_numero || null,
         cliente_avulso_complemento || null, cliente_avulso_cidade || null,
         cliente_avulso_referencia || null,
         descricao?.trim() || null, contato_cliente || null,
         is_plantao ? 1 : 0, chave_auto ? 1 : 0,
-        vidFinal, lojaId
+        vidFinal, parseFloat(valor) || 0, lojaId, tempo_estimado ? parseInt(tempo_estimado) : null,
+        data_prevista || null, forma_pagamento || null, observacoes?.trim() || null, a_receber ? 1 : 0
       );
       return { id: result.lastInsertRowid, numero };
     });
@@ -387,6 +476,27 @@ router.get('/servicos', authFuncionario, (req, res) => {
     ORDER BY nome
   `).all(req.funcionario.loja_id);
   res.json(servicos);
+});
+
+// GET /api/app/vendedores
+router.get('/vendedores', authFuncionario, (req, res) => {
+  const vendedores = db.prepare(`
+    SELECT id, nome FROM vendedores
+    WHERE loja_id = ? AND ativo = 1 AND (tecnico = 1 OR id = ?)
+    ORDER BY nome
+  `).all(req.funcionario.loja_id, req.funcionario.id);
+  res.json(vendedores);
+});
+
+// GET /api/app/clientes
+router.get('/clientes', authFuncionario, (req, res) => {
+  const clientes = db.prepare(`
+    SELECT id, nome, nome_fantasia, telefone, endereco, numero, complemento, cidade, referencia
+    FROM clientes
+    WHERE loja_id = ? AND ativo = 1
+    ORDER BY nome
+  `).all(req.funcionario.loja_id);
+  res.json(clientes);
 });
 
 // POST /api/app/os/:id/item

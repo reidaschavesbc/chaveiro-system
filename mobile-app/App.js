@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform, Linking, TouchableOpacity, Text, AppState } from 'react-native';
+import { Platform, Linking, TouchableOpacity, Text, View, AppState } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,7 +27,7 @@ import BuscaScreen from './screens/BuscaScreen';
 import AdminScreen from './screens/AdminScreen';
 import AfiacaoScreen from './screens/AfiacaoScreen';
 import LembretesScreen from './screens/LembretesScreen';
-import api from './services/api';
+import api, { setOnUnauthorized } from './services/api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -47,6 +47,7 @@ export default function App() {
   const responseListener = useRef();
 
   useEffect(() => {
+    setOnUnauthorized(() => setFuncionario(null));
     verificarLogin();
     configurarNotificacoes();
     verificarVersao();

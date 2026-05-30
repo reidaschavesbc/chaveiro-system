@@ -25,6 +25,17 @@ function fmtData(d) {
   return `${dia}/${m}/${y}`;
 }
 
+function fmtTel(v) {
+  if (!v) return null;
+  let d = String(v).replace(/\D/g, '');
+  if (d.startsWith('55') && d.length > 11) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (d.length <= 2)  return '(' + d;
+  if (d.length <= 6)  return `(${d.slice(0,2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+}
+
 const STATUS = {
   aguardando: { label: 'Aguardando', color: '#f59e0b', bg: '#fef3c7', proxLabel: 'Iniciar',  prox: 'afiando'  },
   afiando:    { label: 'Afiando',    color: '#3b82f6', bg: '#dbeafe', proxLabel: 'Concluir', prox: 'pronto'   },
@@ -162,6 +173,7 @@ export default function AfiacaoScreen({ isAfiador }) {
                           {f.quantidade} item(s) &nbsp;·&nbsp; {fmtVal(f.valor)}
                         </Text>
                         {f.cliente_nome ? <Text style={s.fichaSub}>👤 {f.cliente_nome}</Text> : null}
+                        {fmtTel(f.cliente_telefone) ? <Text style={s.fichaSub}>📞 {fmtTel(f.cliente_telefone)}</Text> : null}
                         {f.observacao   ? <Text style={s.fichaObs}>{f.observacao}</Text> : null}
 
                         {cfg.prox && (
@@ -199,6 +211,7 @@ export default function AfiacaoScreen({ isAfiador }) {
                       </View>
                       <Text style={s.fichaInfo}>{f.quantidade} item(s) · {fmtVal(f.valor)}</Text>
                       {f.cliente_nome ? <Text style={s.fichaSub}>👤 {f.cliente_nome}</Text> : null}
+                      {fmtTel(f.cliente_telefone) ? <Text style={s.fichaSub}>📞 {fmtTel(f.cliente_telefone)}</Text> : null}
                       <TouchableOpacity
                         style={[s.btnAvancar, { backgroundColor: '#6366f1' }, avancando === f.id && { opacity: 0.6 }]}
                         onPress={() => confirmarAvancar(f, { proxLabel: 'Marcar Entregue', prox: 'entregue' })}
